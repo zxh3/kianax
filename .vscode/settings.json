@@ -23,5 +23,6 @@
   "search.exclude": {
     "**/node_modules": true
   },
-  "cSpell.dictionaries": ["turbopack"]
+  "cSpell.dictionaries": ["turbopack"],
+  "cSpell.words": ["oklch"]
 }
