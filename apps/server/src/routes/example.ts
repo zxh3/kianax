@@ -8,7 +8,7 @@ const createItemSchema = z.object({
 
 export async function exampleRoutes(fastify: FastifyInstance) {
   // GET /api/items
-  fastify.get("/items", async (request, reply) => {
+  fastify.get("/items", async (_request, _reply) => {
     return {
       items: [
         { id: 1, name: "Item 1", description: "First item" },
@@ -20,7 +20,7 @@ export async function exampleRoutes(fastify: FastifyInstance) {
   // GET /api/items/:id
   fastify.get<{ Params: { id: string } }>(
     "/items/:id",
-    async (request, reply) => {
+    async (request, _reply) => {
       const { id } = request.params;
 
       // Simulate item lookup
