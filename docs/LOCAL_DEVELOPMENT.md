@@ -1,13 +1,16 @@
 # Local Development
 
-Simple setup for developing Kianax locally with Convex.
+Simple setup for developing Kianax locally with Convex + Temporal.
 
 ## Prerequisites
 
 - Node.js 18+ or Bun 1.2+
 - Text editor (VS Code recommended)
+- Docker Desktop (for local Temporal server)
 
 ## First-Time Setup
+
+### 1. Install Dependencies
 
 ```bash
 # Clone and install
@@ -21,26 +24,61 @@ npx convex dev
 # This creates convex/ directory and .env.local automatically
 ```
 
-**That's it.** No Docker, databases, or configuration needed.
+### 2. Start Local Temporal Server
+
+```bash
+# Using Temporal CLI (recommended)
+brew install temporal  # macOS
+# or download from https://docs.temporal.io/cli
+
+# Start local Temporal server
+temporal server start-dev
+
+# This runs:
+# - Temporal Server (localhost:7233)
+# - Temporal Web UI (http://localhost:8233)
+```
+
+**Alternative: Docker Compose**
+
+```bash
+# Download Temporal docker-compose
+curl -L https://github.com/temporalio/docker-compose/archive/main.zip -o temporal.zip
+unzip temporal.zip && cd docker-compose-main
+
+# Start services
+docker-compose up -d
+
+# Web UI: http://localhost:8080
+```
 
 ## Daily Development
 
 ```bash
-# Terminal 1: Convex backend
+# Terminal 1: Temporal Server (if not using docker-compose)
+temporal server start-dev
+
+# Terminal 2: Convex backend
 npx convex dev
 
-# Terminal 2: Next.js frontend
+# Terminal 3: Temporal Workers
+bun run workers/dev
+
+# Terminal 4: Next.js frontend
 bun run dev
 
 # Open browser
-open http://localhost:3000
+open http://localhost:3000        # App
+open http://localhost:8233        # Temporal UI
+open https://dashboard.convex.dev # Convex Dashboard
 ```
 
-**Convex dev provides:**
-- Local dev server with hot reload
-- Real-time database with TypeScript schema
-- Function execution and logs
-- Dashboard at https://dashboard.convex.dev
+**What's running:**
+- **Temporal Server** (localhost:7233) - Workflow orchestration
+- **Temporal Web UI** (localhost:8233) - Workflow debugging
+- **Convex** (cloud) - Database + real-time + auth
+- **Workers** (local) - Execute workflow code
+- **Next.js** (localhost:3000) - Frontend
 
 ## Development Workflow
 
@@ -118,9 +156,115 @@ export default function WorkflowsPage() {
 }
 ```
 
+### 4. Develop Temporal Workflows
+
+```typescript
+// workers/workflows/executor.ts
+import { proxyActivities } from '@temporalio/workflow';
+import type * as activities from '../activities';
+
+const { executePlugin, updateConvexStatus } = proxyActivities<typeof activities>({
+  startToCloseTimeout: '5 minutes',
+  retry: { maximumAttempts: 3 }
+});
+
+export async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
+  const results = new Map();
+
+  // Execute nodes in topological order
+  for (const node of topologicalSort(workflowDef.nodes, workflowDef.edges)) {
+    // Execute plugin as Temporal Activity
+    const output = await executePlugin({
+      pluginId: node.pluginId,
+      config: node.config,
+      inputs: gatherInputs(node, results)
+    });
+
+    results.set(node.id, output);
+
+    // Update Convex with execution status
+    await updateConvexStatus({
+      workflowId: workflowDef.id,
+      nodeId: node.id,
+      status: 'completed',
+      output
+    });
+  }
+
+  return results;
+}
+```
+
+```typescript
+// workers/activities/plugins.ts
+export async function executePlugin(params: ExecutePluginParams) {
+  const plugin = await loadPlugin(params.pluginId);
+
+  // Execute plugin code (sandboxed)
+  const result = await plugin.execute(params.config, params.inputs);
+
+  return result;
+}
+
+export async function updateConvexStatus(params: StatusUpdate) {
+  // Call Convex mutation to update execution status
+  await convexClient.mutation(api.executions.updateNode, params);
+}
+```
+
+```typescript
+// workers/index.ts - Worker entry point
+import { Worker } from '@temporalio/worker';
+import * as activities from './activities';
+import * as workflows from './workflows';
+
+async function run() {
+  const worker = await Worker.create({
+    workflowsPath: require.resolve('./workflows'),
+    activities,
+    taskQueue: 'kianax-workflows',
+  });
+
+  await worker.run();
+}
+
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+```
+
+### 5. Trigger Workflows from Convex
+
+```typescript
+// convex/workflows.ts
+import { mutation } from "./_generated/server";
+import { getTemporalClient } from "./lib/temporal";
+
+export const activate = mutation({
+  args: { workflowId: v.id("workflows") },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    const userId = (await ctx.auth.getUserIdentity())?.subject;
+
+    // Start Temporal workflow
+    const temporal = await getTemporalClient();
+    await temporal.workflow.start('userWorkflowExecutor', {
+      taskQueue: `user-${userId}`,
+      workflowId: `workflow-${args.workflowId}`,
+      args: [workflow],
+      cronSchedule: workflow.cronPattern // For cron triggers
+    });
+
+    // Update workflow status
+    await ctx.db.patch(args.workflowId, { status: 'active' });
+  }
+});
+```
+
 ## Testing Functions
 
-### From CLI
+### Test Convex Functions
 
 ```bash
 # Run a query
@@ -133,12 +277,31 @@ npx convex run workflows:create '{"name": "Test", "nodes": []}'
 npx convex dev --tail-logs
 ```
 
-### From Dashboard
+### Test Temporal Workflows
 
-1. Open https://dashboard.convex.dev
-2. Go to your project
-3. Click "Functions" tab
-4. Select function and click "Run"
+```bash
+# Using Temporal CLI
+temporal workflow execute \
+  --task-queue kianax-workflows \
+  --type userWorkflowExecutor \
+  --workflow-id test-workflow-1 \
+  --input '{"nodes": [...], "edges": [...]}'
+
+# List workflows
+temporal workflow list
+
+# Describe workflow
+temporal workflow describe --workflow-id test-workflow-1
+
+# View workflow history
+temporal workflow show --workflow-id test-workflow-1
+```
+
+**Temporal Web UI (localhost:8233):**
+- View all running workflows
+- See execution history with full replay
+- Debug failed workflows
+- Test workflow queries and signals
 
 ## Environment Variables
 
@@ -149,7 +312,10 @@ NEXT_PUBLIC_CONVEX_URL=https://...
 
 # Add your own
 OPENAI_API_KEY=sk-...
-TRIGGER_DEV_API_KEY=...
+
+# Temporal (local development)
+TEMPORAL_ADDRESS=localhost:7233
+TEMPORAL_NAMESPACE=default
 ```
 
 **Convex secrets** (for backend):

@@ -78,8 +78,9 @@
 - Create plugin registry in Convex
 
 ### Phase 3: Workflow Engine (Weeks 7-9)
-- Integrate trigger.dev
-- Build DAG compiler
+- Set up Temporal Cloud
+- Build TypeScript Workers
+- Implement generic workflow executor
 - Execute first workflow
 
 ### Phase 4: Core Plugins (Weeks 10-13)

@@ -59,15 +59,16 @@ Long-term product vision for the AI-native workflow platform.
 
 ### Phase 3: Workflow Engine - 2-3 weeks
 
-**Goal:** Execute simple workflows via trigger.dev
+**Goal:** Execute simple workflows via Temporal Cloud
 
-- trigger.dev integration
-- DAG compiler (Convex → trigger.dev jobs)
-- Plugin execution in trigger.dev tasks
+- Temporal Cloud setup (account, namespace)
+- TypeScript Worker implementation
+- Generic workflow executor (interprets DAG at runtime)
+- Plugin execution as Temporal Activities
 - Workflow types (root vs sub-workflow)
-- Basic execution UI
+- Basic execution UI with real-time status
 
-**Done when:** Can run "Cron → Stock Price → Email" workflow
+**Done when:** Can run "Cron → Stock Price → Email" workflow with live execution tracking
 
 ### Phase 4: Core Plugins - 3-4 weeks
 

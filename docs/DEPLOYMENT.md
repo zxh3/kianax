@@ -6,7 +6,8 @@ Deploy Kianax to production with zero infrastructure management.
 
 **Frontend:** Vercel (Next.js)
 **Backend:** Convex (serverless)
-**Workflows:** trigger.dev (managed)
+**Workflows:** Temporal Cloud (managed)
+**Workers:** TypeScript Workers (deployed on Vercel or separate server)
 
 **Cost:** Free tier covers development + small production workloads.
 
@@ -14,7 +15,7 @@ Deploy Kianax to production with zero infrastructure management.
 
 - GitHub account (for Vercel deployment)
 - Convex account (free at https://convex.dev)
-- trigger.dev account (free at https://trigger.dev)
+- Temporal Cloud account (free at https://temporal.io)
 
 ## First Deployment
 
@@ -52,26 +53,88 @@ vercel
 
 ### 3. Configure Environment Variables
 
-**In Vercel Dashboard:**
+**In Vercel Dashboard (for Frontend):**
 - `NEXT_PUBLIC_CONVEX_URL` - From Convex dashboard
 - `CONVEX_DEPLOYMENT` - From Convex dashboard
-- `TRIGGER_DEV_API_KEY` - From trigger.dev dashboard
 - `OPENAI_API_KEY` - Your OpenAI API key
 
 **In Convex (for backend):**
 ```bash
 npx convex env set OPENAI_API_KEY sk-... --prod
-npx convex env set TRIGGER_DEV_API_KEY sk-... --prod
+npx convex env set TEMPORAL_ADDRESS your-namespace.tmprl.cloud:7233 --prod
+npx convex env set TEMPORAL_NAMESPACE your-namespace --prod
 ```
 
-### 4. Setup trigger.dev
+**For Temporal Workers:**
+```bash
+# In workers/.env.production
+TEMPORAL_ADDRESS=your-namespace.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=your-namespace
+TEMPORAL_CLIENT_CERT=<base64-encoded-cert>
+TEMPORAL_CLIENT_KEY=<base64-encoded-key>
+CONVEX_URL=https://your-project.convex.cloud
+```
 
-1. Go to [trigger.dev](https://trigger.dev)
-2. Create project
-3. Get API key
-4. Add to Convex environment (see step 3)
+### 4. Setup Temporal Cloud
 
-**trigger.dev auto-deploys workflows** when you create them via Convex actions.
+1. Go to [cloud.temporal.io](https://cloud.temporal.io)
+2. Create account and namespace
+3. Generate client certificates (Settings → Certificates)
+4. Download certificates (cert.pem and key.pem)
+5. Add credentials to worker environment
+
+**Namespace:** Each environment gets its own namespace (e.g., `kianax-prod`, `kianax-dev`)
+
+### 5. Deploy Temporal Workers
+
+Workers execute your workflow code and must run continuously.
+
+**Option A: Deploy to Vercel (Serverless Functions)**
+
+```bash
+# Deploy worker as Vercel serverless function
+cd workers
+vercel deploy --prod
+
+# Configure as background function (vercel.json)
+{
+  "functions": {
+    "api/worker.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  }
+}
+```
+
+**Option B: Deploy to Render/Railway (Long-Running Process)**
+
+1. Create new service on [render.com](https://render.com) or [railway.app](https://railway.app)
+2. Connect GitHub repository
+3. Set start command: `bun run workers/index.ts`
+4. Add environment variables (TEMPORAL_* credentials)
+5. Deploy - workers auto-restart on code changes
+
+**Option C: Self-Host (Docker)**
+
+```bash
+# Build worker container
+docker build -t kianax-worker -f workers/Dockerfile .
+
+# Run with credentials
+docker run -d \
+  --name kianax-worker \
+  -e TEMPORAL_ADDRESS=... \
+  -e TEMPORAL_NAMESPACE=... \
+  -e TEMPORAL_CLIENT_CERT=... \
+  -e TEMPORAL_CLIENT_KEY=... \
+  kianax-worker
+```
+
+**Worker Auto-Scaling:**
+- Temporal Workers can scale horizontally
+- Deploy multiple instances for high availability
+- Temporal Cloud handles load balancing automatically
 
 ## CI/CD Setup
 
@@ -130,24 +193,32 @@ https://vercel.com/yourproject
 - Edge network performance
 - Build logs
 
-### trigger.dev Dashboard
+### Temporal Cloud Dashboard
 
-https://cloud.trigger.dev/yourproject
+https://cloud.temporal.io/namespaces/your-namespace
 
 **Monitor:**
 - Workflow execution history
-- Task logs and retries
-- Execution duration
-- Failed runs
+- Activity logs and retries
+- Execution duration and status
+- Failed workflows with full history replay
+- Worker health and task queue metrics
+- Real-time workflow state visualization
 
 ## Scaling
 
 **Automatic:**
 - Convex auto-scales functions and database
 - Vercel auto-scales edge functions
-- trigger.dev auto-scales workflow execution
+- Temporal Cloud auto-scales workflow execution
 
-**No manual scaling needed.**
+**Worker Scaling:**
+- Scale workers horizontally (deploy multiple instances)
+- Temporal Cloud load-balances tasks automatically
+- Workers can be added/removed without downtime
+- Recommended: Start with 2-3 workers for HA
+
+**No infrastructure management needed.**
 
 ## Costs
 
@@ -163,17 +234,25 @@ https://cloud.trigger.dev/yourproject
 - 100 deployments/day
 - Serverless function execution
 
-**trigger.dev:**
-- 1M task executions/month
-- 10 concurrent workflows
+**Temporal Cloud:**
+- Free: 1M Actions/month (Actions = workflow starts + activity executions)
+- Unlimited workflow executions
+- Unlimited retention
+
+**Workers Hosting (Render/Railway):**
+- Free tier available (512MB RAM)
+- Or ~$7/month for basic worker
 
 ### Production Pricing
 
 **Convex:** ~$25/month for 5GB + 5M calls
 **Vercel:** ~$20/month for Pro
-**trigger.dev:** ~$50/month for Team
+**Temporal Cloud:** $200/month for Growth (25M actions)
+**Workers (Render):** ~$20/month for 2 workers (HA setup)
 
-**Total:** ~$100/month for production app serving thousands of users.
+**Total:** ~$265/month for production app serving thousands of users.
+
+**Note:** Temporal Cloud pricing is higher, but provides enterprise-grade reliability, versioning, and observability. For a workflow platform, this is the core infrastructure worth investing in.
 
 ## Rollback
 
