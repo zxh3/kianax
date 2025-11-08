@@ -61,14 +61,21 @@ add to Salesforce, and send welcome email."
 
 **Frontend:** Next.js 16 (React 19), Tailwind CSS v4, shadcn/ui, React Flow (workflow editor)
 **Backend:** Convex (managed database + serverless functions + real-time subscriptions)
-**Workflow Execution:** trigger.dev (handles triggers, queues, retries, state persistence)
-**Plugin Runtime:** trigger.dev tasks (sandboxed execution)
+**Workflow Engine:** Temporal Cloud (dynamic workflow execution, versioning, observability)
+**Workers:** TypeScript Workers (execute plugin code as Temporal Activities)
 **Auth:** Convex Auth (built-in authentication)
 **File Storage:** Convex file storage (for plugin code)
-**Infrastructure:** Vercel (frontend), Convex (backend + database), trigger.dev (workflows)
+**Infrastructure:** Vercel (frontend), Convex (backend + database), Temporal Cloud (workflows)
 **AI Services:** OpenAI (GPT-4 for workflow parsing, GPT-3.5 Turbo for AI Processor)
 
-**Why Convex?**
+**Why Temporal for Workflows?**
+- Dynamic execution: Purpose-built for user-defined workflows at runtime
+- Workflow versioning: Update engine without breaking running workflows
+- Superior observability: Time-travel debugging, workflow history replay
+- Multi-tenancy: Task queues per user, isolated execution
+- Battle-tested: Used by Uber, Netflix, Stripe for mission-critical workflows
+
+**Why Convex for Data?**
 - Zero DevOps: No PostgreSQL, Redis, or Kubernetes management
 - Built-in real-time: Live workflow execution updates without WebSocket server
 - TypeScript-native: Schema and functions defined in code, no migrations
@@ -91,12 +98,18 @@ kianax/
 │   ├── executions.ts     # Execution history queries
 │   ├── auth.ts           # Convex Auth configuration
 │   └── lib/
-│       └── triggerdev.ts # trigger.dev integration
+│       └── temporal.ts   # Temporal Client integration
+├── workers/              # Temporal Workers (execute workflows)
+│   ├── workflows/        # Workflow definitions
+│   │   └── executor.ts   # Generic workflow executor
+│   ├── activities/       # Activities (plugin execution)
+│   │   └── plugins.ts    # Plugin activity implementations
+│   └── index.ts          # Worker entry point
 ├── packages/
 │   ├── ui/               # Shared React components (shadcn/ui)
 │   ├── plugin-sdk/       # Plugin development SDK
 │   └── typescript-config/
-├── plugins/              # Core platform plugins (compiled to trigger.dev tasks)
+├── plugins/              # Core platform plugins (executed as Temporal Activities)
 │   ├── triggers/
 │   │   ├── cron/         # Time-based triggers
 │   │   ├── webhook/      # HTTP webhook triggers

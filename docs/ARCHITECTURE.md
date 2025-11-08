@@ -218,69 +218,113 @@ function validateTypes(edges, nodes) {
 
 ### 4. Execution Flow
 
-**Workflow → trigger.dev Mapping:**
+> **Note:** See [WORKFLOW_EXECUTION_ANALYSIS.md](./WORKFLOW_EXECUTION_ANALYSIS.md) for detailed comparison of Temporal vs trigger.dev execution engines.
 
-Each Kianax workflow compiles to **one trigger.dev task** with nested subtasks:
+**Recommended: Temporal Cloud** (designed for dynamic, user-defined workflows)
+
+**Architecture:**
 
 ```typescript
-// Example: Root workflow with Cron trigger
-export const stockAlertWorkflow = task({
-  id: "workflow-{workflowId}",
-  run: async (payload) => {
-    // Node 1: Stock Price Input
-    const stockData = await triggerAndWait(stockPriceTask, { symbol: "AAPL" });
+// Workflow executor (runs in Temporal Worker)
+async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
+  const results = new Map();
 
-    // Node 2: AI Processor
-    const analysis = await triggerAndWait(aiProcessorTask, {
-      input: stockData,
-      instruction: "Check if price dropped 5%"
+  // Execute nodes in topological order
+  for (const node of topologicalSort(workflowDef.nodes, workflowDef.edges)) {
+    // Gather inputs from connected nodes
+    const inputs = workflowDef.edges
+      .filter(e => e.target === node.id)
+      .map(e => results.get(e.source));
+
+    // Execute node as Temporal Activity
+    const output = await executeActivity(
+      getPluginActivity(node.pluginId),
+      {
+        config: node.config,
+        inputs: inputs,
+        userId: workflowDef.userId
+      },
+      {
+        startToCloseTimeout: '5m',
+        retry: { maximumAttempts: 3 }
+      }
+    );
+
+    results.set(node.id, output);
+
+    // Update execution status in Convex (via activity)
+    await executeActivity(updateExecutionStatus, {
+      workflowId: workflowDef.id,
+      nodeId: node.id,
+      status: 'completed',
+      output
     });
-
-    // Node 3: Logic - Condition
-    if (analysis.dropped) {
-      // Node 4: Trading Output
-      await triggerAndWait(tradingTask, { action: "buy", amount: 1000 });
-    }
   }
-});
 
-// Attach cron schedule dynamically
-await schedules.create({
-  task: stockAlertWorkflow.id,
-  cron: "*/5 * * * *",  // Every 5 minutes
-  externalId: userId,    // User-scoped schedule
+  return results;
+}
+
+// Start workflow dynamically when user activates
+await temporal.workflow.start(userWorkflowExecutor, {
+  taskQueue: `user-${userId}`,  // Multi-tenant isolation
+  workflowId: `workflow-${workflowId}`,
+  args: [workflowDAG],
+  cronSchedule: workflow.cronPattern  // For Cron triggers
 });
 ```
 
-**Trigger Types → trigger.dev:**
-- **Cron Trigger**: `schedules.create()` with cron pattern
-- **Webhook Trigger**: HTTP endpoint in Convex → `tasks.trigger()`
-- **Manual Trigger**: User button → `tasks.trigger()`
-- **Platform Event**: Convex subscription → `tasks.trigger()`
+**Trigger Types → Temporal:**
+- **Cron Trigger**: `cronSchedule` parameter in workflow.start()
+- **Webhook Trigger**: HTTP endpoint in Convex → `workflow.start()`
+- **Manual Trigger**: User button → `workflow.start()`
+- **Platform Event**: Convex subscription → `workflow.start()`
 
 **Execution Process:**
 ```
 1. User creates workflow in Convex (draft state)
 2. User activates workflow (validation runs)
-3. Convex action compiles DAG → trigger.dev task code
-4. Deploy task to trigger.dev
-5. For Cron triggers: Create schedule via schedules.create()
-6. For Webhooks: Register endpoint in Convex
-7. On trigger: task.trigger() → task execution begins
-8. Each node executes as subtask via triggerAndWait()
-9. Results stream back to Convex (workflow_executions table)
-10. Frontend receives real-time updates via useQuery
+3. Convex mutation → Temporal Client
+4. Temporal starts workflow execution
+5. Temporal Workers execute activities (plugin code)
+6. Each node execution:
+   - Worker calls plugin.execute()
+   - Plugin interacts with external APIs
+   - Results saved to Convex via activity
+7. Convex broadcasts updates via subscriptions
+8. Frontend receives real-time status via useQuery
 ```
 
-**DAG Compilation:**
+**Why Temporal over trigger.dev:**
+- ✅ **Dynamic workflows**: Purpose-built for user-defined workflows at runtime
+- ✅ **Workflow versioning**: Update engine without breaking running workflows
+- ✅ **Superior observability**: Time-travel debugging, workflow history replay
+- ✅ **Multi-tenancy**: Task queues per user, isolated execution
+- ✅ **Long-running**: Workflows can run for days/weeks (trigger.dev has limits)
+- ✅ **Deterministic**: Guarantees reliability and correctness
+- ✅ **Battle-tested**: Used by Uber, Netflix, Stripe for mission-critical workflows
 
-Kianax DAG (nodes + edges) → trigger.dev task code:
-- Topological sort determines execution order
-- Parallel branches execute concurrently (Promise.all)
-- Sequential nodes use await triggerAndWait()
-- Conditional branches use if/else based on Logic node outputs
+**Alternative: trigger.dev (Interpreter Pattern)**
 
-**Real-time Updates:** Frontend uses `useQuery` to subscribe to executions table. Convex pushes status updates automatically as task progresses.
+If using trigger.dev, deploy ONE generic executor task:
+
+```typescript
+export const workflowExecutor = task({
+  id: "workflow-executor",
+  run: async ({ workflowId, userId }) => {
+    // Load workflow from Convex
+    const workflow = await convex.query("workflows:get", { workflowId });
+
+    // Execute nodes in order
+    for (const node of topologicalSort(workflow.nodes)) {
+      const plugin = await getPlugin(node.pluginId);
+      const inputs = gatherInputs(node, results);
+      results[node.id] = await plugin.execute(inputs, node.config);
+    }
+  }
+});
+```
+
+See [WORKFLOW_EXECUTION_ANALYSIS.md](./WORKFLOW_EXECUTION_ANALYSIS.md) for full comparison.
 
 ### 5. Multi-Tenancy
 
