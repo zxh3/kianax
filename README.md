@@ -112,13 +112,50 @@ bun run build
 
 ## Contributing
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/) for commit messages:
+### Git Workflow
+
+**All code changes must be submitted via Pull Request. Never commit directly to `main`.**
+
+1. **Create a feature branch** for every change:
+   ```bash
+   # Create and switch to a new branch
+   git checkout -b feature/agent-execution
+   git checkout -b fix/portfolio-calculation
+   git checkout -b docs/update-deployment
+   ```
+
+2. **Make your changes** and commit with conventional commits
+
+3. **Push to remote** and create a Pull Request:
+   ```bash
+   git push origin feature/agent-execution
+   # Then create PR on GitHub
+   ```
+
+4. **PR Review Process:**
+   - Code review required before merge
+   - All tests must pass
+   - PR description should explain changes and link to issues
+
+5. **After PR is merged**, delete the branch:
+   ```bash
+   git checkout main
+   git pull origin main
+   git branch -d feature/agent-execution
+   ```
+
+### Commit Message Convention
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 feat(server): add agent execution engine
 fix(web): correct portfolio calculation
 docs: update deployment guide
+chore(deps): update dependencies
 ```
+
+**Types:** `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`, `build`
 
 ## Security
 
