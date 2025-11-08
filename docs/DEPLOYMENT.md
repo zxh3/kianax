@@ -688,6 +688,716 @@ If you already have a custom authentication system:
 - **Example Apps**: https://github.com/better-auth/better-auth/tree/main/examples
 - **Discord Community**: Join for support and discussions
 
+## Feature Flags & Experimentation with Statsig
+
+Kianax uses **Statsig** for feature flags, A/B testing, and product analytics. Statsig enables safe feature rollouts, experimentation, and data-driven decision making.
+
+### What is Statsig?
+
+Statsig is a unified platform for feature management and experimentation that provides:
+- **Feature Gates**: Control feature rollouts with boolean flags (on/off)
+- **Dynamic Configs**: Deliver parameterized feature values (e.g., UI themes, limits, text)
+- **Experiments/Layers**: Run A/B/n tests to optimize product decisions
+- **Product Analytics**: Track events, funnels, and user behavior
+- **Warehouse Native**: Optional integration with existing data warehouses
+
+**Why Statsig for Kianax?**
+- **Safe Rollouts**: Gradually roll out AI agent features to prevent system-wide issues
+- **A/B Testing**: Test different trading strategies, UI layouts, pricing tiers
+- **Kill Switches**: Instantly disable problematic features without redeployment
+- **User Targeting**: Enable features for specific user segments (beta testers, premium users)
+- **Performance**: Fast SDK with minimal latency (<10ms evaluation)
+- **Multi-environment**: Separate gates for development, staging, and production
+
+### Statsig Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│  Frontend (Next.js 16)                      │
+│  - StatsigClient (@statsig/js-client)       │
+│  - Feature gates: checkGate('feature')      │
+│  - Experiments: getExperiment('test')       │
+│  - Event logging: logEvent('action')        │
+└──────────────┬──────────────────────────────┘
+               │
+               ├──────────────────────────────┐
+               │                              │
+               ▼                              ▼
+┌────────────────────────┐     ┌────────────────────────┐
+│  Backend (Fastify)     │     │   Statsig Cloud        │
+│  - statsig-node SDK    │────▶│   - Feature configs    │
+│  - Server-side gates   │     │   - Targeting rules    │
+│  - Bootstrap client    │◀────│   - Analytics          │
+└────────────────────────┘     │   - Experiment results │
+                               └────────────────────────┘
+```
+
+**Flow:**
+1. **Client initialization**: Frontend fetches feature configs on page load
+2. **Server-side checks**: Backend evaluates gates for API requests
+3. **Event logging**: User actions tracked for analytics and experiments
+4. **Real-time updates**: Configs update in background (10s polling interval)
+
+### Use Cases for Kianax
+
+**1. AI Agent Feature Rollout**
+```typescript
+// Gradually enable new AI model
+if (statsig.checkGate('use_gpt4_turbo')) {
+  return await callGPT4Turbo(prompt);
+} else {
+  return await callGPT35(prompt);
+}
+```
+
+**2. Premium Features Gating**
+```typescript
+// Check user's subscription tier
+const user = { userID: userId, custom: { tier: 'premium' } };
+if (statsig.checkGate(user, 'advanced_analytics')) {
+  return <AdvancedAnalyticsDashboard />;
+}
+```
+
+**3. Trading Strategy A/B Test**
+```typescript
+// Test different risk management strategies
+const experiment = statsig.getExperiment('risk_limit_test');
+const riskMultiplier = experiment.get('multiplier', 1.0);
+const maxPositionSize = baseSize * riskMultiplier;
+```
+
+**4. UI Theme Experiment**
+```typescript
+// Dynamic config for UI customization
+const config = statsig.getDynamicConfig('dashboard_layout');
+const theme = config.get('theme', 'default');
+const chartStyle = config.get('chart_style', 'candlestick');
+```
+
+**5. Kill Switch for Problematic Feature**
+```typescript
+// Instantly disable feature if issues arise
+if (!statsig.checkGate('enable_auto_trading')) {
+  throw new Error('Auto-trading temporarily disabled');
+}
+```
+
+### Installation
+
+**Frontend (Next.js):**
+```bash
+cd apps/web
+bun add @statsig/js-client
+```
+
+**Backend (Fastify/Node.js):**
+```bash
+cd apps/server
+bun add statsig-node
+```
+
+### Configuration
+
+**1. Create Statsig Account**
+- Sign up at https://www.statsig.com
+- Create a project (e.g., "Kianax")
+- Get API keys:
+  - **Client SDK Key**: For frontend (safe to expose)
+  - **Server Secret Key**: For backend (keep secret!)
+
+**2. Store Keys in AWS Secrets Manager**
+
+```bash
+# Development environment
+aws secretsmanager create-secret \
+  --name kianax/development/statsig-client-key \
+  --secret-string "client-xxx"
+
+aws secretsmanager create-secret \
+  --name kianax/development/statsig-server-key \
+  --secret-string "secret-xxx"
+
+# Production environment
+aws secretsmanager create-secret \
+  --name kianax/production/statsig-client-key \
+  --secret-string "client-yyy"
+
+aws secretsmanager create-secret \
+  --name kianax/production/statsig-server-key \
+  --secret-string "secret-yyy"
+```
+
+**3. Environment Variables**
+
+```bash
+# Frontend (.env.local or K8s ConfigMap)
+NEXT_PUBLIC_STATSIG_CLIENT_KEY=client-xxx
+
+# Backend (.env or K8s Secret)
+STATSIG_SERVER_KEY=secret-xxx
+STATSIG_ENVIRONMENT=development  # or production
+```
+
+### Server-Side Setup (Fastify)
+
+**1. Initialize Statsig in Server**
+
+Create `apps/server/src/lib/statsig.ts`:
+
+```typescript
+import Statsig from 'statsig-node';
+
+let initialized = false;
+
+export async function initStatsig() {
+  if (initialized) return;
+
+  await Statsig.initialize(
+    process.env.STATSIG_SERVER_KEY!,
+    {
+      environment: {
+        tier: process.env.STATSIG_ENVIRONMENT || 'production',
+      },
+      // Performance options
+      rulesetsSyncIntervalMs: 10000,  // Fetch updates every 10s
+      idListsSyncIntervalMs: 60000,   // Sync ID lists every 60s
+      loggingIntervalMs: 60000,       // Flush events every 60s
+      loggingMaxBufferSize: 1000,     // Buffer 1000 events
+    }
+  );
+
+  initialized = true;
+  console.log('Statsig initialized');
+}
+
+// Export Statsig instance
+export { Statsig };
+```
+
+**2. Initialize on Server Start**
+
+In `apps/server/src/index.ts`:
+
+```typescript
+import fastify from 'fastify';
+import { initStatsig, Statsig } from './lib/statsig';
+
+async function start() {
+  const app = fastify();
+
+  // Initialize Statsig before accepting requests
+  await initStatsig();
+
+  // Register routes...
+
+  // Graceful shutdown
+  app.addHook('onClose', async () => {
+    await Statsig.shutdown();
+  });
+
+  await app.listen({ port: 3001, host: '0.0.0.0' });
+}
+
+start();
+```
+
+**3. Use in API Routes**
+
+```typescript
+import { Statsig } from '@/lib/statsig';
+import { FastifyRequest, FastifyReply } from 'fastify';
+
+// Check gate for specific user
+fastify.get('/agents', async (request: FastifyRequest, reply: FastifyReply) => {
+  const userId = request.user.id;
+
+  // Create Statsig user object
+  const statsigUser = {
+    userID: userId,
+    email: request.user.email,
+    custom: {
+      tier: request.user.subscriptionTier,
+      signupDate: request.user.createdAt,
+    },
+  };
+
+  // Check if user can access AI agents
+  const canUseAgents = Statsig.checkGate(statsigUser, 'enable_ai_agents');
+
+  if (!canUseAgents) {
+    return reply.code(403).send({
+      error: 'AI agents feature not available',
+    });
+  }
+
+  // Fetch agents...
+});
+
+// Get dynamic config
+fastify.get('/config', async (request: FastifyRequest, reply: FastifyReply) => {
+  const statsigUser = { userID: request.user.id };
+
+  const config = Statsig.getConfig(statsigUser, 'trading_limits');
+
+  return {
+    maxDailyTrades: config.get('max_daily_trades', 10),
+    maxPositionSize: config.get('max_position_size', 1000),
+    riskTolerance: config.get('risk_tolerance', 'medium'),
+  };
+});
+
+// Log event
+fastify.post('/orders', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Create order...
+
+  // Log event to Statsig
+  Statsig.logEvent(
+    { userID: request.user.id },
+    'order_placed',
+    order.symbol,
+    {
+      quantity: order.quantity,
+      side: order.side,
+      price: order.price,
+    }
+  );
+
+  return order;
+});
+```
+
+### Client-Side Setup (Next.js)
+
+**1. Create Statsig Client Provider**
+
+Create `apps/web/lib/statsig-provider.tsx`:
+
+```typescript
+'use client';
+
+import { StatsigClient } from '@statsig/js-client';
+import { createContext, useContext, useEffect, useState } from 'react';
+
+const StatsigContext = createContext<StatsigClient | null>(null);
+
+export function StatsigProvider({ children }: { children: React.ReactNode }) {
+  const [client, setClient] = useState<StatsigClient | null>(null);
+
+  useEffect(() => {
+    const initStatsig = async () => {
+      const statsigClient = new StatsigClient(
+        process.env.NEXT_PUBLIC_STATSIG_CLIENT_KEY!,
+        { userID: 'anonymous' },  // Default user, update after auth
+        {
+          environment: {
+            tier: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+          },
+        }
+      );
+
+      await statsigClient.initializeAsync();
+      setClient(statsigClient);
+    };
+
+    initStatsig();
+
+    return () => {
+      client?.shutdown();
+    };
+  }, []);
+
+  if (!client) {
+    return <div>Loading...</div>;  // Or return children for SSR
+  }
+
+  return (
+    <StatsigContext.Provider value={client}>
+      {children}
+    </StatsigContext.Provider>
+  );
+}
+
+// Custom hook to use Statsig
+export function useStatsig() {
+  const context = useContext(StatsigContext);
+  if (!context) {
+    throw new Error('useStatsig must be used within StatsigProvider');
+  }
+  return context;
+}
+```
+
+**2. Add Provider to App Layout**
+
+In `apps/web/app/layout.tsx`:
+
+```typescript
+import { StatsigProvider } from '@/lib/statsig-provider';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <StatsigProvider>
+          {children}
+        </StatsigProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**3. Update User Context After Authentication**
+
+In your auth callback or after sign-in:
+
+```typescript
+'use client';
+
+import { useStatsig } from '@/lib/statsig-provider';
+import { useSession } from '@/lib/auth-client';
+import { useEffect } from 'react';
+
+export function useStatsigUser() {
+  const statsig = useStatsig();
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      // Update Statsig user context
+      statsig.updateUserAsync({
+        userID: session.user.id,
+        email: session.user.email,
+        custom: {
+          name: session.user.name,
+          tier: session.user.subscriptionTier || 'free',
+          signupDate: session.user.createdAt,
+        },
+      });
+    }
+  }, [session, statsig]);
+}
+```
+
+**4. Use Feature Gates in Components**
+
+```typescript
+'use client';
+
+import { useStatsig } from '@/lib/statsig-provider';
+
+export function AgentDashboard() {
+  const statsig = useStatsig();
+
+  // Check feature gate
+  const showAdvancedAnalytics = statsig.checkGate('advanced_analytics');
+
+  return (
+    <div>
+      <h1>Agent Dashboard</h1>
+
+      {showAdvancedAnalytics && (
+        <AdvancedAnalyticsPanel />
+      )}
+
+      {!showAdvancedAnalytics && (
+        <BasicAnalyticsPanel />
+      )}
+    </div>
+  );
+}
+```
+
+**5. Use Dynamic Configs**
+
+```typescript
+'use client';
+
+import { useStatsig } from '@/lib/statsig-provider';
+
+export function TradingTerminal() {
+  const statsig = useStatsig();
+
+  // Get dynamic config
+  const config = statsig.getDynamicConfig('trading_ui');
+  const theme = config.get('theme', 'dark');
+  const maxOrderSize = config.get('max_order_size', 1000);
+  const showAdvancedTools = config.get('show_advanced_tools', false);
+
+  return (
+    <div data-theme={theme}>
+      <OrderForm maxSize={maxOrderSize} />
+      {showAdvancedTools && <AdvancedTradingTools />}
+    </div>
+  );
+}
+```
+
+**6. Log Events**
+
+```typescript
+'use client';
+
+import { useStatsig } from '@/lib/statsig-provider';
+
+export function OrderButton({ symbol }: { symbol: string }) {
+  const statsig = useStatsig();
+
+  const handleOrder = async () => {
+    // Place order via API...
+
+    // Log event
+    statsig.logEvent('order_button_clicked', symbol, {
+      location: 'trading_terminal',
+      timestamp: Date.now(),
+    });
+  };
+
+  return <button onClick={handleOrder}>Buy {symbol}</button>;
+}
+```
+
+### Creating Feature Gates in Statsig Console
+
+**1. Create a Feature Gate**
+- Go to Statsig Console → Feature Gates
+- Click "Create"
+- Name: `enable_ai_agents`
+- Description: "Enable AI trading agents for users"
+- Default: `false` (off by default)
+
+**2. Add Targeting Rules**
+
+**Rule 1: Internal Team (100% pass)**
+- Condition: `email contains @kianax.io`
+- Pass percentage: 100%
+
+**Rule 2: Beta Testers (100% pass)**
+- Condition: `custom.tier = 'beta'`
+- Pass percentage: 100%
+
+**Rule 3: Premium Users Rollout (50% pass)**
+- Condition: `custom.tier = 'premium'`
+- Pass percentage: 50% (gradual rollout)
+
+**Rule 4: All Users (0% pass)**
+- Condition: `Everyone Else`
+- Pass percentage: 0% (not ready for general availability)
+
+**3. Test in Development**
+
+Use Statsig's environment feature:
+- Set `environment.tier = 'development'` in SDK
+- Create separate rules for development environment
+- Test without affecting production users
+
+### A/B Testing Examples
+
+**Experiment: Trading Fee Structure**
+
+1. **Create Experiment in Statsig**
+   - Name: `trading_fee_experiment`
+   - Variants:
+     - `control`: 0.1% fee (current)
+     - `variant_a`: 0.05% fee (lower)
+     - `variant_b`: 0.15% fee + premium features
+
+2. **Implement in Code**
+
+```typescript
+// Backend: Get experiment config
+const experiment = Statsig.getExperiment(
+  { userID: request.user.id },
+  'trading_fee_experiment'
+);
+
+const feePercentage = experiment.get('fee_percentage', 0.1);
+const includePremiumFeatures = experiment.get('premium_features', false);
+
+const fee = orderValue * feePercentage;
+
+// Log event for analysis
+Statsig.logEvent(
+  { userID: request.user.id },
+  'order_completed',
+  null,
+  {
+    fee,
+    feePercentage,
+    experimentVariant: experiment.getGroupName(),
+  }
+);
+```
+
+3. **Analyze Results**
+   - Statsig automatically tracks:
+     - User distribution across variants
+     - Conversion rates
+     - Revenue per user
+     - Statistical significance
+
+### Environment-Based Configuration
+
+**Development Environment:**
+```typescript
+// apps/server/.env.development
+STATSIG_SERVER_KEY=secret-dev-xxx
+STATSIG_ENVIRONMENT=development
+
+// apps/web/.env.development
+NEXT_PUBLIC_STATSIG_CLIENT_KEY=client-dev-xxx
+```
+
+**Production Environment:**
+```typescript
+// K8s Secret for production
+apiVersion: v1
+kind: Secret
+metadata:
+  name: statsig-secrets
+  namespace: kianax
+type: Opaque
+data:
+  server-key: <base64-encoded-production-key>
+  client-key: <base64-encoded-production-client-key>
+```
+
+**Separate Rules per Environment:**
+- Development: Enable all features for testing
+- Production: Gradual rollouts with targeting rules
+
+### Best Practices
+
+**1. Feature Gate Naming**
+- Use descriptive names: `enable_ai_agents` not `feature_1`
+- Prefix by area: `trading_`, `agent_`, `ui_`
+- Use snake_case consistently
+
+**2. User Context**
+```typescript
+// ✅ Good: Rich user context
+const user = {
+  userID: userId,
+  email: userEmail,
+  custom: {
+    tier: 'premium',
+    signupDate: '2025-01-15',
+    country: 'US',
+    totalTrades: 150,
+  },
+};
+
+// ❌ Bad: Minimal context limits targeting
+const user = { userID: userId };
+```
+
+**3. Fallback Values**
+```typescript
+// Always provide fallbacks
+const maxTrades = config.get('max_daily_trades', 10);  // ✅
+const maxTrades = config.get('max_daily_trades');      // ❌ Could be undefined
+```
+
+**4. Async Initialization**
+```typescript
+// ✅ Good: Wait for initialization
+await statsigClient.initializeAsync();
+
+// ❌ Bad: Check gates before ready
+statsigClient.checkGate('feature');  // May return default incorrectly
+```
+
+**5. Exposure Logging**
+- Statsig automatically logs exposures when you check gates
+- Don't manually log exposures unless custom logic required
+- Exposures are crucial for experiment analysis
+
+**6. Clean Up Old Gates**
+- Remove gates after 100% rollout
+- Archive experiments after completion
+- Keep codebase clean
+
+### Multi-Tenant Considerations
+
+**User Isolation:**
+```typescript
+// Always pass userID for proper tracking
+const canAccess = Statsig.checkGate(
+  { userID: authenticatedUserId },  // ✅ User-specific
+  'premium_feature'
+);
+
+// Never use shared/global context
+const canAccess = Statsig.checkGate('premium_feature');  // ❌ No user context
+```
+
+**Private Attributes:**
+```typescript
+// Keep sensitive data private (not logged to Statsig)
+const user = {
+  userID: userId,
+  email: userEmail,
+  privateAttributes: {
+    ssn: '123-45-6789',       // Not logged
+    apiKey: 'secret-key',     // Not logged
+  },
+  custom: {
+    tier: 'premium',          // Logged for analytics
+  },
+};
+```
+
+### Deployment Considerations
+
+**1. Server-Side Initialization**
+- Initialize Statsig on server start (before accepting requests)
+- Gracefully shutdown to flush pending events
+
+**2. Kubernetes Deployment**
+- Statsig SDKs are stateless
+- Multiple replicas work fine (separate event buffers)
+- No sticky sessions required
+
+**3. Performance**
+- Gate checks are synchronous (after initialization)
+- Minimal latency: <1ms for gate checks
+- Background polling: 10s interval for updates
+
+**4. Rate Limiting**
+- Statsig has generous rate limits
+- Event logging is batched (reduces API calls)
+- SDK handles retries automatically
+
+**5. Monitoring**
+```typescript
+// Log Statsig errors
+Statsig.on('error', (error) => {
+  console.error('Statsig error:', error);
+  // Send to Sentry or monitoring service
+});
+```
+
+### Cost Optimization
+
+**Free Tier:**
+- 1M events/month
+- Unlimited feature gates
+- Unlimited experiments
+- Perfect for early stage
+
+**Paid Tier (as you scale):**
+- Additional events: $0.10 per 1K events
+- Warehouse Native: Custom pricing
+- Enterprise features: Contact sales
+
+### Further Resources
+
+- **Statsig Docs**: https://docs.statsig.com
+- **Console**: https://console.statsig.com
+- **SDKs**: https://github.com/statsig-io
+- **Status Page**: https://status.statsig.com
+
 ## Prerequisites
 
 ### Required Tools
