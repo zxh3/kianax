@@ -114,9 +114,9 @@ bun run build
 
 ### Git Workflow
 
-**All code changes must be submitted via Pull Request. Never commit directly to `main`.**
+**Recommended: Use feature branches for organization**
 
-1. **Create a feature branch** for every change:
+1. **Create a feature branch** for larger changes (optional but recommended):
    ```bash
    # Create and switch to a new branch
    git checkout -b feature/agent-execution
@@ -126,21 +126,20 @@ bun run build
 
 2. **Make your changes** and commit with conventional commits
 
-3. **Push to remote** and create a Pull Request:
+3. **Push to remote**:
    ```bash
+   # Push feature branch
    git push origin feature/agent-execution
-   # Then create PR on GitHub
+
+   # Or push directly to main for smaller changes
+   git push origin main
    ```
 
-4. **PR Review Process:**
-   - Code review required before merge
-   - All tests must pass
-   - PR description should explain changes and link to issues
-
-5. **After PR is merged**, delete the branch:
+4. **After feature is complete**, merge and clean up branch:
    ```bash
    git checkout main
-   git pull origin main
+   git merge feature/agent-execution
+   git push origin main
    git branch -d feature/agent-execution
    ```
 
