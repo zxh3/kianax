@@ -1,420 +1,293 @@
-# Kianax - AI Trading Platform Architecture
+# Kianax Architecture
 
-High-level system architecture and design principles for the Kianax multi-tenant AI trading platform.
+AI-native workflow platform where users describe automations in natural language, and plugins connect any data source to any action.
 
-## Overview
+## Core Vision
 
-Kianax is a **multi-tenant AI-powered trading platform** where users create and deploy autonomous trading agents. Each user has complete data isolation with their own portfolio, agents, and trading history.
+**"Talk to Create Workflows"** - AI builds automations for you.
 
-### Core Vision
+Users describe what they want → AI translates to executable workflows → Plugins provide the building blocks.
 
-**"Democratize algorithmic trading through AI agents"**
+**Example:** "When AAPL drops 5%, analyze sentiment. If positive, buy $1000."
 
-- Users describe trading strategies in plain English
-- AI agents execute strategies autonomously 24/7
-- Complete user control and data isolation
-- Real money trading with broker integration
-- Visual workflow builder for advanced strategies
+**Result:** Cron Trigger → Stock Price Input → AI Processor → News Input → AI Processor → Logic Condition → Trading Output
 
-## High-Level Architecture
+## Stack
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      PUBLIC USERS                            │
-│  - Create accounts and connect broker accounts              │
-│  - Build AI agents (prompts or workflows)                   │
-│  - Monitor portfolios and performance                        │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ HTTPS/WSS (authenticated)
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   WEB APPLICATION                            │
-│  Next.js + React + Tailwind                                  │
-│  - Authentication UI                                         │
-│  - Agent Builder (natural language)                         │
-│  - Workflow Designer (visual DAG editor)                    │
-│  - Portfolio Dashboard                                       │
-│  - Trading Terminal                                          │
-│  - Real-time charts                                          │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ REST API + WebSocket
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  BACKEND SERVER                              │
-│  Fastify + TypeScript + Bun                                  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │     AUTHENTICATION & AUTHORIZATION                  │    │
-│  │  - JWT tokens with user_id                         │    │
-│  │  - Row-level security (all data has user_id)      │    │
-│  │  - Session management                              │    │
-│  └────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          AI AGENT PLATFORM                          │    │
-│  │  - Per-user agent management                       │    │
-│  │  - Agent types: Prompt-based, Workflow, Multi-agent│    │
-│  │  - Portfolio allocation per agent                  │    │
-│  │  - Complete user isolation                         │    │
-│  └────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          TRIGGER SYSTEM                             │    │
-│  │  - Time-based, Price-based, News-based             │    │
-│  │  - Webhook-based for custom events                 │    │
-│  └────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          TRADING ENGINE                             │    │
-│  │  - Order validation (per-user balance)             │    │
-│  │  - Risk management (per-user limits)               │    │
-│  │  - Position tracking and P&L                       │    │
-│  │  - All trading logic server-side only              │    │
-│  └────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          BROKER INTEGRATION                         │    │
-│  │  - Per-user broker accounts                        │    │
-│  │  - Encrypted API key storage                       │    │
-│  │  - Order execution and position sync               │    │
-│  └────────────────────────────────────────────────────┘    │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          MARKET DATA SERVICE                        │    │
-│  │  - Real-time quotes via WebSocket                  │    │
-│  │  - Historical data and news aggregation            │    │
-│  │  - Shared across all users (cached)                │    │
-│  └────────────────────────────────────────────────────┘    │
-└─────────────────┬───────────────────────────────────────────┘
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   DATA LAYER                                 │
-│                                                              │
-│  PostgreSQL (Multi-tenant):                                 │
-│  - All tables scoped by user_id                             │
-│  - agents, portfolios, orders, trades                       │
-│  - agent_executions with reasoning logs                     │
-│                                                              │
-│  Redis (Caching):                                           │
-│  - Market data cache (shared)                               │
-│  - User sessions and rate limiting                          │
-│  - Real-time pub/sub                                        │
-└─────────────────────────────────────────────────────────────┘
+**Frontend:** Next.js 16 + React 19 + Convex React hooks
+**Backend:** Convex (serverless functions + real-time database + auth)
+**Workflows:** trigger.dev (execution engine, triggers, retries)
+**AI:** OpenAI (GPT-4 for parsing, GPT-3.5 for transformations)
+**Deploy:** Vercel + Convex (zero infrastructure management)
+
+**Why Convex?**
+- Real-time by default (no WebSocket server needed)
+- TypeScript-native (schema in code, no migrations)
+- Built-in auth & encryption
+- Auto-scaling, pay-per-use
+- Perfect for solo developers
+
+## Core Concepts
+
+### 1. Node Types
+
+Workflows are built from **5 fundamental node types**:
+
+**1. Triggers** - Start workflow execution
+- Cron (time-based schedules)
+- Webhook (HTTP events)
+- Manual (user-initiated)
+- Platform events (data changes, system events)
+
+**2. Inputs** - Fetch data from external sources
+- APIs (REST, GraphQL, web scraping)
+- Databases (queries, reads)
+- Files (download, parse)
+- Streams (RSS, WebSocket)
+
+**3. Processors** - Transform and analyze data
+- AI (LLMs, sentiment, summarization, classification)
+- Data transformation (format conversion, mapping, filtering)
+- Computation (math, aggregation, validation)
+- Parsing (JSON, XML, CSV)
+
+**4. Logic** - Control execution flow
+- Conditions (if/else branching)
+- Switches (multi-branch routing)
+- Loops (iterate over arrays)
+- Error handling (try/catch, retry)
+- Delays (wait, sleep)
+
+**5. Outputs** - Write data or perform actions
+- APIs (POST, PUT, DELETE)
+- Databases (insert, update, delete)
+- Notifications (email, SMS, push)
+- Integrations (trading, CRM, storage)
+- Sub-workflows (call other workflows)
+
+**Type-Safe Connections:**
+- Nodes connect when output schema matches input schema
+- If types don't match, insert an AI Processor to adapt data
+- All connections validated before workflow activation
+
+**AI Processor = Universal Adapter:**
+```typescript
+Input: { symbol: "AAPL", price: 150 }
+Instruction: "Transform to { ticker, currentPrice, action: 'buy' }"
+Output: { ticker: "AAPL", currentPrice: 150, action: "buy" }
 ```
 
-## Core Architectural Principles
+This taxonomy is **future-proof**: any new plugin fits into one of these 5 categories based on its role in the workflow.
 
-### 1. Multi-Tenancy & User Isolation
+### 2. Workflow Types
 
-**Every resource is scoped to a user:**
+**Root Workflows** (autonomous):
+- MUST have trigger node
+- Run independently on schedule/event
+- Example: "Stock price monitor"
 
-- Each user has their own account and broker connection
-- Each user creates their own agents
-- Complete portfolio isolation
-- All database queries filter by `user_id`
-- Agent executions never cross user boundaries
+**Sub-Workflows** (reusable):
+- NO trigger nodes
+- Called by other workflows
+- Example: "Send notification"
 
-**Example:**
+### 3. Execution Flow
+
 ```
-User A:
-  ├── Agent "Dip Buyer" → Trades User A's account
-  ├── Agent "Momentum" → Trades User A's account
-  └── Portfolio → User A's positions only
-
-User B:
-  ├── Agent "News Trader" → Trades User B's account
-  └── Portfolio → User B's positions only
-
-⚠️ User A cannot see or affect User B's data
-```
-
-### 2. User Journey
-
-**New User Flow:**
-
-1. **Sign Up** → Create account with authentication
-2. **Connect Broker** → Add broker API keys (encrypted)
-3. **Create Agent** → Natural language OR visual workflow
-4. **Set Triggers** → When should the agent run?
-5. **Monitor** → Watch agent execute automatically
-6. **Manage** → Pause, edit, delete agents anytime
-
-### 3. AI Agents
-
-**What is an Agent?**
-
-An agent is a user-configurable autonomous trader that:
-- Analyzes market data
-- Makes trading decisions based on strategy
-- Executes orders automatically
-- Operates within user-defined risk limits
-
-**Two Creation Methods:**
-
-**A. Natural Language Prompt (Simple)**
-- User writes strategy in plain English
-- AI interprets and executes the strategy
-- Best for beginners and simple strategies
-
-**B. Visual Workflow (Advanced)**
-- Drag-and-drop node-based editor
-- Conditional logic and multi-step flows
-- Best for complex multi-agent strategies
-
-**Agent Configuration:**
-- Name & description
-- Strategy (prompt OR workflow definition)
-- Risk limits (position size, daily trades, allocation)
-- LLM settings (model, temperature)
-- Triggers (when to run)
-- Status (active/paused)
-
-### 4. Triggers
-
-**What triggers an agent?**
-
-Users configure when their agents should analyze markets:
-
-1. **Time-Based**: "Run every weekday at 9:30 AM"
-2. **Price-Based**: "Run when AAPL drops 3%"
-3. **Volume-Based**: "Run when volume spikes 2x"
-4. **News-Based**: "Run when news mentions earnings"
-5. **Webhook-Based**: "Run on custom signal"
-
-### 5. Multi-Agent Workflows
-
-**Why multiple agents?**
-
-Users create specialized agents that work together:
-
-**Example: "Investment Team"**
-```
-1. "Analyst" Agent → Scans for opportunities
-2. "Risk Manager" Agent → Reviews and approves
-3. "Executor" Agent → Sizes and executes trades
+User creates workflow in Convex
+  ↓
+Convex action compiles DAG → trigger.dev job
+  ↓
+trigger.dev handles triggers, queuing, retries
+  ↓
+Each node executes via io.runTask() (sandboxed)
+  ↓
+Results stored in Convex (real-time updates to frontend)
 ```
 
-**Coordination Patterns:**
-- **Sequential**: Pipeline (1 → 2 → 3)
-- **Parallel**: Simultaneous analysis with voting
-- **Hierarchical**: Workers propose, supervisor approves
+**Real-time Updates:** Frontend uses `useQuery` to subscribe to executions table. Convex pushes updates automatically.
 
-### 6. Portfolio & Risk Management
+### 4. Multi-Tenancy
 
-**Per-User Portfolio Tracking:**
-- Total portfolio value and cash balance
-- Open positions with real-time P&L
-- Trade history and performance metrics
-- Buying power calculations
+**Automatic via Convex Auth:**
+- All queries filtered by `userId` from auth context
+- Row-level security built-in
+- No manual filtering needed
 
-**Risk Controls (Per User):**
-- Maximum position size per trade
-- Maximum portfolio allocation per agent
-- Daily trade limits
-- Stop-loss rules
-- Pattern day trading compliance
+```typescript
+// Automatic user isolation
+export const list = query({
+  handler: async (ctx) => {
+    const userId = (await ctx.auth.getUserIdentity())?.subject;
+    return await ctx.db.query("workflows")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .collect();
+  },
+});
+```
 
-**Per-Agent Allocation:**
-- Each agent allocated percentage of portfolio
-- Agents only trade within their allocation
-- Prevents single agent from using all capital
+### 5. Data Model
 
-## Key Technical Decisions
+**Workflow Structure (DAG):**
 
-### Security First
+A workflow is a **Directed Acyclic Graph (DAG)** consisting of:
 
-**Authentication:**
-- JWT tokens for API access
-- Refresh token rotation
-- 2FA/MFA for sensitive operations
+- **Nodes** - Plugin instances with configuration
+  - Each node references a plugin (e.g., "stock-price-v1.0.0")
+  - Contains plugin-specific config (API keys, parameters, prompts)
+  - Has unique ID for connections
 
-**Authorization:**
-- All queries filter by `user_id`
+- **Edges** - Data flow between nodes
+  - Defines execution order (source → target)
+  - Maps output from one node to input of next
+  - Validates type compatibility (or inserts AI Processor)
+
+- **Workflow Metadata**
+  - Name, description, type (root vs sub-workflow)
+  - Owner (userId for multi-tenancy)
+  - Status (draft, active, paused, archived)
+  - Source (original or from template ID)
+
+**Example Workflow:**
+```
+Node 1: Cron Trigger (every 5 min)
+   ↓ edge
+Node 2: Stock Price Input (symbol: "AAPL")
+   ↓ edge (output: {symbol, price, timestamp})
+Node 3: AI Processor (check if price dropped 5%)
+   ↓ edge (output: {dropped: boolean, ...})
+Node 4: Logic - Condition (if dropped === true)
+   ↓ edge
+Node 5: Trading Output (buy $1000)
+```
+
+**Key Convex Tables:**
+- `workflows` - User's workflow definitions (nodes + edges + metadata)
+- `workflow_executions` - Execution history, status, logs
+- `workflow_templates` - Shared workflows in marketplace
+- `plugins` - Available plugins in marketplace
+- `credentials` - Encrypted API keys per user
+- `plugin_installs` - User's installed plugins
+
+**No SQL, no migrations.** Schema defined in TypeScript, stored as JSON in Convex.
+
+### 6. Security
+
+**Built-in via Convex + trigger.dev:**
+- Encrypted credentials (Convex encryption)
+- Sandboxed plugin execution (trigger.dev tasks)
+- Rate limiting (Convex automatic)
+- Audit logging (Convex function logs)
+- Row-level security (Convex auth context)
+
+**Plugin Sandboxing:**
+- Runs in isolated V8 contexts
+- Resource limits (timeout, memory)
+- Network allowlist
 - No cross-user data access
-- Broker API keys encrypted (AES-256)
 
-**Trading Security:**
-- All logic server-side (never trust frontend)
-- Order validation before execution
-- Balance checks and audit logging
+### 7. Marketplace
 
-### Real-Time Communication
+**Plugin Marketplace:**
 
-**WebSocket Connections (Per User):**
-- Real-time price updates
-- Order fill notifications
-- Portfolio value changes
-- Agent execution updates
+1. Developer builds plugin using SDK
+2. Submit to marketplace (Convex mutation)
+3. Code review + security scan
+4. Publish (stored in Convex file storage)
+5. Users install one-click
 
-**Message Types:**
-- `quote` - Stock price updates
-- `order_filled` - Trade confirmations
-- `portfolio_update` - Balance changes
-- `agent_execution` - Agent decisions
+**Features:**
+- Browse by category/rating
+- Version management (semver)
+- Revenue sharing (optional)
+- Community reviews
 
-### Scalability
+**Workflow Marketplace:**
 
-**Horizontal Scaling:**
-- Stateless backend servers
-- Queue-based agent execution
-- Database connection pooling
-- Redis for distributed caching
+Users can share workflows as templates for others to use.
 
-**Fair Scheduling:**
-- Agent execution queue prevents resource hogging
-- Rate limiting per user
-- Resource quotas (max agents, max triggers)
+**Sharing Flow:**
+1. User creates workflow
+2. Publishes to marketplace (creates template)
+3. Template includes: nodes, edges, plugin requirements, description
+4. Other users browse and discover workflows
 
-### Broker Agnostic
+**Installation Flow:**
+1. User finds workflow template in marketplace
+2. Drafts workflow from template (copies structure)
+3. System checks: Do they have all required plugins installed?
+4. System checks: Have they configured all required credentials?
+5. User can only **enable/activate** workflow when:
+   - All required plugins are installed
+   - All credentials are properly configured
+6. Draft workflows can be edited but not executed
 
-**Supported Brokers:**
-- Alpaca (primary, easy setup)
-- Interactive Brokers (advanced users)
-- TD Ameritrade (optional)
+**Use Cases:**
+- "Stock alert when price drops 10%" - reusable template
+- "Daily news summary via email" - configure your own email
+- "Social media sentiment tracker" - connect your own APIs
 
-**Per-User Broker Accounts:**
-- Each user connects their own broker
-- Encrypted API key storage
-- Orders executed through user's broker
-- Real-time position sync
+**Privacy:**
+- Shared workflows contain structure only (nodes + edges)
+- No user credentials or personal data included
+- Users must configure their own API keys and credentials
 
-### Data Organization
+## Workflow Creation
 
-**User Data (Isolated):**
-- All user-specific tables include `user_id`
-- agents, portfolios, orders, trades
-- Filtered by authenticated user in all queries
+**Three Interfaces:**
 
-**Shared Data (Global):**
-- Market data cached and shared
-- News articles and sentiment
-- Technical indicators
+1. **Chat** (primary) - "Alert me when TSLA drops 10%"
+2. **Audio** - Speak your workflow (Whisper transcription)
+3. **Visual** - React Flow editor for complex workflows
 
-## Technology Stack
+**AI translates natural language → DAG → trigger.dev job**
 
-### Frontend
-- Next.js 16 with App Router
-- React 19 + Tailwind CSS v4
-- shadcn/ui components (Radix UI)
-- TradingView charts
-- Native WebSocket
+## Differentiation
 
-### Backend
-- Bun runtime (TypeScript)
-- Fastify framework
-- Bull/BullMQ for job queues
-- Zod validation
-- Pino logging
+vs **Zapier/n8n:** AI builds workflows, not drag-and-drop
+vs **Langchain:** Production platform, not just a library
+vs **Temporal:** Natural language interface, plugin marketplace
 
-### Database
-- PostgreSQL 16 (primary)
-- TimescaleDB (time-series)
-- Redis 7 (cache/sessions)
-- Drizzle ORM
+## Development
 
-### External Services
-- **Market Data**: Polygon.io (REST + WebSocket)
-- **Broker**: Alpaca (primary), IBKR (optional)
-- **LLM**: OpenAI (GPT-4), Anthropic (Claude)
-- **Auth**: Better Auth
-- **Feature Flags**: Statsig
+```bash
+# Setup (first time)
+npx convex dev          # Creates Convex project
+bun install             # Install dependencies
 
-### Infrastructure
-- AWS EKS (Kubernetes)
-- RDS PostgreSQL, ElastiCache Redis
-- Application Load Balancer
-- GitOps with ArgoCD
+# Development (daily)
+npx convex dev          # Terminal 1 - Backend
+bun run dev             # Terminal 2 - Frontend
 
-## Security & Compliance
+# Deploy
+vercel deploy           # Frontend
+npx convex deploy       # Backend (automatic)
+```
 
-### Data Security
-- All data encrypted at rest
-- TLS 1.3 for data in transit
-- Broker API keys encrypted (AES-256)
-- Password hashing (scrypt)
+## Key Principles
 
-### Trading Security
-- Server-side order validation
-- Balance checks before every trade
-- Position size limits enforced
-- Audit log of all trades (immutable)
+1. **Serverless-First** - Zero infrastructure management
+2. **Real-Time Native** - Convex subscriptions everywhere
+3. **AI-First** - Natural language as primary interface
+4. **Plugin-Driven** - Everything is a plugin
+5. **Type-Safe** - TypeScript end-to-end
+6. **Multi-Tenant** - Automatic user isolation
+7. **Security-First** - Encrypted, sandboxed, validated
 
-### User Privacy
-- Each user sees only their own data
-- No cross-user data sharing
-- GDPR compliant (export, deletion)
-- Anonymized analytics only
+## What Makes Kianax Different
 
-### Compliance Considerations
-- Platform doesn't provide investment advice
-- Clear risk disclaimers
-- Age verification (18+)
-- Broker handles actual execution (licensed)
+**Traditional workflow tools:** Drag boxes, connect arrows, configure fields
+**Kianax:** "When X happens, do Y" → Done.
 
-## Monitoring & Observability
-
-### Application Metrics
-- Agent execution success rate
-- Order execution latency
-- WebSocket connection count
-- Database query performance
-- Cache hit rates
-
-### Business Metrics
-- Daily/Monthly active users
-- Agent creation rate
-- Trade volume per user
-- User retention rate
-
-### Alerting
-- High error rate → Page on-call
-- Queue backlog → Add workers
-- Database slow queries → Auto-scale
-
-## Future Vision
-
-### Phase 2 Features
-- Agent Marketplace (share/sell strategies)
-- Backtesting on historical data
-- Social trading (follow top agents)
-- Mobile apps with push notifications
-
-### Phase 3 Features
-- Options, crypto, forex trading
-- Agent templates for beginners
-- AI-recommended strategies
-- White-label platform for brokers
-
-### Technical Improvements
-- GraphQL for flexible queries
-- Event sourcing for audit trail
-- Machine learning predictive models
-- A/B testing for agent variations
-
-## Success Metrics
-
-### User Success
-- Create agent in < 5 minutes
-- Agents execute without intervention
-- Clear visibility into agent decisions
-- Users feel in control
-
-### Platform Success
-- 99.9% uptime
-- < 100ms API response time (p95)
-- < 1 second order execution
-- Zero security incidents
-
-### Business Success
-- Growing user base (10K users year 1)
-- High retention (> 60% after 3 months)
-- Active engagement (daily checks)
-- Positive word-of-mouth growth
+**Secret sauce:**
+- AI Processor eliminates complex field mapping
+- Plugin + workflow marketplace drives ecosystem
+- Real-time everywhere (no polling, no manual WebSockets)
+- Zero DevOps (fully managed stack)
 
 ---
 
-**For detailed implementation:**
-- Phase-by-phase roadmap → [TODO.md](./TODO.md)
-- Microservices architecture → [MICROSERVICES.md](./MICROSERVICES.md)
-- Deployment strategy → [DEPLOYMENT.md](./DEPLOYMENT.md)
-- Kubernetes operations → [KUBERNETES.md](./KUBERNETES.md)
+For implementation details, see:
+- **[ROADMAP.md](./ROADMAP.md)** - Development phases
+- **[TODO.md](./TODO.md)** - Current tasks
+- **[PLUGIN_DEVELOPMENT.md](./PLUGIN_DEVELOPMENT.md)** - Build plugins

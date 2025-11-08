@@ -1,115 +1,252 @@
 # Kianax
 
-A multi-tenant AI-powered stock trading platform where users create autonomous trading agents using natural language or visual workflows.
+An AI-native workflow orchestration platform where users build powerful automations by simply describing what they want. Extensible plugin marketplace lets you connect any data source to any action.
 
 ## Overview
 
-Kianax enables users to:
-- **Create AI Trading Agents** using plain English descriptions of strategies
-- **Connect Broker Accounts** (Alpaca, Interactive Brokers)
-- **Automate Trading** with agents that analyze markets and execute trades
-- **Build Workflows** visually for advanced multi-agent strategies
-- **Monitor Performance** with real-time dashboards and analytics
+**"Talk to Create Workflows"** - The only workflow platform where AI builds automations for you.
 
-Each user has complete data isolation with their own portfolio, agents, and trading history.
+Kianax enables users to:
+- **Create Workflows with Natural Language** - Describe what you want, AI builds it
+- **Connect Any Data Source** - Twitter, Reddit, earnings reports, stock prices, RSS feeds
+- **Trigger on Any Event** - Time-based, data changes, webhooks, custom events
+- **Take Any Action** - Trade stocks, send emails/SMS, make phone calls, HTTP requests
+- **Build with Plugins** - Extensible marketplace where anyone can publish plugins
+- **Powered by AI** - LLM decision nodes for intelligent, context-aware workflows
+
+Each user has complete data isolation with their own workflows, credentials, and execution history.
 
 ## Key Features
 
-- 🤖 **AI-Powered Agents**: GPT-4 and Claude integration for strategy interpretation
-- 📊 **Real-Time Market Data**: Live quotes and WebSocket streaming via Polygon.io
-- 🔒 **Multi-Tenant Architecture**: Complete user isolation and security
-- 🎯 **Feature Flags**: Gradual rollouts and A/B testing with Statsig
-- 🔐 **Authentication**: Secure auth with Better Auth (email/password + OAuth)
-- 📈 **Live Trading**: Integration with Alpaca broker API
-- 🌐 **Modern Stack**: Next.js 16, Fastify, PostgreSQL, Redis, Kubernetes
+- 🤖 **AI-Powered Workflow Creation**: Describe workflows in plain English or audio
+- 🧩 **Plugin Marketplace**: Extensible ecosystem - anyone can build and publish plugins
+- 🔌 **Type-Safe Connections**: Plugins automatically connect when input/output types match
+- 📊 **Multi-Source Data Ingestion**: Unify data from Twitter, Reddit, APIs, databases, and more
+- 🎯 **Event-Driven Execution**: Cron schedules, webhooks, data changes, custom triggers
+- 🔒 **Multi-Tenant Architecture**: Complete user isolation and sandboxed plugin execution
+- 🔐 **Secure Credentials**: Encrypted API key storage per user
+- 🌐 **Modern Stack**: Next.js 16, Convex (serverless backend), trigger.dev (workflows), Vercel
+
+## Example Use Cases
+
+### 1. AI-Powered Stock Trading (Flagship)
+```
+"When AAPL drops 5%, analyze recent news sentiment.
+If positive, buy $1000 worth. If negative, wait."
+```
+**Workflow:** Cron Trigger → Stock Price Input → AI Processor (check if dropped 5%) → News Input → AI Processor (sentiment analysis) → Logic Condition → Trading Output
+
+### 2. Social Media Monitoring
+```
+"When my company is mentioned on Reddit with negative sentiment,
+send me an SMS alert."
+```
+**Workflow:** Webhook Trigger → Reddit Input → AI Processor (sentiment analysis) → Logic Condition → SMS Output
+
+### 3. Earnings Alert System
+```
+"Every day at 4pm, check if any tech companies reported earnings.
+Summarize with AI and email me."
+```
+**Workflow:** Cron Trigger → Earnings Input → AI Processor (summarize) → Email Output
+
+### 4. Custom Business Automation
+```
+"When a new customer signs up, enrich their data from Clearbit,
+add to Salesforce, and send welcome email."
+```
+**Workflow:** Webhook Trigger → Clearbit Input → AI Processor (format data) → Salesforce Output → AI Processor (generate email) → Email Output
 
 ## Tech Stack
 
-**Frontend:** Next.js 16 (React 19), Tailwind CSS v4, shadcn/ui
-**Backend:** Fastify 5, Bun runtime, TypeScript
-**Database:** PostgreSQL 16, Redis 7, Drizzle ORM
-**Infrastructure:** AWS EKS, RDS, ElastiCache
-**External Services:** Polygon.io (market data), Alpaca (broker), OpenAI/Anthropic (AI)
+**Frontend:** Next.js 16 (React 19), Tailwind CSS v4, shadcn/ui, React Flow (workflow editor)
+**Backend:** Convex (managed database + serverless functions + real-time subscriptions)
+**Workflow Execution:** trigger.dev (handles triggers, queues, retries, state persistence)
+**Plugin Runtime:** trigger.dev tasks (sandboxed execution)
+**Auth:** Convex Auth (built-in authentication)
+**File Storage:** Convex file storage (for plugin code)
+**Infrastructure:** Vercel (frontend), Convex (backend + database), trigger.dev (workflows)
+**AI Services:** OpenAI (GPT-4 for workflow parsing, GPT-3.5 Turbo for AI Processor)
+
+**Why Convex?**
+- Zero DevOps: No PostgreSQL, Redis, or Kubernetes management
+- Built-in real-time: Live workflow execution updates without WebSocket server
+- TypeScript-native: Schema and functions defined in code, no migrations
+- Serverless: Auto-scaling, pay-per-use
+- Perfect for solo developers focusing on product, not infrastructure
 
 ## Project Structure
 
 ```
 kianax/
-├── apps/
-│   ├── web/          # Next.js 16 frontend
-│   └── server/       # Fastify backend API
+├── app/                  # Next.js 16 app directory (frontend)
+│   ├── page.tsx          # Homepage
+│   ├── workflows/        # Workflow builder UI
+│   ├── marketplace/      # Plugin marketplace
+│   └── chat/             # AI chat interface
+├── convex/               # Convex backend (database + functions)
+│   ├── schema.ts         # Database schema (workflows, plugins, users)
+│   ├── workflows.ts      # Workflow CRUD mutations/queries
+│   ├── plugins.ts        # Plugin marketplace functions
+│   ├── executions.ts     # Execution history queries
+│   ├── auth.ts           # Convex Auth configuration
+│   └── lib/
+│       └── triggerdev.ts # trigger.dev integration
 ├── packages/
-│   ├── ui/           # Shared React components
-│   ├── db/           # Database schema & migrations
+│   ├── ui/               # Shared React components (shadcn/ui)
+│   ├── plugin-sdk/       # Plugin development SDK
 │   └── typescript-config/
-└── docs/             # Documentation
+├── plugins/              # Core platform plugins (compiled to trigger.dev tasks)
+│   ├── triggers/
+│   │   ├── cron/         # Time-based triggers
+│   │   ├── webhook/      # HTTP webhook triggers
+│   │   └── manual/       # User-initiated triggers
+│   ├── data-sources/
+│   │   ├── stock-price/  # Stock market data (Polygon.io)
+│   │   ├── twitter/      # Twitter API integration
+│   │   └── reddit/       # Reddit API integration
+│   ├── actions/
+│   │   ├── alpaca/       # Stock trading via Alpaca
+│   │   ├── email/        # Send emails (SendGrid)
+│   │   └── http/         # HTTP requests
+│   ├── transformers/
+│   │   └── ai/           # AI-powered data transformation
+│   └── conditions/
+│       └── if-else/      # Conditional branching
+└── docs/                 # Documentation
     ├── ARCHITECTURE.md
-    ├── DEPLOYMENT.md
-    ├── KUBERNETES.md
-    ├── LOCAL_DEVELOPMENT.md
-    ├── MICROSERVICES.md
+    ├── PLUGIN_DEVELOPMENT.md
+    ├── ROADMAP.md
     └── TODO.md
 ```
 
 ## Quick Start
 
-**Prerequisites:** Bun 1.2.23+, Docker (for local PostgreSQL/Redis)
+**Prerequisites:** Node.js 18+, npm/bun
 
 ```bash
 # Install dependencies
 bun install
 
-# Start databases
-docker-compose up -d
+# Set up Convex (first time only)
+npx convex dev
+# This will:
+# 1. Create a Convex project
+# 2. Generate convex/ directory with schema
+# 3. Start local Convex dev server
 
-# Run database migrations
-cd packages/db && bun run db:migrate
-
-# Start all services
+# In a new terminal, start Next.js frontend
 bun run dev
+# Frontend runs on localhost:3000
 
-# Or start individually:
-bun run dev --filter=web      # Frontend on :3000
-bun run dev --filter=server   # Backend on :3001
+# That's it! No Docker, no databases to manage.
+# Convex handles everything: database, real-time, auth, file storage
 ```
+
+**Environment Variables:**
+```env
+# .env.local
+CONVEX_DEPLOYMENT=dev:your-project-name  # Auto-generated by convex dev
+NEXT_PUBLIC_CONVEX_URL=https://...       # Auto-generated
+TRIGGER_DEV_API_KEY=...                  # From trigger.dev dashboard
+OPENAI_API_KEY=...                       # For AI workflow parsing
+```
+
+## Plugin System
+
+### Plugin Contract
+
+Every plugin has a strongly-typed interface:
+
+```typescript
+interface Plugin {
+  id: string;                    // 'alpaca-trading'
+  name: string;                  // 'Alpaca Trading'
+  version: string;               // '1.0.0'
+  type: 'trigger' | 'input' | 'processor' | 'logic' | 'output';
+  inputSchema: JSONSchema;       // Typed inputs
+  outputSchema: JSONSchema;      // Typed outputs
+  credentials?: CredentialSchema; // API keys, tokens
+  execute: (input, context) => Promise<output>;
+}
+```
+
+### Type-Safe Connections
+
+Plugins connect when types match. If they don't, insert an AI Processor:
+
+```
+Stock Price Input
+  output: {symbol: string, price: number, timestamp: string}
+      ↓
+AI Processor (universal data adapter)
+  instruction: "Transform to {ticker, currentPrice, action: 'buy'}"
+      ↓
+Trading Output
+  input: {ticker: string, currentPrice: number, action: string}
+```
+
+**No complex field mapping needed** - AI handles all transformations!
+
+### Marketplace
+
+**Plugin Marketplace:**
+- **Discover**: Browse plugins by category, rating, popularity
+- **Publish**: Anyone can publish plugins (after review)
+- **Install**: One-click install to your workspace
+- **Version Control**: Semantic versioning with upgrade paths
+- **Revenue Sharing**: Monetize your plugins (optional)
+
+**Workflow Marketplace:**
+- **Share**: Publish workflows as templates for others
+- **Browse**: Discover pre-built workflow templates
+- **Install**: Draft workflow from template, configure your credentials
+- **Activate**: Enable workflow when all plugins installed and credentials set
+- **Privacy**: Templates contain structure only, no credentials shared
 
 ## Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs) directory:
 
 ### Architecture & Design
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design, user flows, multi-tenant model
-- **[MICROSERVICES.md](./docs/MICROSERVICES.md)** - Service boundaries, communication patterns, migration strategy
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Plugin system, workflow engine, Convex + trigger.dev architecture
+- **[PLUGIN_DEVELOPMENT.md](./docs/PLUGIN_DEVELOPMENT.md)** - Build and publish plugins
 - **[ROADMAP.md](./docs/ROADMAP.md)** - Long-term product vision and development phases
 - **[TODO.md](./docs/TODO.md)** - Current sprint tasks and near-term work
-
-### Deployment & Operations
-- **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - AWS EKS deployment guide with Terraform, CI/CD, monitoring
-- **[KUBERNETES.md](./docs/KUBERNETES.md)** - Kubernetes operations, kubectl commands, debugging
-- **[LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)** - Local testing with Docker Compose, Minikube, Kind, Tilt
 
 ## Development
 
 ```bash
-# Lint code
-bun run lint
+# Start Convex backend (terminal 1)
+npx convex dev
 
-# Format code
+# Start Next.js frontend (terminal 2)
+bun run dev
+
+# Run Convex functions in development
+npx convex run workflows:create --args '{"name": "test"}'
+
+# View Convex dashboard (database, logs, functions)
+# Opens at https://dashboard.convex.dev
+
+# Lint and format
+bun run lint
 bun run format
 
 # Type check
 bun run typecheck
-
-# Build all apps
-bun run build
 ```
 
 ## Core Principles
 
-1. **Multi-Tenancy**: Every resource scoped to `user_id` - complete user isolation
-2. **Security First**: Backend validation, encrypted credentials, audit logging
-3. **Real-Time**: WebSocket for live market data and trade notifications
-4. **Scalable**: Microservices architecture ready for horizontal scaling
+1. **Multi-Tenancy**: Every resource scoped to `user_id` - complete user isolation (Convex row-level security)
+2. **Plugin Sandboxing**: Plugins run in isolated environments, cannot access other users' data
+3. **Type Safety**: Plugins connect only when input/output schemas match
+4. **AI-First**: Natural language and audio as primary workflow creation interface
+5. **Security First**: Backend validation, encrypted credentials, sandboxed execution
+6. **Extensibility**: Anyone can build and publish plugins to the marketplace
+7. **Real-Time**: Live updates via Convex subscriptions for instant workflow execution feedback
+8. **Serverless-First**: Zero DevOps, fully managed infrastructure via Convex + trigger.dev
 
 ## Contributing
 
@@ -173,13 +310,21 @@ chore(deps): update dependencies
 
 ## Security
 
-- ✅ All trading logic validated server-side
-- ✅ Broker API keys encrypted at rest (AES-256)
-- ✅ User data isolated per `user_id`
-- ✅ Rate limiting per user
-- ✅ Audit logging for all trades
+- ✅ All workflow execution happens server-side (Convex functions + trigger.dev)
+- ✅ Plugin sandboxing prevents unauthorized access
+- ✅ API keys encrypted at rest (Convex encrypted fields)
+- ✅ User data isolated per `user_id` (Convex authentication + row-level security)
+- ✅ Rate limiting per user and per workflow (Convex built-in)
+- ✅ Audit logging for all workflow executions (Convex function logs)
+- ✅ Plugin code review before marketplace approval
+- ✅ Credential scoping (plugins access only granted credentials)
 
-Never expose broker API keys or user credentials to the frontend.
+**Security Model:**
+- Plugins cannot access other users' data (enforced by Convex authentication context)
+- Plugins cannot make network requests to arbitrary URLs (allowlist required)
+- All plugin inputs/outputs validated against schemas (Convex validators)
+- Execution timeouts prevent infinite loops (Convex function timeouts + trigger.dev task timeouts)
+- Resource quotas per user (Convex + trigger.dev limits)
 
 ## License
 
@@ -190,12 +335,19 @@ Never expose broker API keys or user credentials to the frontend.
 **Current Phase:** Phase 0 - Foundation
 
 Recent milestones:
-- ✅ Monorepo setup with Turborepo + Bun
-- ✅ Database package with Drizzle ORM
-- ✅ Basic Fastify server with health endpoints
+- ✅ Monorepo setup with Bun
 - ✅ Next.js 16 frontend with shadcn/ui
-- ✅ Docker Compose for local development
-- ✅ Comprehensive documentation
-- 🚧 Next: Database connection & user CRUD API
+- ✅ Comprehensive platform architecture redesign
+- ✅ Migration to Convex (serverless backend + real-time database)
+- ✅ Migration to trigger.dev (workflow execution engine)
+- 🚧 Next: Convex schema setup and Plugin SDK foundation
+
+**Flagship Use Case:** AI-powered stock trading (proof-of-concept for plugin system)
+
+**Platform Vision:** Universal workflow orchestration with plugin marketplace where:
+- Users describe workflows in natural language
+- Plugins provide data sources and actions
+- AI powers intelligent decision-making
+- Community builds and shares plugins
 
 See [`docs/TODO.md`](./docs/TODO.md) for current tasks and [`docs/ROADMAP.md`](./docs/ROADMAP.md) for long-term vision.

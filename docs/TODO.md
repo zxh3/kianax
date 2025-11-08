@@ -1,156 +1,142 @@
-# TODO - Current Sprint Tasks
+# TODO - Current Tasks
 
 **Last Updated:** 2025-01-07
 **Current Phase:** Phase 0 - Foundation
 
-> For long-term roadmap, see [ROADMAP.md](./ROADMAP.md)
+> For long-term vision, see [ROADMAP.md](./ROADMAP.md)
 
 ---
 
-## 🎯 Current Sprint (This Week)
+## 🎯 This Week - Phase 0: Convex Setup
 
-### Phase 0: Foundation - Get Basic Infrastructure Working
+**Goal:** Get Convex working with real-time data flow
 
-**Goal:** Connect database to server and verify end-to-end flow works
+### Tasks
 
-- [ ] **Database Connection**
-  - [ ] Add postgres connection string to server `.env`
-  - [ ] Create database client in `apps/server/src/lib/db.ts`
-  - [ ] Test connection on server startup
-  - [ ] Add error handling for connection failures
+- [ ] **Convex Setup**
+  - [ ] Run `npx convex dev`
+  - [ ] Create Convex account (free)
+  - [ ] Install dependencies: `npm install convex`
+  - [ ] Wrap app with `ConvexProvider`
 
-- [ ] **User CRUD API**
-  - [ ] Create `GET /api/users` endpoint (list all users)
-  - [ ] Create `POST /api/users` endpoint (create user)
-  - [ ] Create `GET /api/users/:id` endpoint (get single user)
-  - [ ] Add Zod validation for user input
-  - [ ] Test all endpoints with curl or Postman
+- [ ] **Define Schema**
+  - [ ] Create `convex/schema.ts`
+  - [ ] Define `workflows` table
+  - [ ] Define `workflow_executions` table
+  - [ ] Test schema compiles
+
+- [ ] **First Functions**
+  - [ ] Create `convex/workflows.ts`
+  - [ ] Add `list` query (get user's workflows)
+  - [ ] Add `create` mutation (create workflow)
+  - [ ] Test with CLI: `npx convex run workflows:create`
 
 - [ ] **Frontend Integration**
-  - [ ] Create `app/users/page.tsx` to display users
-  - [ ] Add form to create new user
-  - [ ] Call backend API from frontend
-  - [ ] Display list of users from API
-  - [ ] Add loading states and error handling
+  - [ ] Create `app/workflows/page.tsx`
+  - [ ] Use `useQuery(api.workflows.list)`
+  - [ ] Use `useMutation(api.workflows.create)`
+  - [ ] Add simple form to create workflow
+  - [ ] Verify real-time updates (open 2 tabs)
 
-- [ ] **Documentation**
-  - [ ] Document environment variable setup
-  - [ ] Update README with database connection steps
-  - [ ] Document API endpoints in comments
-
-**Deliverable:** Can create a user via API call and see it displayed on a webpage
+**Done when:** Create workflow in tab 1, see it instantly in tab 2
 
 ---
 
-## 📋 Next Sprint (Week 2-3)
+## 📋 Next Week - Phase 1: Auth
 
-### Better Auth Integration
+**Goal:** Users can sign up, login, and have isolated data
 
-- [ ] Install Better Auth dependencies
-  - [ ] `npm install better-auth`
-  - [ ] Add required environment variables
+### Tasks
 
-- [ ] Configure Better Auth
-  - [ ] Create `apps/server/src/lib/auth.ts`
-  - [ ] Set up database tables for sessions
-  - [ ] Configure JWT secret and session duration
+- [ ] **Convex Auth**
+  - [ ] Install `@convex-dev/auth`
+  - [ ] Create `convex/auth.ts`
+  - [ ] Configure password provider
+  - [ ] Test auth in dashboard
 
-- [ ] Create Auth Endpoints
-  - [ ] POST `/api/auth/register` - User registration
-  - [ ] POST `/api/auth/login` - User login
-  - [ ] POST `/api/auth/logout` - User logout
-  - [ ] GET `/api/auth/me` - Get current user
+- [ ] **Auth UI**
+  - [ ] Create `app/login/page.tsx`
+  - [ ] Create `app/register/page.tsx`
+  - [ ] Add auth components from Convex Auth
+  - [ ] Add sign out button
 
-- [ ] Add Auth Middleware
-  - [ ] Create `requireAuth` middleware
-  - [ ] Protect existing user endpoints
-  - [ ] Add user context to requests
+- [ ] **Protect Routes**
+  - [ ] Update queries to check `ctx.auth.getUserIdentity()`
+  - [ ] Filter all queries by `userId`
+  - [ ] Redirect `/workflows` if not authenticated
+  - [ ] Test user isolation
 
-- [ ] Build Auth UI
-  - [ ] `app/login/page.tsx` - Login form
-  - [ ] `app/register/page.tsx` - Registration form
-  - [ ] Add client-side auth state management
-  - [ ] Redirect logic (logged in/out states)
-
-**Deliverable:** Users can register, log in, and access protected routes
+**Done when:** Two users can't see each other's workflows
 
 ---
 
-## 🔮 Upcoming (Week 4+)
+## 🔮 Coming Soon
 
-### Database Schema Expansion
+### Phase 2: Plugin SDK (Weeks 4-6)
+- Define plugin interface
+- Build plugin SDK package
+- Create plugin registry in Convex
 
-- [ ] Create `portfolios` table with user_id foreign key
-- [ ] Create `positions` table (user_id, symbol, quantity, avg_cost)
-- [ ] Create `orders` table (user_id, symbol, side, quantity, status)
-- [ ] Create `trades` table (user_id, order_id, price, timestamp)
-- [ ] Generate and run Drizzle migrations
-- [ ] Add seed data for development
+### Phase 3: Workflow Engine (Weeks 7-9)
+- Integrate trigger.dev
+- Build DAG compiler
+- Execute first workflow
 
-### Paper Trading Backend
+### Phase 4: Core Plugins (Weeks 10-13)
+- Cron Trigger
+- Stock Price Input
+- AI Processor
+- Email Output
+- If/Else Logic
 
-- [ ] Portfolio service (CRUD operations)
-- [ ] Order service (create, cancel, list orders)
-- [ ] Order execution simulator (fake fills)
-- [ ] Balance validation before orders
-- [ ] P&L calculation logic
-
-### Paper Trading Frontend
-
-- [ ] Portfolio dashboard page
-- [ ] Order entry form
-- [ ] Positions list
-- [ ] Order history
+### Phase 5: AI Parsing (Weeks 14-17)
+- Chat interface
+- GPT-4 integration
+- Natural language → workflow
 
 ---
 
 ## 🐛 Known Issues
 
-*None yet - add issues as they come up*
+*None yet*
 
 ---
 
-## 💡 Ideas / Future Considerations
+## 💡 Ideas Backlog
 
-- Consider using tRPC instead of REST API
-- Explore React Query for data fetching
-- Look into Prisma vs Drizzle ORM comparison
-- Research WebSocket libraries (Socket.io vs native ws)
+- Workflow versioning
+- Execution replay
+- Workflow marketplace (templates + sharing) - See Phase 7 in ROADMAP.md
+- Team workspaces
+- Fork/remix workflows from marketplace
+- Workflow analytics (execution stats, popular workflows)
 
 ---
 
 ## 📝 Notes
 
-### Development Workflow
+### Development Commands
+
 ```bash
-# Start databases
-docker-compose up -d
+# Start Convex backend
+npx convex dev
 
-# Start backend (terminal 1)
-cd apps/server && bun run dev
+# Start Next.js frontend
+bun run dev
 
-# Start frontend (terminal 2)
-cd apps/web && bun run dev
+# Run Convex function
+npx convex run workflows:list
 
-# Run migrations
-cd packages/db && bun run db:migrate
+# Deploy to production
+npx convex deploy && vercel --prod
 ```
 
-### Useful Commands
-```bash
-# Check database
-docker-compose exec postgres psql -U postgres -d kianax
+### Useful Links
 
-# View logs
-docker-compose logs -f postgres
-docker-compose logs -f redis
-
-# Reset database
-docker-compose down -v
-docker-compose up -d
-cd packages/db && bun run db:migrate
-```
+- [Convex Docs](https://docs.convex.dev)
+- [trigger.dev Docs](https://trigger.dev/docs)
+- [Convex Dashboard](https://dashboard.convex.dev)
 
 ---
 
-**Priority:** Focus on Phase 0 first. Get database connected and basic CRUD working before moving to auth.
+**Focus:** One phase at a time. Finish Phase 0 before starting Phase 1.
