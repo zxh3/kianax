@@ -113,6 +113,19 @@ bun run build
 
 ## Contributing
 
+### Important Rules
+
+1. **⚠️ Do not push to remote unless explicitly requested**
+   - Always commit locally first
+   - Wait for explicit approval before pushing
+   - Use `git push origin main` only when asked
+
+2. **📝 Always update documentation as you work**
+   - Update `docs/TODO.md` when completing tasks
+   - Update `docs/ROADMAP.md` if phases change
+   - Keep documentation in sync with code changes
+   - Document new features, APIs, and workflows
+
 ### Git Workflow
 
 **Recommended: Use feature branches for organization**
@@ -127,7 +140,7 @@ bun run build
 
 2. **Make your changes** and commit with conventional commits
 
-3. **Push to remote**:
+3. **Push to remote** (only when requested):
    ```bash
    # Push feature branch
    git push origin feature/agent-execution
