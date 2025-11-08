@@ -1,2327 +1,314 @@
-# Kianax Platform - AWS EKS Deployment Guide
+# Kianax - Deployment Strategy
 
-This guide covers deploying Kianax to AWS using Amazon EKS (Elastic Kubernetes Service) with a production-ready, scalable architecture.
+High-level deployment architecture and strategy for the Kianax AI trading platform.
 
-## Table of Contents
+## Deployment Architecture
 
-- [Architecture Overview](#architecture-overview)
-- [Environment Strategy](#environment-strategy)
-- [Authentication with Better Auth](#authentication-with-better-auth)
-- [Prerequisites](#prerequisites)
-- [Infrastructure Components](#infrastructure-components)
-- [Local Development](#local-development)
-- [Deployment Steps](#deployment-steps)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Monitoring & Observability](#monitoring--observability)
-- [Cost Estimates](#cost-estimates)
-- [Troubleshooting](#troubleshooting)
+### Cloud Platform: AWS
 
-## Architecture Overview
+**Why AWS:**
+- Mature EKS (Kubernetes) offering
+- Robust managed services (RDS, ElastiCache)
+- Strong security and compliance features
+- Good pricing for startup scale
 
-### High-Level Architecture
+### Infrastructure Overview
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Frontend (Vercel or CloudFront)                │
-│  - Next.js 16 application                       │
-│  - CDN distribution                             │
-└──────────────┬──────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Frontend - Vercel                          │
+│  Next.js 16 with edge caching               │
+└──────────────┬──────────────────────────────┘
                │ HTTPS
                ▼
-┌─────────────────────────────────────────────────┐
-│  AWS Application Load Balancer (ALB)            │
-│  - SSL termination (ACM certificate)            │
-│  - WAF for DDoS protection                      │
-│  - WebSocket support                            │
-└──────────────┬──────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  AWS Application Load Balancer              │
+│  - SSL termination                          │
+│  - WAF protection                           │
+│  - WebSocket support                        │
+└──────────────┬──────────────────────────────┘
                │
                ▼
-┌─────────────────────────────────────────────────┐
-│  Amazon EKS Cluster (Kubernetes 1.31)           │
-│                                                  │
-│  ┌────────────────────────────────────────┐   │
-│  │ Microservices (Fargate/EC2 nodes)      │   │
-│  │                                         │   │
-│  │  • api-gateway (entry point)           │   │
-│  │  • auth-service (better-auth)          │   │
-│  │  • trading-service (orders, portfolio) │   │
-│  │  • agent-service (AI execution)        │   │
-│  │  • market-data-service (Polygon.io)    │   │
-│  │  • info-retrieval-service (RAG)        │   │
-│  │  • notification-service (WebSocket)    │   │
-│  │  • scheduler-service (cron triggers)   │   │
-│  └────────────────────────────────────────┘   │
-└──────────────┬──────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  EKS Cluster (Kubernetes 1.31)              │
+│  - API Gateway                              │
+│  - Auth Service (Better Auth)               │
+│  - Trading Service                          │
+│  - Agent Service                            │
+│  - Market Data Service                      │
+│  - Notification Service                     │
+└──────────────┬──────────────────────────────┘
                │
       ┌────────┴────────┐
       ▼                 ▼
 ┌──────────────┐  ┌──────────────┐
-│  Amazon RDS  │  │ ElastiCache  │
-│  PostgreSQL  │  │    Redis     │
-│  16 (Multi-  │  │  Cluster     │
-│  AZ)         │  │  Mode        │
+│ RDS          │  │ ElastiCache  │
+│ PostgreSQL16 │  │ Redis 7      │
 └──────────────┘  └──────────────┘
-               │
-      ┌────────┴────────────────┐
-      ▼                         ▼
-┌──────────────┐  ┌──────────────────────┐
-│   External   │  │    Observability     │
-│   Services   │  │                      │
-│              │  │  • Prometheus        │
-│  • Polygon   │  │  • Grafana          │
-│  • Alpaca    │  │  • FluentBit        │
-│  • OpenAI    │  │  • X-Ray/Jaeger     │
-│  • Anthropic │  │  • Sentry           │
-└──────────────┘  └──────────────────────┘
 ```
-
-### Key Design Principles
-
-1. **Multi-Tenancy**: All services enforce user isolation at the database layer
-2. **Microservices**: Loosely coupled services for scalability and independent deployment
-3. **GitOps**: ArgoCD manages deployments from Git as single source of truth
-4. **Observability**: Comprehensive monitoring, logging, and tracing
-5. **Security**: IRSA for AWS access, network policies, secrets management
-6. **Scalability**: Horizontal pod autoscaling and cluster autoscaling
 
 ## Environment Strategy
 
-Kianax will be deployed to **two separate environments**:
+### Two Environments
 
-### Development Environment
-- **Purpose**: Testing, staging, and pre-production validation
-- **Cluster**: `kianax-development` EKS cluster
-- **Domain**: `dev.kianax.io` or `api-dev.kianax.io`
-- **Database**: Smaller RDS instance (db.t3.small, single-AZ)
-- **Redis**: Smaller ElastiCache instance (cache.t3.micro)
-- **Git Branch**: `develop` branch auto-deploys via ArgoCD
-- **Cost**: ~$250-350/month
-- **Use Cases**:
-  - Feature testing before production
-  - Integration testing with external APIs (sandbox mode)
-  - Load testing and performance optimization
-  - Breaking changes validation
+**Development** (`kianax-development`)
+- Purpose: Feature testing and validation
+- Domain: `dev.kianax.io`
+- Database: db.t3.small, single-AZ
+- Redis: cache.t3.micro
+- Cost: ~$300/month
+- Git: `develop` branch auto-deploys
 
-### Production Environment
-- **Purpose**: Live user-facing application
-- **Cluster**: `kianax-production` EKS cluster
-- **Domain**: `kianax.io` or `api.kianax.io`
-- **Database**: Production-grade RDS (db.t3.medium, Multi-AZ)
-- **Redis**: Production ElastiCache cluster (cache.t3.small, 3 nodes)
-- **Git Branch**: `main` branch auto-deploys via ArgoCD
-- **Cost**: ~$1,100-1,500/month
-- **Use Cases**:
-  - Real user traffic
-  - Real broker accounts (live trading)
-  - Production data and compliance
+**Production** (`kianax-production`)
+- Purpose: Live user traffic
+- Domain: `kianax.io`
+- Database: db.t3.medium, Multi-AZ
+- Redis: cache.t3.small, 3-node cluster
+- Cost: ~$1,200/month
+- Git: `main` branch auto-deploys
 
-### Environment Isolation
-
-Both environments are **completely isolated**:
-- Separate EKS clusters
+### Isolation Strategy
+- Separate EKS clusters per environment
 - Separate databases (no shared data)
-- Separate AWS accounts (recommended) or separate VPCs
-- Separate secrets in AWS Secrets Manager
-- Separate monitoring dashboards
+- Separate AWS Secrets Manager namespaces
 - Independent CI/CD pipelines
 
-**Terraform Workspaces:**
-```bash
-terraform workspace new development
-terraform workspace new production
-```
-
-## Authentication with Better Auth
-
-Kianax uses **Better Auth** for authentication and user management. Better Auth is a comprehensive, TypeScript-first authentication framework that handles all authentication concerns with minimal setup.
-
-### What is Better Auth?
-
-Better Auth is a framework-agnostic authentication library that provides:
-- **Database-backed sessions**: Secure, server-side session management
-- **Multiple auth methods**: Email/password, OAuth (Google, GitHub, etc.), magic links, passkeys
-- **Built-in security**: Password hashing (scrypt), CSRF protection, rate limiting
-- **TypeScript-first**: Full type safety across client and server
-- **Extensible**: Plugin system for advanced features (2FA, organizations, etc.)
-
-**Why Better Auth for Kianax?**
-- Eliminates need to build custom authentication from scratch
-- Handles complex security concerns automatically (password hashing, session management, token refresh)
-- Provides OAuth integration out-of-the-box for social login
-- Multi-session support (users can log in on multiple devices)
-- Works seamlessly with Next.js and Fastify (our tech stack)
-- Easy database migrations via CLI
-
-### Better Auth Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│  Frontend (Next.js 16)                      │
-│  - authClient (better-auth/react)           │
-│  - Reactive session state                   │
-│  - Sign up/in/out UI                        │
-└──────────────┬──────────────────────────────┘
-               │ HTTPS
-               ▼
-┌─────────────────────────────────────────────┐
-│  API Gateway or Auth Service                │
-│  - Better Auth handler                      │
-│  - /api/auth/* routes                       │
-│  - Session validation middleware            │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  PostgreSQL Database                        │
-│  - user table                               │
-│  - session table                            │
-│  - account table (OAuth providers)          │
-│  - verification table (email verification)  │
-└─────────────────────────────────────────────┘
-```
-
-### Database Schema
-
-Better Auth requires **4 core tables** in PostgreSQL:
-
-**1. user table**
-```sql
-id          TEXT PRIMARY KEY
-name        TEXT
-email       TEXT UNIQUE NOT NULL
-emailVerified BOOLEAN DEFAULT false
-image       TEXT
-createdAt   TIMESTAMP DEFAULT NOW()
-updatedAt   TIMESTAMP DEFAULT NOW()
-```
-
-**2. session table**
-```sql
-id          TEXT PRIMARY KEY  -- Session token (used as cookie)
-userId      TEXT NOT NULL REFERENCES user(id)
-expiresAt   TIMESTAMP NOT NULL
-ipAddress   TEXT
-userAgent   TEXT
-createdAt   TIMESTAMP DEFAULT NOW()
-updatedAt   TIMESTAMP DEFAULT NOW()
-```
-
-**3. account table** (for OAuth providers and passwords)
-```sql
-id              TEXT PRIMARY KEY
-userId          TEXT NOT NULL REFERENCES user(id)
-accountId       TEXT NOT NULL  -- Provider user ID (e.g., GitHub user ID)
-providerId      TEXT NOT NULL  -- Provider name (e.g., 'github', 'google')
-accessToken     TEXT
-refreshToken    TEXT
-expiresAt       TIMESTAMP
-scope           TEXT
-idToken         TEXT
-password        TEXT           -- Hashed password (for email/password auth)
-createdAt       TIMESTAMP DEFAULT NOW()
-updatedAt       TIMESTAMP DEFAULT NOW()
-```
-
-**4. verification table** (for email verification tokens)
-```sql
-id          TEXT PRIMARY KEY
-identifier  TEXT NOT NULL      -- Email or phone number
-value       TEXT NOT NULL      -- Verification code/token
-expiresAt   TIMESTAMP NOT NULL
-createdAt   TIMESTAMP DEFAULT NOW()
-updatedAt   TIMESTAMP DEFAULT NOW()
-```
-
-### Installation and Setup
-
-**1. Install Better Auth**
-
-```bash
-# Install better-auth core and React client
-bun add better-auth
-bun add better-auth/react  # For frontend
-
-# Install database adapter (we use Drizzle ORM)
-bun add better-auth/drizzle-orm
-```
-
-**2. Configure Better Auth Server**
-
-Create `packages/db/src/auth.ts`:
-
-```typescript
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "./db";  // Your Drizzle instance
-
-export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg",  // PostgreSQL
-  }),
-
-  // Email/password authentication
-  emailAndPassword: {
-    enabled: true,
-    minPasswordLength: 8,
-    maxPasswordLength: 128,
-    requireEmailVerification: true,  // Require email verification before login
-  },
-
-  // OAuth providers (optional, add as needed)
-  socialProviders: {
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    },
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
-  },
-
-  // Session configuration
-  session: {
-    expiresIn: 60 * 60 * 24 * 7,  // 7 days
-    updateAge: 60 * 60 * 24,       // Refresh if session used after 1 day
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5,  // 5 minutes (reduces DB queries)
-    },
-  },
-
-  // Security
-  rateLimit: {
-    enabled: true,
-    window: 60,        // 1 minute
-    max: 100,          // 100 requests per minute per IP
-  },
-
-  // Advanced options
-  advanced: {
-    generateId: () => crypto.randomUUID(),  // Custom ID generation
-  },
-});
-
-// Export types for TypeScript
-export type Session = typeof auth.$Infer.Session;
-export type User = typeof auth.$Infer.User;
-```
-
-**3. Set Up API Routes**
-
-For **Next.js (Frontend)**:
-
-Create `apps/web/app/api/auth/[...all]/route.ts`:
-
-```typescript
-import { auth } from "@kianax/db/auth";
-import { toNextJsHandler } from "better-auth/next-js";
-
-// Export GET and POST handlers
-export const { GET, POST } = toNextJsHandler(auth.handler);
-```
-
-For **Fastify (Backend/API Gateway)**:
-
-Create `apps/server/src/routes/auth.ts`:
-
-```typescript
-import { FastifyInstance } from "fastify";
-import { auth } from "@kianax/db/auth";
-
-export default async function authRoutes(fastify: FastifyInstance) {
-  // Mount Better Auth handler at /auth/*
-  fastify.all("/auth/*", async (request, reply) => {
-    return auth.handler({
-      request: {
-        method: request.method,
-        url: request.url,
-        headers: request.headers as Record<string, string>,
-        body: request.body,
-      },
-      setHeader: (key, value) => {
-        reply.header(key, value);
-      },
-      setCookie: (name, value, options) => {
-        reply.setCookie(name, value, options);
-      },
-    });
-  });
-}
-```
-
-**4. Set Up Frontend Client**
-
-Create `apps/web/lib/auth-client.ts`:
-
-```typescript
-import { createAuthClient } from "better-auth/react";
-
-export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
-});
-
-// Export hooks for components
-export const {
-  useSession,
-  signIn,
-  signUp,
-  signOut,
-} = authClient;
-```
-
-**5. Generate Database Schema**
-
-```bash
-# Generate Drizzle schema
-cd packages/db
-npx @better-auth/cli generate
-
-# This creates migration files in drizzle/ directory
-
-# Run migrations
-bun run db:migrate
-```
-
-### Authentication Flows
-
-**Sign Up (Email/Password)**
-
-```typescript
-// Frontend component
-import { authClient } from "@/lib/auth-client";
-
-async function handleSignUp(email: string, password: string, name: string) {
-  const { data, error } = await authClient.signUp.email({
-    email,
-    password,
-    name,
-    callbackURL: "/dashboard",  // Redirect after sign up
-  });
-
-  if (error) {
-    console.error("Sign up failed:", error);
-    return;
-  }
-
-  // User created, verification email sent (if enabled)
-  console.log("User created:", data.user);
-}
-```
-
-**Sign In (Email/Password)**
-
-```typescript
-async function handleSignIn(email: string, password: string) {
-  const { data, error } = await authClient.signIn.email({
-    email,
-    password,
-    rememberMe: true,  // Extend session duration
-  });
-
-  if (error) {
-    console.error("Sign in failed:", error);
-    return;
-  }
-
-  // Session created
-  console.log("Signed in:", data.user);
-}
-```
-
-**OAuth Sign In (GitHub/Google)**
-
-```typescript
-async function handleOAuthSignIn() {
-  // Redirects to OAuth provider
-  await authClient.signIn.social({
-    provider: "github",
-    callbackURL: "/dashboard",
-  });
-}
-```
-
-**Sign Out**
-
-```typescript
-async function handleSignOut() {
-  await authClient.signOut();
-  router.push("/");
-}
-```
-
-### Session Management
-
-**Client-Side: Check Session**
-
-```typescript
-"use client";
-import { useSession } from "@/lib/auth-client";
-
-export function ProfileButton() {
-  const { data: session, isPending } = useSession();
-
-  if (isPending) return <div>Loading...</div>;
-
-  if (!session) {
-    return <a href="/sign-in">Sign In</a>;
-  }
-
-  return (
-    <div>
-      Welcome, {session.user.name}!
-      <button onClick={handleSignOut}>Sign Out</button>
-    </div>
-  );
-}
-```
-
-**Server-Side: Validate Session**
-
-```typescript
-// Next.js Server Component
-import { auth } from "@kianax/db/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-export default async function DashboardPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    redirect("/sign-in");
-  }
-
-  return <div>Welcome, {session.user.name}!</div>;
-}
-```
-
-**Fastify: Validate Session Middleware**
-
-```typescript
-import { FastifyRequest, FastifyReply } from "fastify";
-import { auth } from "@kianax/db/auth";
-
-export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
-  const session = await auth.api.getSession({
-    headers: request.headers as Record<string, string>,
-  });
-
-  if (!session) {
-    return reply.code(401).send({ error: "Unauthorized" });
-  }
-
-  // Attach user to request
-  request.user = session.user;
-}
-
-// Use in routes
-fastify.get("/portfolio", {
-  preHandler: requireAuth,
-}, async (request, reply) => {
-  const userId = request.user.id;
-  // Fetch portfolio for user...
-});
-```
-
-### Multi-Session Support
-
-Better Auth supports multiple sessions per user (e.g., logged in on phone and laptop).
-
-```typescript
-// List all active sessions
-const sessions = await authClient.listSessions();
-
-// Revoke specific session
-await authClient.revokeSession({ sessionToken: "session-token-here" });
-
-// Revoke all other sessions (keep current)
-await authClient.revokeOtherSessions();
-
-// Revoke ALL sessions (force re-login everywhere)
-await authClient.revokeSessions();
-```
-
-### Security Features
-
-**1. Password Hashing**
-- Uses **scrypt** algorithm (memory-intensive, resistant to brute-force)
-- Configurable via custom hash/verify functions
-
-**2. Session Security**
-- Sessions stored server-side in database
-- Session tokens are cryptographically random UUIDs
-- Cookies are HTTP-only, secure, and signed
-- Automatic session refresh on activity
-
-**3. Rate Limiting**
-- Built-in rate limiting per IP address
-- Prevents brute-force attacks
-- Configurable limits
-
-**4. CSRF Protection**
-- CSRF tokens for state-changing operations
-- Automatic validation
-
-**5. Email Verification**
-- Require email verification before login
-- Verification tokens expire after 24 hours
-
-### Environment Variables
-
-Add to AWS Secrets Manager:
-
-```bash
-# Development environment
-aws secretsmanager create-secret \
-  --name kianax/development/better-auth-secret \
-  --secret-string "$(openssl rand -hex 32)"
-
-# Production environment
-aws secretsmanager create-secret \
-  --name kianax/production/better-auth-secret \
-  --secret-string "$(openssl rand -hex 32)"
-
-# OAuth credentials (if using social login)
-aws secretsmanager create-secret \
-  --name kianax/production/github-oauth \
-  --secret-string '{"clientId":"your-id","clientSecret":"your-secret"}'
-```
-
-Reference in application:
-
-```typescript
-// apps/server/.env or k8s secret
-BETTER_AUTH_SECRET=<from-secrets-manager>
-BETTER_AUTH_URL=https://api.kianax.io
-DATABASE_URL=<rds-connection-string>
-
-# OAuth (optional)
-GITHUB_CLIENT_ID=<from-secrets-manager>
-GITHUB_CLIENT_SECRET=<from-secrets-manager>
-GOOGLE_CLIENT_ID=<from-secrets-manager>
-GOOGLE_CLIENT_SECRET=<from-secrets-manager>
-```
-
-### Deployment Considerations
-
-**Database Migration**
-- Run `npx @better-auth/cli generate` to create schema
-- Apply migrations before deploying new code
-- Better Auth handles schema evolution automatically
-
-**Session Storage**
-- Sessions stored in PostgreSQL by default
-- Optional: Use Redis for session caching (reduces DB load)
-- Configure via `secondaryStorage` option
-
-**Kubernetes Deployment**
-- Better Auth is stateless (session stored in DB/Redis)
-- Can run multiple replicas for high availability
-- No sticky sessions required (unlike WebSocket)
-
-**Multi-Tenant Considerations**
-- Better Auth's `user` table includes `userId` (perfect for multi-tenancy)
-- All user data automatically scoped by `userId`
-- No additional isolation needed at auth layer
-
-### Customization
-
-**Additional User Fields**
-
-```typescript
-export const auth = betterAuth({
-  // ... other config
-  user: {
-    additionalFields: {
-      phoneNumber: {
-        type: "string",
-        required: false,
-      },
-      role: {
-        type: "string",
-        defaultValue: "user",
-      },
-      subscriptionTier: {
-        type: "string",
-        defaultValue: "free",
-      },
-    },
-  },
-});
-```
-
-**Custom Authentication Logic**
-
-```typescript
-export const auth = betterAuth({
-  // ... other config
-  hooks: {
-    after: [
-      {
-        matcher: (context) => context.path === "/sign-up/email",
-        handler: async (context) => {
-          // Custom logic after sign up
-          const user = context.returnValue;
-          await sendWelcomeEmail(user.email);
-        },
-      },
-    ],
-  },
-});
-```
-
-### Migration from Custom Auth
-
-If you already have a custom authentication system:
-
-1. **Map existing tables** to Better Auth schema
-2. **Migrate passwords**: Better Auth can validate existing hashes
-3. **Migrate sessions**: Force re-login or map session tokens
-4. **Update API calls**: Replace custom auth with Better Auth API
-
-### Further Resources
-
-- **Better Auth Docs**: https://www.better-auth.com/docs
-- **GitHub Repository**: https://github.com/better-auth/better-auth
-- **Example Apps**: https://github.com/better-auth/better-auth/tree/main/examples
-- **Discord Community**: Join for support and discussions
-
-## Feature Flags & Experimentation with Statsig
-
-Kianax uses **Statsig** for feature flags, A/B testing, and product analytics. Statsig enables safe feature rollouts, experimentation, and data-driven decision making.
-
-### What is Statsig?
-
-Statsig is a unified platform for feature management and experimentation that provides:
-- **Feature Gates**: Control feature rollouts with boolean flags (on/off)
-- **Dynamic Configs**: Deliver parameterized feature values (e.g., UI themes, limits, text)
-- **Experiments/Layers**: Run A/B/n tests to optimize product decisions
-- **Product Analytics**: Track events, funnels, and user behavior
-- **Warehouse Native**: Optional integration with existing data warehouses
-
-**Why Statsig for Kianax?**
-- **Safe Rollouts**: Gradually roll out AI agent features to prevent system-wide issues
-- **A/B Testing**: Test different trading strategies, UI layouts, pricing tiers
-- **Kill Switches**: Instantly disable problematic features without redeployment
-- **User Targeting**: Enable features for specific user segments (beta testers, premium users)
-- **Performance**: Fast SDK with minimal latency (<10ms evaluation)
-- **Multi-environment**: Separate gates for development, staging, and production
-
-### Statsig Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│  Frontend (Next.js 16)                      │
-│  - StatsigClient (@statsig/js-client)       │
-│  - Feature gates: checkGate('feature')      │
-│  - Experiments: getExperiment('test')       │
-│  - Event logging: logEvent('action')        │
-└──────────────┬──────────────────────────────┘
-               │
-               ├──────────────────────────────┐
-               │                              │
-               ▼                              ▼
-┌────────────────────────┐     ┌────────────────────────┐
-│  Backend (Fastify)     │     │   Statsig Cloud        │
-│  - statsig-node SDK    │────▶│   - Feature configs    │
-│  - Server-side gates   │     │   - Targeting rules    │
-│  - Bootstrap client    │◀────│   - Analytics          │
-└────────────────────────┘     │   - Experiment results │
-                               └────────────────────────┘
-```
-
-**Flow:**
-1. **Client initialization**: Frontend fetches feature configs on page load
-2. **Server-side checks**: Backend evaluates gates for API requests
-3. **Event logging**: User actions tracked for analytics and experiments
-4. **Real-time updates**: Configs update in background (10s polling interval)
-
-### Use Cases for Kianax
-
-**1. AI Agent Feature Rollout**
-```typescript
-// Gradually enable new AI model
-if (statsig.checkGate('use_gpt4_turbo')) {
-  return await callGPT4Turbo(prompt);
-} else {
-  return await callGPT35(prompt);
-}
-```
-
-**2. Premium Features Gating**
-```typescript
-// Check user's subscription tier
-const user = { userID: userId, custom: { tier: 'premium' } };
-if (statsig.checkGate(user, 'advanced_analytics')) {
-  return <AdvancedAnalyticsDashboard />;
-}
-```
-
-**3. Trading Strategy A/B Test**
-```typescript
-// Test different risk management strategies
-const experiment = statsig.getExperiment('risk_limit_test');
-const riskMultiplier = experiment.get('multiplier', 1.0);
-const maxPositionSize = baseSize * riskMultiplier;
-```
-
-**4. UI Theme Experiment**
-```typescript
-// Dynamic config for UI customization
-const config = statsig.getDynamicConfig('dashboard_layout');
-const theme = config.get('theme', 'default');
-const chartStyle = config.get('chart_style', 'candlestick');
-```
-
-**5. Kill Switch for Problematic Feature**
-```typescript
-// Instantly disable feature if issues arise
-if (!statsig.checkGate('enable_auto_trading')) {
-  throw new Error('Auto-trading temporarily disabled');
-}
-```
-
-### Installation
-
-**Frontend (Next.js):**
-```bash
-cd apps/web
-bun add @statsig/js-client
-```
-
-**Backend (Fastify/Node.js):**
-```bash
-cd apps/server
-bun add statsig-node
-```
-
-### Configuration
-
-**1. Create Statsig Account**
-- Sign up at https://www.statsig.com
-- Create a project (e.g., "Kianax")
-- Get API keys:
-  - **Client SDK Key**: For frontend (safe to expose)
-  - **Server Secret Key**: For backend (keep secret!)
-
-**2. Store Keys in AWS Secrets Manager**
-
-```bash
-# Development environment
-aws secretsmanager create-secret \
-  --name kianax/development/statsig-client-key \
-  --secret-string "client-xxx"
-
-aws secretsmanager create-secret \
-  --name kianax/development/statsig-server-key \
-  --secret-string "secret-xxx"
-
-# Production environment
-aws secretsmanager create-secret \
-  --name kianax/production/statsig-client-key \
-  --secret-string "client-yyy"
-
-aws secretsmanager create-secret \
-  --name kianax/production/statsig-server-key \
-  --secret-string "secret-yyy"
-```
-
-**3. Environment Variables**
-
-```bash
-# Frontend (.env.local or K8s ConfigMap)
-NEXT_PUBLIC_STATSIG_CLIENT_KEY=client-xxx
-
-# Backend (.env or K8s Secret)
-STATSIG_SERVER_KEY=secret-xxx
-STATSIG_ENVIRONMENT=development  # or production
-```
-
-### Server-Side Setup (Fastify)
-
-**1. Initialize Statsig in Server**
-
-Create `apps/server/src/lib/statsig.ts`:
-
-```typescript
-import Statsig from 'statsig-node';
-
-let initialized = false;
-
-export async function initStatsig() {
-  if (initialized) return;
-
-  await Statsig.initialize(
-    process.env.STATSIG_SERVER_KEY!,
-    {
-      environment: {
-        tier: process.env.STATSIG_ENVIRONMENT || 'production',
-      },
-      // Performance options
-      rulesetsSyncIntervalMs: 10000,  // Fetch updates every 10s
-      idListsSyncIntervalMs: 60000,   // Sync ID lists every 60s
-      loggingIntervalMs: 60000,       // Flush events every 60s
-      loggingMaxBufferSize: 1000,     // Buffer 1000 events
-    }
-  );
-
-  initialized = true;
-  console.log('Statsig initialized');
-}
-
-// Export Statsig instance
-export { Statsig };
-```
-
-**2. Initialize on Server Start**
-
-In `apps/server/src/index.ts`:
-
-```typescript
-import fastify from 'fastify';
-import { initStatsig, Statsig } from './lib/statsig';
-
-async function start() {
-  const app = fastify();
-
-  // Initialize Statsig before accepting requests
-  await initStatsig();
-
-  // Register routes...
-
-  // Graceful shutdown
-  app.addHook('onClose', async () => {
-    await Statsig.shutdown();
-  });
-
-  await app.listen({ port: 3001, host: '0.0.0.0' });
-}
-
-start();
-```
-
-**3. Use in API Routes**
-
-```typescript
-import { Statsig } from '@/lib/statsig';
-import { FastifyRequest, FastifyReply } from 'fastify';
-
-// Check gate for specific user
-fastify.get('/agents', async (request: FastifyRequest, reply: FastifyReply) => {
-  const userId = request.user.id;
-
-  // Create Statsig user object
-  const statsigUser = {
-    userID: userId,
-    email: request.user.email,
-    custom: {
-      tier: request.user.subscriptionTier,
-      signupDate: request.user.createdAt,
-    },
-  };
-
-  // Check if user can access AI agents
-  const canUseAgents = Statsig.checkGate(statsigUser, 'enable_ai_agents');
-
-  if (!canUseAgents) {
-    return reply.code(403).send({
-      error: 'AI agents feature not available',
-    });
-  }
-
-  // Fetch agents...
-});
-
-// Get dynamic config
-fastify.get('/config', async (request: FastifyRequest, reply: FastifyReply) => {
-  const statsigUser = { userID: request.user.id };
-
-  const config = Statsig.getConfig(statsigUser, 'trading_limits');
-
-  return {
-    maxDailyTrades: config.get('max_daily_trades', 10),
-    maxPositionSize: config.get('max_position_size', 1000),
-    riskTolerance: config.get('risk_tolerance', 'medium'),
-  };
-});
-
-// Log event
-fastify.post('/orders', async (request: FastifyRequest, reply: FastifyReply) => {
-  // Create order...
-
-  // Log event to Statsig
-  Statsig.logEvent(
-    { userID: request.user.id },
-    'order_placed',
-    order.symbol,
-    {
-      quantity: order.quantity,
-      side: order.side,
-      price: order.price,
-    }
-  );
-
-  return order;
-});
-```
-
-### Client-Side Setup (Next.js)
-
-**1. Create Statsig Client Provider**
-
-Create `apps/web/lib/statsig-provider.tsx`:
-
-```typescript
-'use client';
-
-import { StatsigClient } from '@statsig/js-client';
-import { createContext, useContext, useEffect, useState } from 'react';
-
-const StatsigContext = createContext<StatsigClient | null>(null);
-
-export function StatsigProvider({ children }: { children: React.ReactNode }) {
-  const [client, setClient] = useState<StatsigClient | null>(null);
-
-  useEffect(() => {
-    const initStatsig = async () => {
-      const statsigClient = new StatsigClient(
-        process.env.NEXT_PUBLIC_STATSIG_CLIENT_KEY!,
-        { userID: 'anonymous' },  // Default user, update after auth
-        {
-          environment: {
-            tier: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-          },
-        }
-      );
-
-      await statsigClient.initializeAsync();
-      setClient(statsigClient);
-    };
-
-    initStatsig();
-
-    return () => {
-      client?.shutdown();
-    };
-  }, []);
-
-  if (!client) {
-    return <div>Loading...</div>;  // Or return children for SSR
-  }
-
-  return (
-    <StatsigContext.Provider value={client}>
-      {children}
-    </StatsigContext.Provider>
-  );
-}
-
-// Custom hook to use Statsig
-export function useStatsig() {
-  const context = useContext(StatsigContext);
-  if (!context) {
-    throw new Error('useStatsig must be used within StatsigProvider');
-  }
-  return context;
-}
-```
-
-**2. Add Provider to App Layout**
-
-In `apps/web/app/layout.tsx`:
-
-```typescript
-import { StatsigProvider } from '@/lib/statsig-provider';
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        <StatsigProvider>
-          {children}
-        </StatsigProvider>
-      </body>
-    </html>
-  );
-}
-```
-
-**3. Update User Context After Authentication**
-
-In your auth callback or after sign-in:
-
-```typescript
-'use client';
-
-import { useStatsig } from '@/lib/statsig-provider';
-import { useSession } from '@/lib/auth-client';
-import { useEffect } from 'react';
-
-export function useStatsigUser() {
-  const statsig = useStatsig();
-  const { data: session } = useSession();
-
-  useEffect(() => {
-    if (session?.user) {
-      // Update Statsig user context
-      statsig.updateUserAsync({
-        userID: session.user.id,
-        email: session.user.email,
-        custom: {
-          name: session.user.name,
-          tier: session.user.subscriptionTier || 'free',
-          signupDate: session.user.createdAt,
-        },
-      });
-    }
-  }, [session, statsig]);
-}
-```
-
-**4. Use Feature Gates in Components**
-
-```typescript
-'use client';
-
-import { useStatsig } from '@/lib/statsig-provider';
-
-export function AgentDashboard() {
-  const statsig = useStatsig();
-
-  // Check feature gate
-  const showAdvancedAnalytics = statsig.checkGate('advanced_analytics');
-
-  return (
-    <div>
-      <h1>Agent Dashboard</h1>
-
-      {showAdvancedAnalytics && (
-        <AdvancedAnalyticsPanel />
-      )}
-
-      {!showAdvancedAnalytics && (
-        <BasicAnalyticsPanel />
-      )}
-    </div>
-  );
-}
-```
-
-**5. Use Dynamic Configs**
-
-```typescript
-'use client';
-
-import { useStatsig } from '@/lib/statsig-provider';
-
-export function TradingTerminal() {
-  const statsig = useStatsig();
-
-  // Get dynamic config
-  const config = statsig.getDynamicConfig('trading_ui');
-  const theme = config.get('theme', 'dark');
-  const maxOrderSize = config.get('max_order_size', 1000);
-  const showAdvancedTools = config.get('show_advanced_tools', false);
-
-  return (
-    <div data-theme={theme}>
-      <OrderForm maxSize={maxOrderSize} />
-      {showAdvancedTools && <AdvancedTradingTools />}
-    </div>
-  );
-}
-```
-
-**6. Log Events**
-
-```typescript
-'use client';
-
-import { useStatsig } from '@/lib/statsig-provider';
-
-export function OrderButton({ symbol }: { symbol: string }) {
-  const statsig = useStatsig();
-
-  const handleOrder = async () => {
-    // Place order via API...
-
-    // Log event
-    statsig.logEvent('order_button_clicked', symbol, {
-      location: 'trading_terminal',
-      timestamp: Date.now(),
-    });
-  };
-
-  return <button onClick={handleOrder}>Buy {symbol}</button>;
-}
-```
-
-### Creating Feature Gates in Statsig Console
-
-**1. Create a Feature Gate**
-- Go to Statsig Console → Feature Gates
-- Click "Create"
-- Name: `enable_ai_agents`
-- Description: "Enable AI trading agents for users"
-- Default: `false` (off by default)
-
-**2. Add Targeting Rules**
-
-**Rule 1: Internal Team (100% pass)**
-- Condition: `email contains @kianax.io`
-- Pass percentage: 100%
-
-**Rule 2: Beta Testers (100% pass)**
-- Condition: `custom.tier = 'beta'`
-- Pass percentage: 100%
-
-**Rule 3: Premium Users Rollout (50% pass)**
-- Condition: `custom.tier = 'premium'`
-- Pass percentage: 50% (gradual rollout)
-
-**Rule 4: All Users (0% pass)**
-- Condition: `Everyone Else`
-- Pass percentage: 0% (not ready for general availability)
-
-**3. Test in Development**
-
-Use Statsig's environment feature:
-- Set `environment.tier = 'development'` in SDK
-- Create separate rules for development environment
-- Test without affecting production users
-
-### A/B Testing Examples
-
-**Experiment: Trading Fee Structure**
-
-1. **Create Experiment in Statsig**
-   - Name: `trading_fee_experiment`
-   - Variants:
-     - `control`: 0.1% fee (current)
-     - `variant_a`: 0.05% fee (lower)
-     - `variant_b`: 0.15% fee + premium features
-
-2. **Implement in Code**
-
-```typescript
-// Backend: Get experiment config
-const experiment = Statsig.getExperiment(
-  { userID: request.user.id },
-  'trading_fee_experiment'
-);
-
-const feePercentage = experiment.get('fee_percentage', 0.1);
-const includePremiumFeatures = experiment.get('premium_features', false);
-
-const fee = orderValue * feePercentage;
-
-// Log event for analysis
-Statsig.logEvent(
-  { userID: request.user.id },
-  'order_completed',
-  null,
-  {
-    fee,
-    feePercentage,
-    experimentVariant: experiment.getGroupName(),
-  }
-);
-```
-
-3. **Analyze Results**
-   - Statsig automatically tracks:
-     - User distribution across variants
-     - Conversion rates
-     - Revenue per user
-     - Statistical significance
-
-### Environment-Based Configuration
-
-**Development Environment:**
-```typescript
-// apps/server/.env.development
-STATSIG_SERVER_KEY=secret-dev-xxx
-STATSIG_ENVIRONMENT=development
-
-// apps/web/.env.development
-NEXT_PUBLIC_STATSIG_CLIENT_KEY=client-dev-xxx
-```
-
-**Production Environment:**
-```typescript
-// K8s Secret for production
-apiVersion: v1
-kind: Secret
-metadata:
-  name: statsig-secrets
-  namespace: kianax
-type: Opaque
-data:
-  server-key: <base64-encoded-production-key>
-  client-key: <base64-encoded-production-client-key>
-```
-
-**Separate Rules per Environment:**
-- Development: Enable all features for testing
-- Production: Gradual rollouts with targeting rules
-
-### Best Practices
-
-**1. Feature Gate Naming**
-- Use descriptive names: `enable_ai_agents` not `feature_1`
-- Prefix by area: `trading_`, `agent_`, `ui_`
-- Use snake_case consistently
-
-**2. User Context**
-```typescript
-// ✅ Good: Rich user context
-const user = {
-  userID: userId,
-  email: userEmail,
-  custom: {
-    tier: 'premium',
-    signupDate: '2025-01-15',
-    country: 'US',
-    totalTrades: 150,
-  },
-};
-
-// ❌ Bad: Minimal context limits targeting
-const user = { userID: userId };
-```
-
-**3. Fallback Values**
-```typescript
-// Always provide fallbacks
-const maxTrades = config.get('max_daily_trades', 10);  // ✅
-const maxTrades = config.get('max_daily_trades');      // ❌ Could be undefined
-```
-
-**4. Async Initialization**
-```typescript
-// ✅ Good: Wait for initialization
-await statsigClient.initializeAsync();
-
-// ❌ Bad: Check gates before ready
-statsigClient.checkGate('feature');  // May return default incorrectly
-```
-
-**5. Exposure Logging**
-- Statsig automatically logs exposures when you check gates
-- Don't manually log exposures unless custom logic required
-- Exposures are crucial for experiment analysis
-
-**6. Clean Up Old Gates**
-- Remove gates after 100% rollout
-- Archive experiments after completion
-- Keep codebase clean
-
-### Multi-Tenant Considerations
-
-**User Isolation:**
-```typescript
-// Always pass userID for proper tracking
-const canAccess = Statsig.checkGate(
-  { userID: authenticatedUserId },  // ✅ User-specific
-  'premium_feature'
-);
-
-// Never use shared/global context
-const canAccess = Statsig.checkGate('premium_feature');  // ❌ No user context
-```
-
-**Private Attributes:**
-```typescript
-// Keep sensitive data private (not logged to Statsig)
-const user = {
-  userID: userId,
-  email: userEmail,
-  privateAttributes: {
-    ssn: '123-45-6789',       // Not logged
-    apiKey: 'secret-key',     // Not logged
-  },
-  custom: {
-    tier: 'premium',          // Logged for analytics
-  },
-};
-```
-
-### Deployment Considerations
-
-**1. Server-Side Initialization**
-- Initialize Statsig on server start (before accepting requests)
-- Gracefully shutdown to flush pending events
-
-**2. Kubernetes Deployment**
-- Statsig SDKs are stateless
-- Multiple replicas work fine (separate event buffers)
-- No sticky sessions required
-
-**3. Performance**
-- Gate checks are synchronous (after initialization)
-- Minimal latency: <1ms for gate checks
-- Background polling: 10s interval for updates
-
-**4. Rate Limiting**
-- Statsig has generous rate limits
-- Event logging is batched (reduces API calls)
-- SDK handles retries automatically
-
-**5. Monitoring**
-```typescript
-// Log Statsig errors
-Statsig.on('error', (error) => {
-  console.error('Statsig error:', error);
-  // Send to Sentry or monitoring service
-});
-```
-
-### Cost Optimization
-
-**Free Tier:**
-- 1M events/month
-- Unlimited feature gates
-- Unlimited experiments
-- Perfect for early stage
-
-**Paid Tier (as you scale):**
-- Additional events: $0.10 per 1K events
-- Warehouse Native: Custom pricing
-- Enterprise features: Contact sales
-
-### Further Resources
-
-- **Statsig Docs**: https://docs.statsig.com
-- **Console**: https://console.statsig.com
-- **SDKs**: https://github.com/statsig-io
-- **Status Page**: https://status.statsig.com
-
-## Prerequisites
-
-### Required Tools
-
-Install the following tools on your local machine:
-
-```bash
-# AWS CLI v2
-brew install awscli
-
-# kubectl (Kubernetes CLI)
-brew install kubectl
-
-# Terraform
-brew install terraform
-
-# Helm (Kubernetes package manager)
-brew install helm
-
-# ArgoCD CLI
-brew install argocd
-
-# Optional but recommended
-brew install k9s              # Terminal UI for Kubernetes
-brew install kubectx          # Switch between clusters/namespaces easily
-brew install stern            # Multi-pod log tailing
-```
-
-### AWS Account Setup
-
-1. **Create AWS Account** (if you don't have one)
-   - Sign up at https://aws.amazon.com
-
-2. **Create IAM User for Terraform**
-   ```bash
-   # Create IAM user with admin access (for initial setup)
-   # In production, use more restrictive policies
-   aws iam create-user --user-name kianax-terraform
-
-   # Attach admin policy (temporary, restrict later)
-   aws iam attach-user-policy \
-     --user-name kianax-terraform \
-     --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
-
-   # Create access keys
-   aws iam create-access-key --user-name kianax-terraform
-   ```
-
-3. **Configure AWS CLI**
-   ```bash
-   aws configure
-   # Enter:
-   # - AWS Access Key ID
-   # - AWS Secret Access Key
-   # - Default region: us-east-1 (or your preferred region)
-   # - Default output format: json
-   ```
-
-4. **Set up Terraform backend** (S3 + DynamoDB for state locking)
-   ```bash
-   # Create S3 bucket for Terraform state
-   aws s3api create-bucket \
-     --bucket kianax-terraform-state \
-     --region us-east-1
-
-   # Enable versioning
-   aws s3api put-bucket-versioning \
-     --bucket kianax-terraform-state \
-     --versioning-configuration Status=Enabled
-
-   # Create DynamoDB table for state locking
-   aws dynamodb create-table \
-     --table-name kianax-terraform-locks \
-     --attribute-definitions AttributeName=LockID,AttributeType=S \
-     --key-schema AttributeName=LockID,KeyType=HASH \
-     --billing-mode PAY_PER_REQUEST \
-     --region us-east-1
-   ```
-
-### GitHub Setup
-
-1. **Create GitHub Personal Access Token** (for ArgoCD)
-   - Go to GitHub Settings → Developer settings → Personal access tokens
-   - Generate token with `repo` scope
-   - Save token securely
-
-2. **Set up GitHub Actions secrets**
-   ```bash
-   # We'll add these via GitHub UI:
-   # - AWS_ACCOUNT_ID
-   # - AWS_REGION
-   # - ECR_REPOSITORY_*
-   ```
-
-## Infrastructure Components
-
-### Network Architecture
-
-**VPC Configuration:**
-- CIDR: `10.0.0.0/16`
-- 3 Availability Zones for high availability
-- Public subnets: `10.0.1.0/24`, `10.0.2.0/24`, `10.0.3.0/24` (ALB, NAT)
-- Private subnets: `10.0.11.0/24`, `10.0.12.0/24`, `10.0.13.0/24` (EKS pods)
-- Database subnets: `10.0.21.0/24`, `10.0.22.0/24`, `10.0.23.0/24` (RDS, Redis)
-
-**Security Groups:**
-- `alb-sg`: Allow 443 from internet, allow all to EKS
-- `eks-cluster-sg`: Allow all from ALB and within cluster
-- `eks-node-sg`: Allow all within VPC
-- `rds-sg`: Allow 5432 from EKS pods only
-- `redis-sg`: Allow 6379 from EKS pods only
-
-### EKS Cluster Configuration
-
-**Cluster Specifications:**
-- Kubernetes version: 1.31
-- Control plane: AWS-managed (highly available across 3 AZs)
-- Networking: VPC CNI with prefix delegation (more IPs per node)
-- Logging: Audit, API, Controller Manager logs to CloudWatch
-
-**Node Groups:**
-
-1. **General workload nodes** (`general-ng`)
-   - Instance type: `t3.medium` (2 vCPU, 4GB RAM)
-   - Capacity: 2-5 nodes (autoscaling)
-   - Taints: None
-   - Use: Most microservices
-
-2. **System addons nodes** (`system-ng`)
-   - Instance type: `t3.small` (2 vCPU, 2GB RAM)
-   - Capacity: 2 nodes (fixed)
-   - Taints: `node-role.kubernetes.io/system:NoSchedule`
-   - Use: Prometheus, Grafana, ArgoCD
-
-3. **Spot instance nodes** (`jobs-ng`) - Optional
-   - Instance type: `t3.medium` (spot)
-   - Capacity: 0-10 nodes (autoscaling)
-   - Taints: `node-role.kubernetes.io/spot:NoSchedule`
-   - Use: AI agent execution, batch jobs
-
-**EKS Addons:**
-- `vpc-cni`: Pod networking (version: latest)
-- `coredns`: DNS resolution
-- `kube-proxy`: Network proxying
-- `aws-ebs-csi-driver`: Persistent volume support
-
-### Database Configuration
-
-**Amazon RDS PostgreSQL 16:**
-
-**Staging:**
-- Instance: `db.t3.small` (2 vCPU, 2GB RAM)
-- Storage: 50GB GP3
-- Single-AZ deployment
-- Automated backups: 7-day retention
-- Backup window: 03:00-04:00 UTC
-
-**Production:**
-- Instance: `db.t3.medium` (2 vCPU, 4GB RAM)
-- Storage: 100GB GP3
-- Multi-AZ deployment (automatic failover)
-- Automated backups: 14-day retention
-- Backup window: 03:00-04:00 UTC
-- Read replica: Optional (add for scaling reads)
-
-**Performance Insights:** Enabled (7-day retention)
-
-**Amazon ElastiCache Redis 7:**
-
-**Staging:**
-- Node type: `cache.t3.micro` (0.5GB RAM)
-- Nodes: 1 (no clustering)
-- Snapshot retention: 1 day
-
-**Production:**
-- Node type: `cache.t3.small` (1.5GB RAM)
-- Nodes: 3 (cluster mode enabled with 3 shards)
-- Automatic failover: Enabled
-- Snapshot retention: 7 days
-- Snapshot window: 04:00-05:00 UTC
-
-### Kubernetes Addons
-
-**Essential Addons** (installed via Helm):
-
-1. **AWS Load Balancer Controller** (v2.8+)
-   - Manages ALB and NLB from K8s Ingress/Service
-   - Automatic target group registration
-   - WebSocket support via annotations
-
-2. **External Secrets Operator** (v0.9+)
-   - Syncs AWS Secrets Manager to K8s Secrets
-   - Automatic rotation
-   - IRSA for secure access
-
-3. **Metrics Server**
-   - Pod-level resource metrics
-   - Required for HPA (Horizontal Pod Autoscaler)
-
-4. **Cluster Autoscaler**
-   - Automatically adds/removes nodes
-   - Integrates with AWS Auto Scaling Groups
-
-5. **kube-prometheus-stack** (Prometheus + Grafana)
-   - Metrics collection and visualization
-   - Pre-built dashboards for K8s and applications
-   - AlertManager for notifications
-
-6. **FluentBit**
-   - Log collection from all pods
-   - Ships to CloudWatch Logs
-   - Structured JSON parsing
-
-7. **ArgoCD**
-   - GitOps continuous delivery
-   - Web UI for deployment visualization
-   - Automated sync from Git
-
-8. **External DNS** (Optional)
-   - Automatic Route53 record management
-   - Updates DNS when Ingress is created
-
-## Local Development
-
-For local Kubernetes testing, see [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md).
-
-**Quick summary:**
-- Use **Minikube** or **Kind** for local K8s cluster
-- Use **Docker Compose** for local services (simpler alternative)
-- Use **Tilt** for rapid inner-loop development with K8s
-
-## Deployment Steps
-
-### Phase 1: Infrastructure Provisioning (Terraform)
-
-1. **Clone repository and set up Terraform**
-   ```bash
-   git clone https://github.com/yourusername/kianax.git
-   cd kianax/infrastructure/terraform
-   ```
-
-2. **Initialize Terraform**
-   ```bash
-   terraform init
-   ```
-
-3. **Create workspace for staging**
-   ```bash
-   terraform workspace new staging
-   terraform workspace select staging
-   ```
-
-4. **Review and customize variables**
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars.staging
-   # Edit terraform.tfvars.staging with your values
-   ```
-
-   Example `terraform.tfvars.staging`:
-   ```hcl
-   environment         = "staging"
-   aws_region         = "us-east-1"
-   cluster_name       = "kianax-staging"
-   cluster_version    = "1.31"
-
-   # Node group configuration
-   general_node_instance_type = "t3.medium"
-   general_node_min_size     = 2
-   general_node_max_size     = 5
-   general_node_desired_size = 2
-
-   # Database configuration
-   rds_instance_class        = "db.t3.small"
-   rds_allocated_storage    = 50
-   rds_multi_az            = false
-
-   # Redis configuration
-   redis_node_type          = "cache.t3.micro"
-   redis_num_cache_nodes   = 1
-
-   # Tags
-   tags = {
-     Project     = "kianax"
-     Environment = "staging"
-     ManagedBy   = "terraform"
-   }
-   ```
-
-5. **Plan and apply infrastructure**
-   ```bash
-   # Review what will be created
-   terraform plan -var-file=terraform.tfvars.staging
-
-   # Apply (will take 15-20 minutes for EKS cluster)
-   terraform apply -var-file=terraform.tfvars.staging
-   ```
-
-6. **Configure kubectl**
-   ```bash
-   # Update kubeconfig to access the cluster
-   aws eks update-kubeconfig \
-     --region us-east-1 \
-     --name kianax-staging
-
-   # Verify connection
-   kubectl get nodes
-   ```
-
-### Phase 2: Install Kubernetes Addons
-
-1. **Install AWS Load Balancer Controller**
-   ```bash
-   # Add Helm repository
-   helm repo add eks https://aws.github.io/eks-charts
-   helm repo update
-
-   # Install
-   helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-     -n kube-system \
-     --set clusterName=kianax-staging \
-     --set serviceAccount.create=false \
-     --set serviceAccount.name=aws-load-balancer-controller
-   ```
-
-2. **Install External Secrets Operator**
-   ```bash
-   helm repo add external-secrets https://charts.external-secrets.io
-   helm repo update
-
-   helm install external-secrets external-secrets/external-secrets \
-     -n external-secrets-system \
-     --create-namespace
-   ```
-
-3. **Install Metrics Server**
-   ```bash
-   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-   ```
-
-4. **Install Cluster Autoscaler**
-   ```bash
-   helm repo add autoscaler https://kubernetes.github.io/autoscaler
-   helm repo update
-
-   helm install cluster-autoscaler autoscaler/cluster-autoscaler \
-     -n kube-system \
-     --set autoDiscovery.clusterName=kianax-staging \
-     --set awsRegion=us-east-1
-   ```
-
-5. **Install kube-prometheus-stack**
-   ```bash
-   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-   helm repo update
-
-   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-     -n monitoring \
-     --create-namespace \
-     --set prometheus.prometheusSpec.retention=30d \
-     --set grafana.adminPassword=your-secure-password
-   ```
-
-6. **Install FluentBit**
-   ```bash
-   helm repo add fluent https://fluent.github.io/helm-charts
-   helm repo update
-
-   helm install fluent-bit fluent/fluent-bit \
-     -n logging \
-     --create-namespace \
-     --set cloudWatch.enabled=true \
-     --set cloudWatch.region=us-east-1 \
-     --set cloudWatch.logGroupName=/aws/eks/kianax-staging/application
-   ```
-
-7. **Install ArgoCD**
-   ```bash
-   kubectl create namespace argocd
-   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-   # Get initial admin password
-   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-
-   # Port forward to access UI
-   kubectl port-forward svc/argocd-server -n argocd 8080:443
-   # Open https://localhost:8080
-   ```
-
-### Phase 3: Configure Secrets
-
-1. **Store secrets in AWS Secrets Manager**
-   ```bash
-   # Database URL
-   aws secretsmanager create-secret \
-     --name kianax/staging/database-url \
-     --secret-string "postgresql://username:password@rds-endpoint:5432/kianax"
-
-   # Redis URL
-   aws secretsmanager create-secret \
-     --name kianax/staging/redis-url \
-     --secret-string "redis://elasticache-endpoint:6379"
-
-   # JWT Secret
-   aws secretsmanager create-secret \
-     --name kianax/staging/jwt-secret \
-     --secret-string "$(openssl rand -hex 32)"
-
-   # External API keys
-   aws secretsmanager create-secret \
-     --name kianax/staging/polygon-api-key \
-     --secret-string "your-polygon-key"
-
-   aws secretsmanager create-secret \
-     --name kianax/staging/openai-api-key \
-     --secret-string "your-openai-key"
-
-   aws secretsmanager create-secret \
-     --name kianax/staging/anthropic-api-key \
-     --secret-string "your-anthropic-key"
-   ```
-
-2. **Create ExternalSecret resources**
-
-   Create `k8s/base/external-secrets.yaml`:
-   ```yaml
-   apiVersion: external-secrets.io/v1beta1
-   kind: SecretStore
-   metadata:
-     name: aws-secrets-manager
-     namespace: kianax
-   spec:
-     provider:
-       aws:
-         service: SecretsManager
-         region: us-east-1
-         auth:
-           jwt:
-             serviceAccountRef:
-               name: external-secrets-sa
-   ---
-   apiVersion: external-secrets.io/v1beta1
-   kind: ExternalSecret
-   metadata:
-     name: kianax-secrets
-     namespace: kianax
-   spec:
-     refreshInterval: 1h
-     secretStoreRef:
-       name: aws-secrets-manager
-       kind: SecretStore
-     target:
-       name: kianax-secrets
-       creationPolicy: Owner
-     data:
-       - secretKey: DATABASE_URL
-         remoteRef:
-           key: kianax/staging/database-url
-       - secretKey: REDIS_URL
-         remoteRef:
-           key: kianax/staging/redis-url
-       - secretKey: JWT_SECRET
-         remoteRef:
-           key: kianax/staging/jwt-secret
-       - secretKey: POLYGON_API_KEY
-         remoteRef:
-           key: kianax/staging/polygon-api-key
-       - secretKey: OPENAI_API_KEY
-         remoteRef:
-           key: kianax/staging/openai-api-key
-       - secretKey: ANTHROPIC_API_KEY
-         remoteRef:
-           key: kianax/staging/anthropic-api-key
-   ```
-
-   Apply:
-   ```bash
-   kubectl apply -f k8s/base/external-secrets.yaml
-   ```
-
-### Phase 4: Deploy Applications
-
-1. **Build and push Docker images**
-   ```bash
-   # Login to ECR
-   aws ecr get-login-password --region us-east-1 | \
-     docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
-
-   # Build and push api-gateway
-   cd apps/server
-   docker build -t kianax-api-gateway:latest .
-   docker tag kianax-api-gateway:latest $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/kianax-api-gateway:latest
-   docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/kianax-api-gateway:latest
-   ```
-
-2. **Deploy via Helm**
-   ```bash
-   # Install api-gateway
-   helm install api-gateway k8s/charts/api-gateway \
-     -n kianax \
-     --create-namespace \
-     -f k8s/charts/api-gateway/values-staging.yaml
-   ```
-
-3. **Or deploy via ArgoCD (recommended)**
-   ```bash
-   # Login to ArgoCD
-   argocd login localhost:8080 --username admin --password <password>
-
-   # Create application
-   argocd app create api-gateway \
-     --repo https://github.com/yourusername/kianax.git \
-     --path k8s/charts/api-gateway \
-     --dest-server https://kubernetes.default.svc \
-     --dest-namespace kianax \
-     --values values-staging.yaml \
-     --sync-policy automated \
-     --auto-prune \
-     --self-heal
-   ```
-
-4. **Verify deployment**
-   ```bash
-   # Check pods
-   kubectl get pods -n kianax
-
-   # Check services
-   kubectl get svc -n kianax
-
-   # Check ingress
-   kubectl get ingress -n kianax
-
-   # Get ALB URL
-   kubectl get ingress api-gateway -n kianax -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-   ```
-
-5. **Run database migrations**
-   ```bash
-   # Create migration job
-   kubectl create job --from=cronjob/migrations migrate-$(date +%s) -n kianax
-
-   # Or run directly
-   kubectl run migrate --image=$AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/kianax-api-gateway:latest \
-     --restart=Never \
-     --env="DATABASE_URL=$(kubectl get secret kianax-secrets -n kianax -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
-     --command -- bun run db:migrate
-   ```
-
-### Phase 5: Configure DNS and SSL
-
-1. **Request ACM certificate**
-   ```bash
-   aws acm request-certificate \
-     --domain-name api.kianax.io \
-     --subject-alternative-names "*.kianax.io" \
-     --validation-method DNS \
-     --region us-east-1
-   ```
-
-2. **Validate certificate**
-   - Add DNS records as instructed by ACM
-   - Wait for validation (can take 5-30 minutes)
-
-3. **Update Ingress with certificate ARN**
-
-   In `k8s/charts/api-gateway/templates/ingress.yaml`:
-   ```yaml
-   metadata:
-     annotations:
-       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT_ID
-   ```
-
-4. **Create Route53 record**
-   ```bash
-   # Get ALB DNS name
-   ALB_DNS=$(kubectl get ingress api-gateway -n kianax -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-
-   # Create CNAME record pointing api.kianax.io → ALB
-   aws route53 change-resource-record-sets \
-     --hosted-zone-id YOUR_ZONE_ID \
-     --change-batch "{
-       \"Changes\": [{
-         \"Action\": \"CREATE\",
-         \"ResourceRecordSet\": {
-           \"Name\": \"api.kianax.io\",
-           \"Type\": \"CNAME\",
-           \"TTL\": 300,
-           \"ResourceRecords\": [{\"Value\": \"$ALB_DNS\"}]
-         }
-       }]
-     }"
-   ```
+## Core Infrastructure Components
+
+### Kubernetes (EKS)
+- **Cluster**: Managed control plane, 3-AZ deployment
+- **Node Groups**: Auto-scaling (2-10 nodes)
+- **Networking**: VPC CNI with private subnets
+- **Addons**: ALB Controller, Metrics Server, Cluster Autoscaler
+
+### Database (RDS PostgreSQL 16)
+- **Multi-tenancy**: All tables include `user_id` column
+- **Backups**: Automated daily snapshots (7-14 day retention)
+- **Security**: Encrypted at rest, private subnet only
+- **Performance**: Connection pooling, read replicas for scale
+
+### Cache (ElastiCache Redis 7)
+- **Use Cases**: Session store, market data cache, pub/sub
+- **Cluster Mode**: Enabled in production (3 shards)
+- **Persistence**: Snapshots for disaster recovery
+
+### Load Balancer (ALB)
+- **SSL/TLS**: AWS Certificate Manager
+- **WAF**: Rate limiting, DDoS protection
+- **WebSocket**: Sticky sessions for real-time connections
+
+## Application Services
+
+### Authentication (Better Auth)
+- **Purpose**: User authentication and session management
+- **Features**: Email/password, OAuth (GitHub, Google), 2FA
+- **Storage**: Session data in PostgreSQL
+- **Security**: Scrypt password hashing, signed cookies
+
+### Feature Flags (Statsig)
+- **Purpose**: Safe feature rollouts and A/B testing
+- **Use Cases**: AI model selection, pricing experiments, kill switches
+- **Configuration**: Environment-based gates (dev/prod)
+- **Analytics**: Event tracking for product decisions
+
+### Secrets Management (AWS Secrets Manager)
+- **Stored Secrets**: Database credentials, API keys, JWT secrets
+- **Access**: IAM roles with least-privilege permissions
+- **Rotation**: Automated for database passwords
 
 ## CI/CD Pipeline
 
-### GitHub Actions Workflow
+### Approach: GitOps with ArgoCD
 
-Create `.github/workflows/deploy-staging.yml`:
+**Workflow:**
+1. Developer pushes to Git (`develop` or `main`)
+2. GitHub Actions builds Docker images
+3. Images pushed to Amazon ECR
+4. Helm values updated with new image tags
+5. ArgoCD detects changes and syncs to cluster
+6. Health checks verify deployment success
 
-```yaml
-name: Deploy to Staging
+**Benefits:**
+- Git as single source of truth
+- Automatic rollbacks on failures
+- Audit trail of all deployments
+- Easy rollback to previous versions
 
-on:
-  push:
-    branches:
-      - develop
-
-env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.2.23
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Type check
-        run: bun run typecheck
-
-  build-and-deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubActionsRole
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push api-gateway
-        working-directory: apps/server
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker build -t $ECR_REGISTRY/kianax-api-gateway:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/kianax-api-gateway:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/kianax-api-gateway:$IMAGE_TAG $ECR_REGISTRY/kianax-api-gateway:latest
-          docker push $ECR_REGISTRY/kianax-api-gateway:latest
-
-      - name: Update Helm values
-        run: |
-          yq eval ".image.tag = \"${{ github.sha }}\"" -i k8s/charts/api-gateway/values-staging.yaml
-
-      - name: Commit updated values
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add k8s/charts/api-gateway/values-staging.yaml
-          git commit -m "Update api-gateway image to ${{ github.sha }}"
-          git push
-```
-
-### ArgoCD Auto-Sync
-
-ArgoCD will automatically detect the updated `values-staging.yaml` and deploy the new image to the cluster.
+### Deployment Safety
+- **Database Migrations**: Run before app deployment
+- **Zero Downtime**: Rolling updates with health checks
+- **Gradual Rollouts**: Feature flags enable incremental releases
+- **Monitoring**: Automated alerts on error spikes
 
 ## Monitoring & Observability
 
-### Access Grafana
+### Metrics (Prometheus + Grafana)
+- Application metrics (requests, latency, errors)
+- Infrastructure metrics (CPU, memory, disk)
+- Business metrics (trades, users, revenue)
+- Custom dashboards per service
 
-```bash
-# Port forward Grafana
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+### Logging (CloudWatch + FluentBit)
+- Structured JSON logs from all services
+- Centralized log aggregation
+- Log retention (30 days standard)
+- Search and analysis capabilities
 
-# Open http://localhost:3000
-# Username: admin
-# Password: (set during Helm install)
-```
+### Error Tracking (Sentry)
+- Frontend and backend error capture
+- Stack traces with source maps
+- User context for debugging
+- Performance monitoring
 
-**Pre-built Dashboards:**
-- Kubernetes / Compute Resources / Cluster
-- Kubernetes / Compute Resources / Namespace (Pods)
-- Node Exporter / Nodes
+### Alerting
+- High error rates → Slack notification
+- Database connection failures → PagerDuty
+- API latency > 1s → Team notification
+- Cost anomalies → Email alert
 
-### Access Prometheus
+## Security Considerations
 
-```bash
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
-# Open http://localhost:9090
-```
+### Network Security
+- **Private Subnets**: All application and database instances
+- **Security Groups**: Principle of least privilege
+- **VPC Peering**: No direct internet access for sensitive resources
+- **Network Policies**: K8s policies restrict pod-to-pod communication
 
-### CloudWatch Container Insights
+### Data Security
+- **Encryption at Rest**: RDS, ElastiCache, EBS volumes
+- **Encryption in Transit**: TLS 1.3 for all communications
+- **Secrets**: Never in code, always in Secrets Manager
+- **API Keys**: AES-256 encryption for broker credentials
 
-Enable Container Insights for your EKS cluster:
+### Access Control
+- **IAM**: Role-based access with MFA required
+- **RBAC**: Kubernetes role-based access control
+- **Audit Logging**: CloudTrail for all AWS API calls
+- **Session Management**: Automatic timeout after 7 days
 
-```bash
-aws eks update-cluster-config \
-  --name kianax-staging \
-  --logging '{"clusterLogging":[{"types":["api","audit","authenticator","controllerManager","scheduler"],"enabled":true}]}'
-```
+### Compliance
+- **PCI DSS**: For payment processing
+- **SOC 2**: For enterprise customers
+- **GDPR**: User data export and deletion capabilities
+- **Audit Trail**: Immutable logs for all trading activities
 
-View metrics in CloudWatch Console:
-- CloudWatch → Container Insights → Performance monitoring
+## Cost Optimization
 
-### Sentry Integration
+### Current Costs (Estimated)
 
-Add Sentry DSN to secrets:
+**Development:** ~$300/month
+- EKS: $75
+- Compute: $80
+- Database: $50
+- Redis: $15
+- Networking: $50
+- Monitoring: $30
 
-```bash
-aws secretsmanager create-secret \
-  --name kianax/staging/sentry-dsn \
-  --secret-string "https://your-sentry-dsn@sentry.io/project"
-```
+**Production:** ~$1,200/month
+- EKS: $75
+- Compute: $250
+- Database: $200
+- Redis: $100
+- Networking: $100
+- External APIs: $300-500 (Polygon, OpenAI)
+- Monitoring: $50
 
-Configure in application (example for Fastify):
+### Optimization Strategies
+- **Reserved Instances**: 40-60% savings on predictable compute
+- **Spot Instances**: For batch jobs and non-critical workloads
+- **Auto-scaling**: Reduce costs during low-traffic periods
+- **Right-sizing**: Monitor and adjust instance sizes
+- **S3 Lifecycle**: Move old logs to cheaper storage tiers
 
-```typescript
-import * as Sentry from "@sentry/node";
+## Disaster Recovery
 
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: process.env.NODE_ENV,
-  tracesSampleRate: 0.1,
-});
+### Backup Strategy
+- **Database**: Daily automated snapshots (14-day retention)
+- **Redis**: Daily backups to S3
+- **Configuration**: All configs in Git (GitOps)
+- **Secrets**: Replicated across regions
 
-fastify.addHook('onError', async (request, reply, error) => {
-  Sentry.captureException(error);
-});
-```
+### Recovery Objectives
+- **RTO** (Recovery Time Objective): 4 hours
+- **RPO** (Recovery Point Objective): 1 hour
+- **Data Loss**: Maximum 1 hour of trading data
 
-## Cost Estimates
+### Failover Plan
+1. Detect failure via monitoring
+2. Restore database from latest snapshot
+3. Deploy application from Git
+4. Verify data integrity
+5. Resume trading operations
 
-### Staging Environment (~$300/month)
+## Scaling Strategy
 
-| Service | Configuration | Monthly Cost |
-|---------|--------------|--------------|
-| EKS Control Plane | Managed | $75 |
-| EC2 Nodes | 2x t3.medium (general) | $60 |
-| RDS PostgreSQL | db.t3.small, single-AZ, 50GB | $50 |
-| ElastiCache Redis | cache.t3.micro, 1 node | $15 |
-| ALB | With WAF | $40 |
-| NAT Gateway | 3 AZs | $35 |
-| CloudWatch/Logs | 10GB ingestion | $10 |
-| Secrets Manager | 10 secrets | $4 |
-| Data Transfer | ~100GB out | $10 |
-| **Total** | | **~$300** |
+### Horizontal Scaling
+- **Application**: HPA based on CPU/memory (2-10 pods)
+- **Database**: Read replicas for query scaling
+- **Redis**: Cluster mode with additional shards
+- **Infrastructure**: Cluster Autoscaler adds nodes automatically
 
-### Production Environment (~$1,100-1,500/month)
+### Vertical Scaling
+- **Database**: Upgrade instance type during maintenance window
+- **Redis**: Upgrade to larger node types
+- **Compute**: Update EKS node group instance types
 
-| Service | Configuration | Monthly Cost |
-|---------|--------------|--------------|
-| EKS Control Plane | Managed | $75 |
-| EC2 Nodes | 3-5x t3.medium (general) + 2x t3.small (system) | $240-360 |
-| RDS PostgreSQL | db.t3.medium, Multi-AZ, 100GB | $200 |
-| ElastiCache Redis | cache.t3.small, 3-node cluster | $100 |
-| ALB + WAF | With DDoS protection | $60 |
-| NAT Gateway | 3 AZs | $70 |
-| CloudWatch/Logs | 50GB ingestion | $30 |
-| Secrets Manager | 20 secrets | $8 |
-| Data Transfer | ~500GB out | $45 |
-| Sentry | Team plan | $50 |
-| **Subtotal (Infrastructure)** | | **~$878-998** |
-| | | |
-| **External Services** | | |
-| Polygon.io | Starter plan | $200 |
-| OpenAI API | ~1M tokens/month | $30-150 |
-| Anthropic API | ~500K tokens/month | $15-80 |
-| **Subtotal (External)** | | **~$245-430** |
-| | | |
-| **Total** | | **~$1,123-1,428** |
+### Future Architecture (1000+ Users)
+- Multi-region deployment for lower latency
+- CDN for static assets
+- Separate database per region
+- Event-driven architecture with message queues
 
-**Cost Optimization Tips:**
-- Use Spot instances for non-critical workloads (50-70% savings)
-- Enable Savings Plans for EC2 (up to 72% discount)
-- Use S3 Intelligent-Tiering for log storage
-- Monitor and right-size node instance types
+## Infrastructure as Code
 
-## Troubleshooting
+### Terraform
+- **Purpose**: Provision AWS resources
+- **Structure**: Modular (networking, database, EKS, monitoring)
+- **State**: Remote state in S3 with DynamoDB locking
+- **Workspaces**: Separate state per environment
 
-### Common Issues
+### Helm
+- **Purpose**: Package K8s applications
+- **Charts**: One per microservice
+- **Values**: Environment-specific overrides
+- **Versioning**: Semantic versioning for releases
 
-**1. Pods stuck in Pending state**
+### GitOps with ArgoCD
+- **Purpose**: Continuous deployment to Kubernetes
+- **Sync**: Automatic on Git changes
+- **Health**: Application health monitoring
+- **Rollback**: One-click rollback to previous versions
 
-```bash
-# Check pod events
-kubectl describe pod <pod-name> -n kianax
+## Deployment Checklist
 
-# Common causes:
-# - Insufficient resources: Scale up node group
-# - Image pull errors: Check ECR permissions
-# - Node taints: Ensure pod tolerations match
-```
+### Pre-Production
+- [ ] Load testing completed (1000 concurrent users)
+- [ ] Security audit passed
+- [ ] Database migrations tested
+- [ ] Backup and restore verified
+- [ ] Monitoring dashboards configured
+- [ ] Runbooks documented
+- [ ] On-call rotation established
 
-**2. Cannot connect to RDS/Redis from pods**
+### Production Deployment
+- [ ] Feature flags configured for gradual rollout
+- [ ] Database migration plan reviewed
+- [ ] Rollback plan documented
+- [ ] Team notified of deployment window
+- [ ] Monitoring alerts active
+- [ ] Incident response plan ready
 
-```bash
-# Verify security group rules
-aws ec2 describe-security-groups --group-ids <rds-sg-id>
+### Post-Deployment
+- [ ] Health checks passing
+- [ ] Error rates normal
+- [ ] Performance metrics within SLA
+- [ ] User feedback monitored
+- [ ] Post-mortem scheduled (if issues)
 
-# Test connectivity from a pod
-kubectl run -it --rm debug --image=alpine --restart=Never -- sh
-apk add postgresql-client
-psql $DATABASE_URL
-```
+---
 
-**3. ALB not routing traffic**
-
-```bash
-# Check Ingress status
-kubectl describe ingress api-gateway -n kianax
-
-# Verify target group health
-aws elbv2 describe-target-health --target-group-arn <tg-arn>
-
-# Common issues:
-# - Health check path incorrect
-# - Security group blocking ALB → pods
-# - Pods not ready
-```
-
-**4. High AWS costs**
-
-```bash
-# Check CloudWatch Logs retention (reduce from 30d to 7d)
-aws logs put-retention-policy --log-group-name /aws/eks/kianax-staging/application --retention-in-days 7
-
-# Check NAT Gateway usage (consider NAT instances for lower cost)
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/NATGateway \
-  --metric-name BytesOutToDestination \
-  --dimensions Name=NatGatewayId,Value=<nat-id> \
-  --start-time 2025-01-01T00:00:00Z \
-  --end-time 2025-01-07T00:00:00Z \
-  --period 86400 \
-  --statistics Sum
-```
-
-### Useful Commands
-
-```bash
-# View all resources in namespace
-kubectl get all -n kianax
-
-# Tail logs from multiple pods
-stern api-gateway -n kianax
-
-# Execute command in pod
-kubectl exec -it <pod-name> -n kianax -- sh
-
-# Port forward to service
-kubectl port-forward svc/api-gateway -n kianax 3001:3001
-
-# View pod resource usage
-kubectl top pods -n kianax
-
-# View node resource usage
-kubectl top nodes
-
-# Restart deployment (rolling restart)
-kubectl rollout restart deployment/api-gateway -n kianax
-
-# View deployment history
-kubectl rollout history deployment/api-gateway -n kianax
-
-# Rollback deployment
-kubectl rollout undo deployment/api-gateway -n kianax
-```
-
-### Emergency Procedures
-
-**Rollback a bad deployment:**
-
-```bash
-# Via kubectl
-kubectl rollout undo deployment/api-gateway -n kianax
-
-# Via ArgoCD
-argocd app rollback api-gateway <revision>
-```
-
-**Scale up quickly due to traffic spike:**
-
-```bash
-# Scale deployment manually
-kubectl scale deployment api-gateway -n kianax --replicas=10
-
-# Cluster autoscaler will add nodes automatically
-```
-
-**Database connection pool exhausted:**
-
-```bash
-# Increase max connections in RDS parameter group
-aws rds modify-db-parameter-group \
-  --db-parameter-group-name kianax-postgres-params \
-  --parameters "ParameterName=max_connections,ParameterValue=200,ApplyMethod=immediate"
-
-# Restart pods to reconnect with new pool size
-kubectl rollout restart deployment/api-gateway -n kianax
-```
-
-## Next Steps
-
-1. **Review [KUBERNETES.md](./KUBERNETES.md)** for K8s fundamentals and operations
-2. **Review [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)** for local testing workflows
-3. **Review [MICROSERVICES.md](./MICROSERVICES.md)** for service splitting strategy
-4. **Set up production environment** by repeating steps with `production` workspace
-5. **Configure monitoring alerts** in Prometheus/AlertManager
-6. **Implement disaster recovery** procedures (backup testing, runbooks)
-7. **Security audit** (penetration testing, vulnerability scanning)
-
-## Additional Resources
-
-- [AWS EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Terraform AWS Modules](https://registry.terraform.io/namespaces/terraform-aws-modules)
-- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
-- [Helm Documentation](https://helm.sh/docs/)
+**For detailed implementation guides, see:**
+- Infrastructure setup → [terraform/README.md](../infrastructure/terraform/README.md)
+- Kubernetes operations → [KUBERNETES.md](./KUBERNETES.md)
+- Local development → [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)
+- Service architecture → [MICROSERVICES.md](./MICROSERVICES.md)

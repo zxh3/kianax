@@ -1,18 +1,6 @@
-# Microservices Architecture Guide for Kianax
+# Microservices Architecture for Kianax
 
-This guide outlines the microservices architecture for Kianax, including service boundaries, communication patterns, and migration strategy from monolith.
-
-## Table of Contents
-
-- [Why Microservices](#why-microservices)
-- [Service Architecture](#service-architecture)
-- [Service Descriptions](#service-descriptions)
-- [Inter-Service Communication](#inter-service-communication)
-- [Data Management](#data-management)
-- [Migration Strategy](#migration-strategy)
-- [API Gateway Pattern](#api-gateway-pattern)
-- [Service Mesh](#service-mesh)
-- [Best Practices](#best-practices)
+High-level microservices architecture, service boundaries, and migration strategy.
 
 ## Why Microservices
 
@@ -24,23 +12,23 @@ This guide outlines the microservices architecture for Kianax, including service
    - Cost optimization (scale only what needs it)
 
 2. **Technology Flexibility**
-   - Use Python for ML/AI services (agents, information retrieval)
-   - Use Rust for high-performance trading engine (future)
-   - Use Node.js/Bun for API and WebSocket services
+   - Python for ML/AI services (agents, embeddings)
+   - Rust for high-performance trading (future)
+   - Node.js/Bun for API and WebSocket services
 
 3. **Team Autonomy**
-   - Teams can deploy services independently
+   - Teams deploy services independently
    - Reduced coordination overhead
-   - Faster iteration
+   - Faster iteration cycles
 
 4. **Fault Isolation**
-   - If notification service crashes, trading still works
-   - Agent failures don't affect portfolio viewing
+   - Notification service crash doesn't affect trading
+   - Agent failures don't impact portfolio viewing
    - Graceful degradation
 
 5. **Specialized Infrastructure**
-   - GPU nodes for AI agent execution
-   - Memory-optimized nodes for market data caching
+   - GPU nodes for AI execution
+   - Memory-optimized for caching
    - Spot instances for batch jobs
 
 ### Trade-offs
@@ -53,8 +41,8 @@ This guide outlines the microservices architecture for Kianax, including service
 **When to Use Microservices:**
 - ✅ Team size > 5-10 engineers
 - ✅ Need independent scaling
-- ✅ Different tech stacks make sense
-- ✅ Complex domain with clear boundaries
+- ✅ Different tech stacks beneficial
+- ✅ Clear domain boundaries
 
 **When to Stay Monolith:**
 - ❌ Team size < 5 engineers
@@ -70,7 +58,7 @@ This guide outlines the microservices architecture for Kianax, including service
 
 ## Service Architecture
 
-### Target Architecture (Post-Migration)
+### Target Architecture
 
 ```
                     ┌─────────────────┐
@@ -110,21 +98,21 @@ This guide outlines the microservices architecture for Kianax, including service
 
 ### Service Boundaries
 
-Services are organized by **business capability** (DDD bounded contexts):
+Services organized by **business capability** (DDD bounded contexts):
 
-1. **API Gateway**: Entry point, routing, authentication
-2. **Trading Service**: Orders, executions, portfolio management
-3. **Agent Service**: AI agent execution, LLM calls
-4. **Market Data Service**: Real-time and historical data from Polygon.io
-5. **Information Retrieval Service**: RAG, embeddings, semantic search
-6. **Notification Service**: WebSocket, email, push notifications
-7. **Scheduler Service**: Cron jobs, time-based triggers, event triggers
+1. **API Gateway** - Entry point, routing, authentication
+2. **Trading Service** - Orders, executions, portfolio management
+3. **Agent Service** - AI agent execution, LLM calls
+4. **Market Data Service** - Real-time and historical data
+5. **Information Retrieval Service** - RAG, embeddings, semantic search
+6. **Notification Service** - WebSocket, email, push notifications
+7. **Scheduler Service** - Cron jobs, triggers, events
 
 ## Service Descriptions
 
 ### 1. API Gateway
 
-**Responsibility:** Main entry point for all client requests.
+**Responsibility:** Main entry point for all client requests
 
 **Technology:** Fastify (Node.js/Bun)
 
@@ -132,307 +120,201 @@ Services are organized by **business capability** (DDD bounded contexts):
 - Authentication and authorization (JWT validation)
 - Request routing to appropriate services
 - Rate limiting (per user)
-- Response aggregation (if needed)
-- CORS handling
-- API versioning
-
-**Endpoints:**
-```
-POST   /auth/register
-POST   /auth/login
-GET    /users/me
-
-# Proxied to trading service
-GET    /portfolio
-POST   /orders
-GET    /orders/:id
-
-# Proxied to agent service
-GET    /agents
-POST   /agents
-POST   /agents/:id/execute
-
-# Proxied to market data service
-GET    /market/quotes/:symbol
-GET    /market/history/:symbol
-```
-
-**Communication:**
-- Receives HTTP requests from clients
-- Makes HTTP calls to downstream services
-- Uses gRPC for high-performance internal communication (optional)
+- Response aggregation (when needed)
+- CORS handling, API versioning
 
 **Deployment:**
 - Replicas: 3-5 (based on traffic)
 - Resources: 0.5 CPU, 512MB RAM per pod
-- Autoscaling: Based on CPU and request rate
+- Autoscaling: CPU and request rate
 
 ---
 
 ### 2. Trading Service
 
-**Responsibility:** Manage portfolios, orders, and trade execution.
+**Responsibility:** Manage portfolios, orders, trade execution
 
-**Technology:** Fastify (Node.js/Bun) or Go (for performance)
+**Technology:** Fastify (Node.js/Bun) or Go
 
 **Key Functions:**
-- Portfolio management (holdings, cash balance, P&L)
+- Portfolio management (holdings, cash, P&L)
 - Order placement and management
-- Integration with Alpaca broker API
+- Alpaca broker API integration
 - Trade execution and confirmation
-- Position tracking
-- Risk checks (balance, position limits)
-
-**Endpoints:**
-```
-GET    /portfolio
-GET    /positions
-POST   /orders
-GET    /orders
-GET    /orders/:id
-DELETE /orders/:id (cancel)
-GET    /trades
-```
+- Position tracking, risk checks
 
 **Database Tables (Owned):**
-- `portfolios` (user_id, cash_balance, total_value)
-- `positions` (user_id, symbol, quantity, avg_cost, current_price)
-- `orders` (user_id, symbol, side, quantity, status, broker_order_id)
-- `trades` (user_id, order_id, symbol, quantity, price, timestamp)
+- portfolios, positions, orders, trades
 
 **External Integrations:**
-- Alpaca API (order execution)
-- Market Data Service (price updates)
-- Notification Service (order confirmations)
+- Alpaca API
+- Market Data Service
+- Notification Service
 
 **Events Published:**
-- `order.created`
-- `order.filled`
-- `order.cancelled`
-- `portfolio.updated`
+- `order.created`, `order.filled`, `order.cancelled`, `portfolio.updated`
 
 **Deployment:**
 - Replicas: 2-4
 - Resources: 0.5 CPU, 512MB RAM
-- Autoscaling: Based on CPU
 
 ---
 
 ### 3. Agent Service
 
-**Responsibility:** Execute AI trading agents with LLM integration.
+**Responsibility:** Execute AI trading agents
 
-**Technology:** Python (for ML libraries) or Node.js (for simplicity)
+**Technology:** Python (for ML libraries) or Node.js
 
 **Key Functions:**
 - Agent execution (on trigger)
 - LLM integration (OpenAI GPT-4, Anthropic Claude)
-- Strategy interpretation from natural language
+- Strategy interpretation
 - Decision making (buy/sell/hold)
 - Risk limit enforcement
-- Execution logging and reasoning
-
-**Endpoints:**
-```
-POST   /agents/execute    # Execute agent (called by scheduler)
-POST   /agents/preview    # Dry-run agent (for testing)
-```
 
 **Agent Execution Flow:**
-1. Receive execution request (from scheduler or manual trigger)
-2. Fetch user context (portfolio, positions, risk limits)
-3. Fetch market context (prices, news, technical indicators)
-4. Build prompt for LLM
-5. Call LLM API (GPT-4 or Claude)
-6. Parse LLM response (JSON structured output)
-7. Validate decision against risk limits
+1. Receive execution request
+2. Fetch user context (portfolio, positions)
+3. Fetch market context (prices, news, indicators)
+4. Build LLM prompt
+5. Call LLM API
+6. Parse decision
+7. Validate against risk limits
 8. Submit order to Trading Service
 9. Log execution and reasoning
 
 **Database Tables (Owned):**
-- `agents` (user_id, name, strategy, risk_limits, status)
-- `agent_executions` (user_id, agent_id, context, decision, reasoning, timestamp)
-
-**External Integrations:**
-- OpenAI API (GPT-4)
-- Anthropic API (Claude)
-- Market Data Service (context)
-- Trading Service (order submission)
+- agents, agent_executions
 
 **Events Published:**
-- `agent.executed`
-- `agent.decision_made`
+- `agent.executed`, `agent.decision_made`
 
 **Deployment:**
-- Replicas: 1-3 (can scale to 0 if no executions)
-- Resources: 1 CPU, 1GB RAM (higher for LLM processing)
-- Job-based execution (Kubernetes Jobs or Lambda)
+- Replicas: 1-3 (can scale to 0)
+- Resources: 1 CPU, 1GB RAM
+- Job-based execution (Kubernetes Jobs)
 - Consider GPU nodes for future ML models
 
 ---
 
 ### 4. Market Data Service
 
-**Responsibility:** Provide real-time and historical market data.
+**Responsibility:** Provide real-time and historical market data
 
 **Technology:** Fastify (Node.js/Bun) or Go
 
 **Key Functions:**
-- Integrate with Polygon.io API
-- Cache market data in Redis (reduce API costs)
-- WebSocket connection to Polygon.io for real-time quotes
-- Historical data fetching (candles, bars)
-- Technical indicators calculation (SMA, RSI, MACD)
-- News fetching and caching
-
-**Endpoints:**
-```
-GET    /quotes/:symbol           # Latest quote
-GET    /quotes/batch             # Multiple symbols
-GET    /history/:symbol          # Historical data
-GET    /indicators/:symbol/sma   # Technical indicators
-GET    /news/:symbol             # Recent news
-WS     /stream                   # WebSocket for real-time quotes
-```
+- Polygon.io API integration
+- Redis caching (reduce API costs)
+- WebSocket for real-time quotes
+- Historical data fetching
+- Technical indicators calculation
+- News fetching
 
 **Caching Strategy:**
-- Quotes: 1-second TTL (near real-time)
-- Historical data: 1-hour TTL (immutable once day closes)
+- Quotes: 1-second TTL
+- Historical data: 1-hour TTL
 - News: 5-minute TTL
 
-**External Integrations:**
-- Polygon.io REST API
-- Polygon.io WebSocket API
-
 **Events Published:**
-- `quote.updated` (via Redis pub/sub)
-- `market.opened`
-- `market.closed`
+- `quote.updated`, `market.opened`, `market.closed`
 
 **Deployment:**
 - Replicas: 2-3
 - Resources: 0.5 CPU, 1GB RAM (memory for caching)
 - Redis sidecar or ElastiCache
-- Autoscaling: Based on request rate
 
 ---
 
 ### 5. Information Retrieval Service (RAG)
 
-**Responsibility:** Semantic search, embeddings, RAG for agent context.
+**Responsibility:** Semantic search, embeddings, RAG
 
-**Technology:** Python (for ML libraries) + FastAPI
+**Technology:** Python + FastAPI
 
 **Key Functions:**
-- Generate embeddings for text (news, filings, reports)
-- Store embeddings in vector database (Pinecone, Weaviate, pgvector)
-- Semantic search for relevant information
-- RAG (Retrieval Augmented Generation) for agent context
-- Summarization of long documents
-- Entity extraction (companies, people, events)
+- Generate embeddings for text
+- Vector database storage (Pinecone, pgvector)
+- Semantic search
+- RAG (Retrieval Augmented Generation)
+- Document summarization
+- Entity extraction
 
-**Endpoints:**
-```
-POST   /embeddings           # Generate embeddings
-POST   /search              # Semantic search
-POST   /rag                 # RAG query
-POST   /summarize           # Summarize document
-```
-
-**Use Cases:**
-- Agent asks: "What's the recent sentiment around TSLA?"
-- Service fetches relevant news, generates summary
-- Agent uses summary to make trading decision
+**Use Case Example:**
+- Agent asks: "Recent sentiment around TSLA?"
+- Service fetches relevant news
+- Generates summary for agent decision
 
 **Database Tables (Owned):**
-- `documents` (id, source, content, embedding, metadata)
-- `embeddings_cache` (text_hash, embedding)
+- documents, embeddings_cache
 
 **External Integrations:**
 - OpenAI Embeddings API
 - Pinecone or pgvector
-- News APIs (Finnhub, NewsAPI)
+- News APIs
 
 **Deployment:**
-- Replicas: 1-2 (can scale to 0 if unused)
+- Replicas: 1-2 (can scale to 0)
 - Resources: 1 CPU, 2GB RAM
-- Consider GPU nodes for embedding generation
+- Consider GPU for embeddings
 
 ---
 
 ### 6. Notification Service
 
-**Responsibility:** Real-time notifications to users.
+**Responsibility:** Real-time notifications to users
 
-**Technology:** Fastify (Node.js/Bun) with Socket.io
+**Technology:** Fastify with Socket.io
 
 **Key Functions:**
 - WebSocket server for real-time updates
-- Email notifications (via SendGrid, AWS SES)
-- Push notifications (via Firebase Cloud Messaging)
-- SMS notifications (via Twilio)
-- Notification preferences management
-
-**Endpoints:**
-```
-WS     /ws                   # WebSocket connection
-POST   /notifications        # Send notification
-GET    /notifications        # User's notifications
-PUT    /preferences          # Update preferences
-```
+- Email notifications (SendGrid, AWS SES)
+- Push notifications (Firebase)
+- SMS notifications (Twilio)
+- Preference management
 
 **WebSocket Events (to clients):**
-- `quote` - Real-time price updates
-- `order_filled` - Order execution confirmation
-- `portfolio_update` - Balance/holdings change
-- `agent_executed` - Agent activity notification
-- `alert` - Price alerts, news alerts
-
-**Event Subscriptions (from other services):**
-- `order.filled` → Send notification
-- `agent.executed` → Send notification
-- `quote.updated` → Broadcast to subscribed users
+- `quote` - Price updates
+- `order_filled` - Execution confirmation
+- `portfolio_update` - Balance changes
+- `agent_executed` - Agent activity
+- `alert` - Price/news alerts
 
 **Deployment:**
-- Replicas: 2-5 (based on concurrent connections)
+- Replicas: 2-5 (based on connections)
 - Resources: 0.5 CPU, 512MB RAM
-- Sticky sessions required (ALB with sticky sessions)
+- Sticky sessions required (ALB)
 - Redis for pub/sub across instances
 
 ---
 
 ### 7. Scheduler Service
 
-**Responsibility:** Trigger time-based and event-based actions.
+**Responsibility:** Trigger time-based and event-based actions
 
-**Technology:** Fastify (Node.js/Bun) with cron library
+**Technology:** Fastify with cron library
 
 **Key Functions:**
-- Schedule agent executions (time-based triggers)
-- Price-based triggers (execute agent when TSLA > $200)
-- News-based triggers (execute on earnings reports)
+- Schedule agent executions (time-based)
+- Price-based triggers
+- News-based triggers
 - Market open/close triggers
-- Periodic tasks (portfolio rebalancing, data sync)
+- Periodic tasks (rebalancing, sync)
 
 **Database Tables (Owned):**
-- `triggers` (user_id, agent_id, type, config, status)
-- `schedules` (trigger_id, next_run, last_run)
+- triggers, schedules
 
 **Trigger Types:**
-1. **Time-based**: "Every day at 9:35 AM"
-2. **Price-based**: "When AAPL > $150"
-3. **News-based**: "On earnings report for TSLA"
-4. **Market event**: "15 minutes after market open"
-
-**Events Published:**
-- `trigger.fired`
+1. Time-based: "Every day at 9:35 AM"
+2. Price-based: "When AAPL > $150"
+3. News-based: "On earnings report"
+4. Market event: "15 min after market open"
 
 **Deployment:**
-- Replicas: 1 (leader election for cron jobs)
+- Replicas: 1 (leader election)
 - Resources: 0.25 CPU, 256MB RAM
 - Kubernetes CronJob for periodic tasks
-
----
 
 ## Inter-Service Communication
 
@@ -443,91 +325,56 @@ PUT    /preferences          # Update preferences
 - Immediate response required
 - Client needs result to continue
 
-**Example:**
-```
-API Gateway → Trading Service (GET /portfolio)
-Agent Service → Market Data Service (GET /quotes/AAPL)
-```
+**Examples:**
+- API Gateway → Trading Service (GET /portfolio)
+- Agent Service → Market Data Service (GET /quotes/AAPL)
 
 **Implementation:**
-```typescript
-// API Gateway calls Trading Service
-const response = await fetch('http://trading-service.kianax.svc.cluster.local:3002/portfolio', {
-  headers: {
-    'Authorization': req.headers.authorization,
-    'X-User-ID': req.user.id,
-  }
-});
-const portfolio = await response.json();
-```
+- HTTP REST calls between services
+- Service discovery via Kubernetes DNS
+- Optional: gRPC for high-performance internal communication
 
 ### Asynchronous Communication (Events)
 
 **Use when:**
 - Fire-and-forget
-- Multiple consumers need the same event
+- Multiple consumers need same event
 - Temporal decoupling desired
 
-**Example:**
-```
-Trading Service publishes "order.filled"
+**Examples:**
+- Trading Service publishes "order.filled"
   → Notification Service sends notification
   → Agent Service logs result
   → Scheduler Service updates trigger
-```
 
 **Implementation Options:**
 
 **Option 1: Redis Pub/Sub** (Simple, low latency)
-```typescript
-// Trading Service publishes event
-await redis.publish('events:orders', JSON.stringify({
-  type: 'order.filled',
-  user_id: order.user_id,
-  order_id: order.id,
-  symbol: order.symbol,
-  quantity: order.quantity,
-}));
-
-// Notification Service subscribes
-await redis.subscribe('events:orders');
-redis.on('message', async (channel, message) => {
-  const event = JSON.parse(message);
-  if (event.type === 'order.filled') {
-    await sendNotification(event);
-  }
-});
-```
+- Good for real-time events
+- No persistence (messages lost if no consumers)
 
 **Option 2: AWS SNS/SQS** (Durable, scalable)
-```typescript
-// Trading Service publishes to SNS topic
-await sns.publish({
-  TopicArn: 'arn:aws:sns:us-east-1:ACCOUNT:order-events',
-  Message: JSON.stringify(event),
-});
-
-// Notification Service polls SQS queue
-const messages = await sqs.receiveMessage({
-  QueueUrl: 'https://sqs.us-east-1.amazonaws.com/ACCOUNT/order-notifications',
-});
-```
+- Message persistence
+- Retry logic built-in
+- Higher latency than Redis
 
 **Option 3: Kafka** (High throughput, event sourcing)
-- Overkill for Kianax initially
+- Overkill initially
 - Consider for future scale (10,000+ orders/day)
+
+**Recommendation:** Start with Redis Pub/Sub, migrate to SNS/SQS if durability needed.
 
 ### Service Discovery
 
 Services discover each other via **Kubernetes DNS**:
 
 ```
-Trading Service: trading-service.kianax.svc.cluster.local:3002
-Agent Service: agent-service.kianax.svc.cluster.local:3003
-Market Data Service: market-data-service.kianax.svc.cluster.local:3004
+trading-service.kianax.svc.cluster.local:3002
+agent-service.kianax.svc.cluster.local:3003
+market-data-service.kianax.svc.cluster.local:3004
 ```
 
-No need for external service mesh initially (keep it simple).
+No external service mesh initially (keep it simple).
 
 ## Data Management
 
@@ -535,36 +382,11 @@ No need for external service mesh initially (keep it simple).
 
 Each service owns its data (loose coupling).
 
+**Option 1: Schemas in single PostgreSQL** (Recommended initially)
 ```
-Trading Service → trading_db schema
-  - portfolios
-  - positions
-  - orders
-  - trades
-
-Agent Service → agent_db schema
-  - agents
-  - agent_executions
-  - triggers (if not separate scheduler)
-
-Market Data Service → market_data_db schema (optional)
-  - quotes_cache
-  - historical_data
-```
-
-**Implementation:**
-
-**Option 1: Schemas in single PostgreSQL database**
-```sql
--- Trading Service tables
-CREATE SCHEMA trading;
-CREATE TABLE trading.portfolios (...);
-CREATE TABLE trading.orders (...);
-
--- Agent Service tables
-CREATE SCHEMA agents;
-CREATE TABLE agents.agents (...);
-CREATE TABLE agents.executions (...);
+trading schema: portfolios, positions, orders, trades
+agents schema: agents, agent_executions
+market_data schema: quotes_cache, historical_data
 ```
 
 **Option 2: Separate databases**
@@ -572,125 +394,112 @@ CREATE TABLE agents.executions (...);
 - Independent scaling
 - Higher complexity
 
-**For Kianax:** Start with Option 1 (schemas), migrate to Option 2 if needed.
+**For Kianax:** Start with Option 1, migrate to Option 2 if needed.
 
 ### Shared Data
 
 Some data is read by multiple services:
-
-- **Users**: Shared read-only (owned by Auth Service or API Gateway)
+- **Users**: Shared read-only (owned by Auth/API Gateway)
 - **Market Data**: Cached in Redis (owned by Market Data Service)
 
 ### Transactions Across Services
 
-**Problem:** User places order, agent execution must be logged atomically.
+**Problem:** Order placement + agent execution must be atomic.
 
 **Solutions:**
 
 **Option 1: Saga Pattern** (choreography)
-```
-1. Trading Service creates order → publishes "order.created"
-2. Agent Service listens → logs execution
-3. If Agent Service fails → Trading Service compensates (cancels order)
-```
+- Trading Service creates order → publishes event
+- Agent Service listens → logs execution
+- Compensation if failure
 
-**Option 2: Two-Phase Commit** (avoid if possible, complex)
-
-**Option 3: Eventually Consistent** (accept temporary inconsistency)
+**Option 2: Eventually Consistent** (Recommended)
 - Order created immediately
 - Agent execution logged asynchronously
 - Retry on failure
 
-**For Kianax:** Use Option 3 (eventually consistent) for most cases.
+**For Kianax:** Use eventually consistent for most cases.
 
 ## Migration Strategy
 
 ### Phase 1: Monolith (Current)
 
-```
-apps/server (Fastify app)
-  ├── routes/
-  │   ├── auth.ts
-  │   ├── portfolio.ts
-  │   ├── orders.ts
-  │   ├── agents.ts
-  │   └── market.ts
-  └── services/
-      ├── tradingService.ts
-      ├── agentService.ts
-      └── marketDataService.ts
-```
+**Timeline:** Weeks 1-6 (Phase 0-4)
 
-**Timeline:** Phase 0-4 (Weeks 1-6)
+All code in `apps/server`:
+- Routes: auth, portfolio, orders, agents, market
+- Services: tradingService, agentService, marketDataService
 
 ---
 
 ### Phase 2: Extract Market Data Service
 
+**Timeline:** Weeks 7-8 (Phase 5)
+
 **Why first?** Clear boundary, external dependency, no complex state.
 
 **Steps:**
 1. Create `services/market-data-service/` directory
-2. Extract market data logic from `apps/server`
-3. Create HTTP API for market data
+2. Extract market data logic
+3. Create HTTP API
 4. Deploy as separate K8s deployment
-5. Update API Gateway to call Market Data Service
+5. Update API Gateway routing
 
-**Timeline:** Week 7-8 (Phase 5)
-
-**Rollback:** Keep old code, route traffic back to monolith
+**Rollback:** Keep old code, route back to monolith if issues.
 
 ---
 
 ### Phase 3: Extract Agent Service
 
+**Timeline:** Weeks 9-10 (Phase 6)
+
 **Why second?** Independent execution, can scale separately.
 
 **Steps:**
-1. Create `services/agent-service/` directory
+1. Create `services/agent-service/`
 2. Extract agent execution logic
-3. Create HTTP API for agent operations
-4. Deploy as Kubernetes Jobs (triggered by API)
-5. Update API Gateway to call Agent Service
-
-**Timeline:** Week 9-10 (Phase 6)
+3. Create HTTP API
+4. Deploy as Kubernetes Jobs
+5. Update API Gateway routing
 
 ---
 
 ### Phase 4: Extract Notification Service
 
+**Timeline:** Weeks 11-12 (Phase 7)
+
 **Why third?** WebSocket needs separate deployment anyway.
 
 **Steps:**
-1. Create `services/notification-service/` directory
-2. Extract WebSocket server and notification logic
+1. Create `services/notification-service/`
+2. Extract WebSocket server
 3. Deploy with sticky sessions
-4. Update API Gateway to route WebSocket to Notification Service
-
-**Timeline:** Week 11-12 (Phase 7)
+4. Update WebSocket routing
 
 ---
 
 ### Phase 5: Extract Trading Service
 
-**Why fourth?** Core business logic, more complex to extract.
+**Timeline:** Weeks 13-14 (Phase 8)
+
+**Why fourth?** Core business logic, more complex.
 
 **Steps:**
-1. Create `services/trading-service/` directory
+1. Create `services/trading-service/`
 2. Extract order and portfolio logic
-3. Migrate database tables (or use schema separation)
+3. Migrate database tables (or use schemas)
 4. Deploy as separate service
-5. Update API Gateway to route trading requests
-
-**Timeline:** Week 13-14 (Phase 8)
+5. Update API Gateway routing
 
 ---
 
-### Phase 6: Extract Scheduler and Info Retrieval
+### Phase 6: Build New Services
 
-**Why last?** New features, build as microservices from start.
+**Timeline:** Weeks 15+ (Phase 9-10)
 
-**Timeline:** Week 15+ (Phase 9-10)
+**Scheduler and Info Retrieval:**
+- Build as microservices from start
+- No extraction needed (new features)
 
 ---
 
@@ -698,99 +507,57 @@ apps/server (Fastify app)
 
 ```
 services/
-├── api-gateway/           # Entry point
-├── trading-service/       # Orders, portfolio
-├── agent-service/         # AI execution
-├── market-data-service/   # Polygon.io integration
-├── notification-service/  # WebSocket, email
-├── scheduler-service/     # Triggers, cron
-└── info-retrieval-service/  # RAG, embeddings
+├── api-gateway/
+├── trading-service/
+├── agent-service/
+├── market-data-service/
+├── notification-service/
+├── scheduler-service/
+└── info-retrieval-service/
 ```
 
 ## API Gateway Pattern
 
 ### Responsibilities
 
-1. **Authentication:** Validate JWT tokens
-2. **Authorization:** Check user permissions
-3. **Routing:** Forward requests to appropriate services
-4. **Rate Limiting:** Enforce per-user limits
-5. **Response Aggregation:** Combine responses from multiple services (optional)
+1. **Authentication** - Validate JWT tokens
+2. **Authorization** - Check user permissions
+3. **Routing** - Forward requests to services
+4. **Rate Limiting** - Enforce per-user limits
+5. **Response Aggregation** - Combine responses (optional)
 
-### Example Implementation
+### Example: Response Aggregation
 
-```typescript
-// api-gateway/src/routes/orders.ts
-import fastify from 'fastify';
+**Use case:** Get portfolio with enriched market data
 
-fastify.get('/orders', {
-  preHandler: authenticate, // JWT validation
-}, async (request, reply) => {
-  // Check rate limit
-  const allowed = await rateLimiter.check(request.user.id);
-  if (!allowed) {
-    return reply.code(429).send({ error: 'Rate limit exceeded' });
-  }
+**Implementation:**
+1. Parallel requests to Trading Service and Market Data Service
+2. Combine responses (add current prices to positions)
+3. Return enriched response to client
 
-  // Forward to Trading Service
-  const response = await fetch('http://trading-service.kianax.svc.cluster.local:3002/orders', {
-    headers: {
-      'X-User-ID': request.user.id,
-      'Authorization': request.headers.authorization,
-    }
-  });
-
-  return response.json();
-});
-```
-
-### Response Aggregation Example
-
-```typescript
-// Get portfolio with enriched market data
-fastify.get('/portfolio/enriched', async (request, reply) => {
-  // Parallel requests
-  const [portfolio, quotes] = await Promise.all([
-    fetch('http://trading-service:3002/portfolio', {
-      headers: { 'X-User-ID': request.user.id }
-    }).then(r => r.json()),
-
-    fetch('http://market-data-service:3004/quotes/batch', {
-      method: 'POST',
-      body: JSON.stringify({ symbols: ['AAPL', 'TSLA', 'MSFT'] }),
-    }).then(r => r.json()),
-  ]);
-
-  // Combine responses
-  return {
-    ...portfolio,
-    positions: portfolio.positions.map(pos => ({
-      ...pos,
-      current_price: quotes[pos.symbol]?.price,
-      change_percent: quotes[pos.symbol]?.change_percent,
-    })),
-  };
-});
-```
+**Benefits:**
+- Fewer client requests
+- Lower latency (parallel calls)
+- Simpler client logic
 
 ## Service Mesh
 
 ### Do You Need a Service Mesh?
 
-**Service Mesh** (like Istio, Linkerd) provides:
+**Service Mesh** (Istio, Linkerd) provides:
 - Automatic mutual TLS
 - Traffic management (retries, timeouts, circuit breakers)
 - Observability (metrics, tracing)
 - Load balancing
 
 **For Kianax:**
-- **Start without service mesh** (YAGNI - You Aren't Gonna Need It)
-- Use native K8s features (Services, Ingress, NetworkPolicies)
+- **Start without service mesh** (YAGNI)
+- Use native K8s features (Services, Ingress)
 - Add service mesh later if needed (1000+ req/sec, complex routing)
 
 **When to add service mesh:**
 - Traffic management complexity increases
-- Need canary deployments (gradual rollouts)
+- Need canary deployments
 - Security requirements increase (mTLS everywhere)
 - Team size > 20 engineers
 
@@ -800,213 +567,93 @@ fastify.get('/portfolio/enriched', async (request, reply) => {
 
 Services will fail. Design for resilience.
 
-```typescript
-// Circuit breaker pattern
-const breaker = new CircuitBreaker(async () => {
-  return await fetch('http://market-data-service:3004/quotes/AAPL');
-}, {
-  timeout: 5000,        // Timeout after 5s
-  errorThreshold: 50,   // Open circuit after 50% errors
-  resetTimeout: 30000,  // Try again after 30s
-});
-
-try {
-  const quote = await breaker.fire();
-} catch (err) {
-  // Fallback: return cached quote or error
-  return cachedQuote || { error: 'Service unavailable' };
-}
-```
+**Key patterns:**
+- Circuit breakers (prevent cascade failures)
+- Retries with exponential backoff
+- Timeouts (don't wait forever)
+- Fallbacks (cached data or degraded response)
 
 ### 2. Implement Health Checks
 
 Every service must have `/health` endpoint.
 
-```typescript
-fastify.get('/health', async (request, reply) => {
-  // Check dependencies
-  const dbHealthy = await checkDatabase();
-  const redisHealthy = await checkRedis();
+**Check:**
+- Database connectivity
+- Redis connectivity
+- Dependent service health
+- Memory/CPU usage
 
-  if (dbHealthy && redisHealthy) {
-    return { status: 'ok', timestamp: new Date() };
-  } else {
-    reply.code(503);
-    return { status: 'degraded', db: dbHealthy, redis: redisHealthy };
-  }
-});
-```
+**Kubernetes uses health checks for:**
+- Readiness (is service ready for traffic?)
+- Liveness (should service be restarted?)
 
 ### 3. Use Structured Logging
 
 Include correlation IDs to trace requests across services.
 
-```typescript
-import pino from 'pino';
+**Key fields:**
+- `request_id` - Unique per request
+- `user_id` - Who made the request
+- `service` - Which service logged
+- `timestamp` - When
+- `level` - INFO, WARN, ERROR
 
-const logger = pino();
-
-fastify.addHook('onRequest', (request, reply, done) => {
-  request.log = logger.child({
-    request_id: request.id,
-    user_id: request.user?.id,
-    service: 'trading-service',
-  });
-  done();
-});
-
-// In route handler
-request.log.info({ order_id: order.id }, 'Order created');
-```
-
-Forward correlation ID to downstream services:
-
-```typescript
-await fetch('http://trading-service:3002/orders', {
-  headers: {
-    'X-Request-ID': request.id,
-    'X-User-ID': request.user.id,
-  }
-});
-```
+**Forward correlation ID to downstream services** for end-to-end tracing.
 
 ### 4. Implement Retries with Backoff
 
-```typescript
-import pRetry from 'p-retry';
-
-const quote = await pRetry(
-  () => fetch('http://market-data-service:3004/quotes/AAPL'),
-  {
-    retries: 3,
-    minTimeout: 1000,
-    maxTimeout: 5000,
-    onFailedAttempt: (error) => {
-      console.log(`Attempt ${error.attemptNumber} failed. Retrying...`);
-    },
-  }
-);
-```
+**Don't retry immediately:**
+- Exponential backoff (1s, 2s, 4s, 8s)
+- Max retries (3-5 attempts)
+- Jitter (randomize slightly to prevent thundering herd)
 
 ### 5. Version Your APIs
 
-```typescript
-// v1 API
-fastify.register(
-  (fastify, opts, done) => {
-    fastify.get('/orders', handlerV1);
-    done();
-  },
-  { prefix: '/v1' }
-);
+**Breaking changes require new version:**
+- `/v1/orders` - Current version
+- `/v2/orders` - New version with breaking changes
 
-// v2 API (with breaking changes)
-fastify.register(
-  (fastify, opts, done) => {
-    fastify.get('/orders', handlerV2);
-    done();
-  },
-  { prefix: '/v2' }
-);
-```
+**Non-breaking changes can use same version:**
+- Add new optional fields (backward compatible)
 
 ### 6. Document Your APIs
 
 Use OpenAPI/Swagger:
-
-```typescript
-import fastifySwagger from '@fastify/swagger';
-
-fastify.register(fastifySwagger, {
-  openapi: {
-    info: {
-      title: 'Kianax Trading Service API',
-      version: '1.0.0',
-    },
-  },
-});
-
-// Document route
-fastify.get('/orders', {
-  schema: {
-    description: 'Get user orders',
-    tags: ['orders'],
-    response: {
-      200: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            symbol: { type: 'string' },
-            quantity: { type: 'number' },
-          },
-        },
-      },
-    },
-  },
-}, handler);
-```
+- Auto-generate from code
+- Interactive documentation
+- Client SDK generation
+- API testing
 
 ### 7. Monitor Service Dependencies
 
 Track upstream service health:
-
-```typescript
-// Prometheus metrics
-import promClient from 'prom-client';
-
-const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests',
-  labelNames: ['service', 'endpoint', 'status'],
-});
-
-// Track dependency calls
-const start = Date.now();
-try {
-  const response = await fetch('http://trading-service:3002/orders');
-  httpRequestDuration.labels('trading-service', '/orders', '200').observe((Date.now() - start) / 1000);
-} catch (err) {
-  httpRequestDuration.labels('trading-service', '/orders', 'error').observe((Date.now() - start) / 1000);
-}
-```
+- Request duration histogram
+- Error rate by service
+- Dependency graph visualization
+- Alert on high error rates
 
 ### 8. Use Feature Flags
 
 Gradual rollout of new features:
-
-```typescript
-import { LaunchDarkly } from 'launchdarkly-node-server-sdk';
-
-const ldClient = LaunchDarkly.init(process.env.LAUNCHDARKLY_SDK_KEY);
-
-// Check feature flag
-const useNewAgentEngine = await ldClient.variation('new-agent-engine', {
-  key: request.user.id,
-}, false);
-
-if (useNewAgentEngine) {
-  return await newAgentService.execute(agent);
-} else {
-  return await legacyAgentService.execute(agent);
-}
-```
+- Enable for 10% of users first
+- Monitor error rates
+- Gradually increase to 50%, 100%
+- Roll back instantly if issues
 
 ## Summary
 
 **Microservices Architecture:**
-- 7 services: API Gateway, Trading, Agent, Market Data, Info Retrieval, Notification, Scheduler
-- Organized by business capability (DDD bounded contexts)
+- 7 services organized by business capability
 - Independent deployment and scaling
 - Event-driven communication (Redis pub/sub)
+- Eventually consistent data
 
 **Migration Path:**
 1. Start with monolith (Phase 1-4)
-2. Extract Market Data Service (Phase 5)
+2. Extract Market Data (Phase 5)
 3. Extract Agent Service (Phase 6)
-4. Extract Notification Service (Phase 7)
-5. Extract Trading Service (Phase 8)
+4. Extract Notification (Phase 7)
+5. Extract Trading (Phase 8)
 6. Build new services as microservices (Phase 9-10)
 
 **Key Principles:**
@@ -1024,6 +671,7 @@ if (useNewAgentEngine) {
 
 ---
 
-For deployment procedures, see [DEPLOYMENT.md](./DEPLOYMENT.md).
-For Kubernetes operations, see [KUBERNETES.md](./KUBERNETES.md).
-For local development, see [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md).
+**For detailed guides:**
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - AWS EKS deployment procedures
+- [KUBERNETES.md](./KUBERNETES.md) - Kubernetes operations
+- [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) - Local testing workflows
