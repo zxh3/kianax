@@ -84,6 +84,610 @@ This guide covers deploying Kianax to AWS using Amazon EKS (Elastic Kubernetes S
 5. **Security**: IRSA for AWS access, network policies, secrets management
 6. **Scalability**: Horizontal pod autoscaling and cluster autoscaling
 
+## Environment Strategy
+
+Kianax will be deployed to **two separate environments**:
+
+### Development Environment
+- **Purpose**: Testing, staging, and pre-production validation
+- **Cluster**: `kianax-development` EKS cluster
+- **Domain**: `dev.kianax.io` or `api-dev.kianax.io`
+- **Database**: Smaller RDS instance (db.t3.small, single-AZ)
+- **Redis**: Smaller ElastiCache instance (cache.t3.micro)
+- **Git Branch**: `develop` branch auto-deploys via ArgoCD
+- **Cost**: ~$250-350/month
+- **Use Cases**:
+  - Feature testing before production
+  - Integration testing with external APIs (sandbox mode)
+  - Load testing and performance optimization
+  - Breaking changes validation
+
+### Production Environment
+- **Purpose**: Live user-facing application
+- **Cluster**: `kianax-production` EKS cluster
+- **Domain**: `kianax.io` or `api.kianax.io`
+- **Database**: Production-grade RDS (db.t3.medium, Multi-AZ)
+- **Redis**: Production ElastiCache cluster (cache.t3.small, 3 nodes)
+- **Git Branch**: `main` branch auto-deploys via ArgoCD
+- **Cost**: ~$1,100-1,500/month
+- **Use Cases**:
+  - Real user traffic
+  - Real broker accounts (live trading)
+  - Production data and compliance
+
+### Environment Isolation
+
+Both environments are **completely isolated**:
+- Separate EKS clusters
+- Separate databases (no shared data)
+- Separate AWS accounts (recommended) or separate VPCs
+- Separate secrets in AWS Secrets Manager
+- Separate monitoring dashboards
+- Independent CI/CD pipelines
+
+**Terraform Workspaces:**
+```bash
+terraform workspace new development
+terraform workspace new production
+```
+
+## Authentication with Better Auth
+
+Kianax uses **Better Auth** for authentication and user management. Better Auth is a comprehensive, TypeScript-first authentication framework that handles all authentication concerns with minimal setup.
+
+### What is Better Auth?
+
+Better Auth is a framework-agnostic authentication library that provides:
+- **Database-backed sessions**: Secure, server-side session management
+- **Multiple auth methods**: Email/password, OAuth (Google, GitHub, etc.), magic links, passkeys
+- **Built-in security**: Password hashing (scrypt), CSRF protection, rate limiting
+- **TypeScript-first**: Full type safety across client and server
+- **Extensible**: Plugin system for advanced features (2FA, organizations, etc.)
+
+**Why Better Auth for Kianax?**
+- Eliminates need to build custom authentication from scratch
+- Handles complex security concerns automatically (password hashing, session management, token refresh)
+- Provides OAuth integration out-of-the-box for social login
+- Multi-session support (users can log in on multiple devices)
+- Works seamlessly with Next.js and Fastify (our tech stack)
+- Easy database migrations via CLI
+
+### Better Auth Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│  Frontend (Next.js 16)                      │
+│  - authClient (better-auth/react)           │
+│  - Reactive session state                   │
+│  - Sign up/in/out UI                        │
+└──────────────┬──────────────────────────────┘
+               │ HTTPS
+               ▼
+┌─────────────────────────────────────────────┐
+│  API Gateway or Auth Service                │
+│  - Better Auth handler                      │
+│  - /api/auth/* routes                       │
+│  - Session validation middleware            │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│  PostgreSQL Database                        │
+│  - user table                               │
+│  - session table                            │
+│  - account table (OAuth providers)          │
+│  - verification table (email verification)  │
+└─────────────────────────────────────────────┘
+```
+
+### Database Schema
+
+Better Auth requires **4 core tables** in PostgreSQL:
+
+**1. user table**
+```sql
+id          TEXT PRIMARY KEY
+name        TEXT
+email       TEXT UNIQUE NOT NULL
+emailVerified BOOLEAN DEFAULT false
+image       TEXT
+createdAt   TIMESTAMP DEFAULT NOW()
+updatedAt   TIMESTAMP DEFAULT NOW()
+```
+
+**2. session table**
+```sql
+id          TEXT PRIMARY KEY  -- Session token (used as cookie)
+userId      TEXT NOT NULL REFERENCES user(id)
+expiresAt   TIMESTAMP NOT NULL
+ipAddress   TEXT
+userAgent   TEXT
+createdAt   TIMESTAMP DEFAULT NOW()
+updatedAt   TIMESTAMP DEFAULT NOW()
+```
+
+**3. account table** (for OAuth providers and passwords)
+```sql
+id              TEXT PRIMARY KEY
+userId          TEXT NOT NULL REFERENCES user(id)
+accountId       TEXT NOT NULL  -- Provider user ID (e.g., GitHub user ID)
+providerId      TEXT NOT NULL  -- Provider name (e.g., 'github', 'google')
+accessToken     TEXT
+refreshToken    TEXT
+expiresAt       TIMESTAMP
+scope           TEXT
+idToken         TEXT
+password        TEXT           -- Hashed password (for email/password auth)
+createdAt       TIMESTAMP DEFAULT NOW()
+updatedAt       TIMESTAMP DEFAULT NOW()
+```
+
+**4. verification table** (for email verification tokens)
+```sql
+id          TEXT PRIMARY KEY
+identifier  TEXT NOT NULL      -- Email or phone number
+value       TEXT NOT NULL      -- Verification code/token
+expiresAt   TIMESTAMP NOT NULL
+createdAt   TIMESTAMP DEFAULT NOW()
+updatedAt   TIMESTAMP DEFAULT NOW()
+```
+
+### Installation and Setup
+
+**1. Install Better Auth**
+
+```bash
+# Install better-auth core and React client
+bun add better-auth
+bun add better-auth/react  # For frontend
+
+# Install database adapter (we use Drizzle ORM)
+bun add better-auth/drizzle-orm
+```
+
+**2. Configure Better Auth Server**
+
+Create `packages/db/src/auth.ts`:
+
+```typescript
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "./db";  // Your Drizzle instance
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",  // PostgreSQL
+  }),
+
+  // Email/password authentication
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+    requireEmailVerification: true,  // Require email verification before login
+  },
+
+  // OAuth providers (optional, add as needed)
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
+
+  // Session configuration
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,  // 7 days
+    updateAge: 60 * 60 * 24,       // Refresh if session used after 1 day
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5,  // 5 minutes (reduces DB queries)
+    },
+  },
+
+  // Security
+  rateLimit: {
+    enabled: true,
+    window: 60,        // 1 minute
+    max: 100,          // 100 requests per minute per IP
+  },
+
+  // Advanced options
+  advanced: {
+    generateId: () => crypto.randomUUID(),  // Custom ID generation
+  },
+});
+
+// Export types for TypeScript
+export type Session = typeof auth.$Infer.Session;
+export type User = typeof auth.$Infer.User;
+```
+
+**3. Set Up API Routes**
+
+For **Next.js (Frontend)**:
+
+Create `apps/web/app/api/auth/[...all]/route.ts`:
+
+```typescript
+import { auth } from "@kianax/db/auth";
+import { toNextJsHandler } from "better-auth/next-js";
+
+// Export GET and POST handlers
+export const { GET, POST } = toNextJsHandler(auth.handler);
+```
+
+For **Fastify (Backend/API Gateway)**:
+
+Create `apps/server/src/routes/auth.ts`:
+
+```typescript
+import { FastifyInstance } from "fastify";
+import { auth } from "@kianax/db/auth";
+
+export default async function authRoutes(fastify: FastifyInstance) {
+  // Mount Better Auth handler at /auth/*
+  fastify.all("/auth/*", async (request, reply) => {
+    return auth.handler({
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers as Record<string, string>,
+        body: request.body,
+      },
+      setHeader: (key, value) => {
+        reply.header(key, value);
+      },
+      setCookie: (name, value, options) => {
+        reply.setCookie(name, value, options);
+      },
+    });
+  });
+}
+```
+
+**4. Set Up Frontend Client**
+
+Create `apps/web/lib/auth-client.ts`:
+
+```typescript
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
+});
+
+// Export hooks for components
+export const {
+  useSession,
+  signIn,
+  signUp,
+  signOut,
+} = authClient;
+```
+
+**5. Generate Database Schema**
+
+```bash
+# Generate Drizzle schema
+cd packages/db
+npx @better-auth/cli generate
+
+# This creates migration files in drizzle/ directory
+
+# Run migrations
+bun run db:migrate
+```
+
+### Authentication Flows
+
+**Sign Up (Email/Password)**
+
+```typescript
+// Frontend component
+import { authClient } from "@/lib/auth-client";
+
+async function handleSignUp(email: string, password: string, name: string) {
+  const { data, error } = await authClient.signUp.email({
+    email,
+    password,
+    name,
+    callbackURL: "/dashboard",  // Redirect after sign up
+  });
+
+  if (error) {
+    console.error("Sign up failed:", error);
+    return;
+  }
+
+  // User created, verification email sent (if enabled)
+  console.log("User created:", data.user);
+}
+```
+
+**Sign In (Email/Password)**
+
+```typescript
+async function handleSignIn(email: string, password: string) {
+  const { data, error } = await authClient.signIn.email({
+    email,
+    password,
+    rememberMe: true,  // Extend session duration
+  });
+
+  if (error) {
+    console.error("Sign in failed:", error);
+    return;
+  }
+
+  // Session created
+  console.log("Signed in:", data.user);
+}
+```
+
+**OAuth Sign In (GitHub/Google)**
+
+```typescript
+async function handleOAuthSignIn() {
+  // Redirects to OAuth provider
+  await authClient.signIn.social({
+    provider: "github",
+    callbackURL: "/dashboard",
+  });
+}
+```
+
+**Sign Out**
+
+```typescript
+async function handleSignOut() {
+  await authClient.signOut();
+  router.push("/");
+}
+```
+
+### Session Management
+
+**Client-Side: Check Session**
+
+```typescript
+"use client";
+import { useSession } from "@/lib/auth-client";
+
+export function ProfileButton() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) return <div>Loading...</div>;
+
+  if (!session) {
+    return <a href="/sign-in">Sign In</a>;
+  }
+
+  return (
+    <div>
+      Welcome, {session.user.name}!
+      <button onClick={handleSignOut}>Sign Out</button>
+    </div>
+  );
+}
+```
+
+**Server-Side: Validate Session**
+
+```typescript
+// Next.js Server Component
+import { auth } from "@kianax/db/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+export default async function DashboardPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/sign-in");
+  }
+
+  return <div>Welcome, {session.user.name}!</div>;
+}
+```
+
+**Fastify: Validate Session Middleware**
+
+```typescript
+import { FastifyRequest, FastifyReply } from "fastify";
+import { auth } from "@kianax/db/auth";
+
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
+  const session = await auth.api.getSession({
+    headers: request.headers as Record<string, string>,
+  });
+
+  if (!session) {
+    return reply.code(401).send({ error: "Unauthorized" });
+  }
+
+  // Attach user to request
+  request.user = session.user;
+}
+
+// Use in routes
+fastify.get("/portfolio", {
+  preHandler: requireAuth,
+}, async (request, reply) => {
+  const userId = request.user.id;
+  // Fetch portfolio for user...
+});
+```
+
+### Multi-Session Support
+
+Better Auth supports multiple sessions per user (e.g., logged in on phone and laptop).
+
+```typescript
+// List all active sessions
+const sessions = await authClient.listSessions();
+
+// Revoke specific session
+await authClient.revokeSession({ sessionToken: "session-token-here" });
+
+// Revoke all other sessions (keep current)
+await authClient.revokeOtherSessions();
+
+// Revoke ALL sessions (force re-login everywhere)
+await authClient.revokeSessions();
+```
+
+### Security Features
+
+**1. Password Hashing**
+- Uses **scrypt** algorithm (memory-intensive, resistant to brute-force)
+- Configurable via custom hash/verify functions
+
+**2. Session Security**
+- Sessions stored server-side in database
+- Session tokens are cryptographically random UUIDs
+- Cookies are HTTP-only, secure, and signed
+- Automatic session refresh on activity
+
+**3. Rate Limiting**
+- Built-in rate limiting per IP address
+- Prevents brute-force attacks
+- Configurable limits
+
+**4. CSRF Protection**
+- CSRF tokens for state-changing operations
+- Automatic validation
+
+**5. Email Verification**
+- Require email verification before login
+- Verification tokens expire after 24 hours
+
+### Environment Variables
+
+Add to AWS Secrets Manager:
+
+```bash
+# Development environment
+aws secretsmanager create-secret \
+  --name kianax/development/better-auth-secret \
+  --secret-string "$(openssl rand -hex 32)"
+
+# Production environment
+aws secretsmanager create-secret \
+  --name kianax/production/better-auth-secret \
+  --secret-string "$(openssl rand -hex 32)"
+
+# OAuth credentials (if using social login)
+aws secretsmanager create-secret \
+  --name kianax/production/github-oauth \
+  --secret-string '{"clientId":"your-id","clientSecret":"your-secret"}'
+```
+
+Reference in application:
+
+```typescript
+// apps/server/.env or k8s secret
+BETTER_AUTH_SECRET=<from-secrets-manager>
+BETTER_AUTH_URL=https://api.kianax.io
+DATABASE_URL=<rds-connection-string>
+
+# OAuth (optional)
+GITHUB_CLIENT_ID=<from-secrets-manager>
+GITHUB_CLIENT_SECRET=<from-secrets-manager>
+GOOGLE_CLIENT_ID=<from-secrets-manager>
+GOOGLE_CLIENT_SECRET=<from-secrets-manager>
+```
+
+### Deployment Considerations
+
+**Database Migration**
+- Run `npx @better-auth/cli generate` to create schema
+- Apply migrations before deploying new code
+- Better Auth handles schema evolution automatically
+
+**Session Storage**
+- Sessions stored in PostgreSQL by default
+- Optional: Use Redis for session caching (reduces DB load)
+- Configure via `secondaryStorage` option
+
+**Kubernetes Deployment**
+- Better Auth is stateless (session stored in DB/Redis)
+- Can run multiple replicas for high availability
+- No sticky sessions required (unlike WebSocket)
+
+**Multi-Tenant Considerations**
+- Better Auth's `user` table includes `userId` (perfect for multi-tenancy)
+- All user data automatically scoped by `userId`
+- No additional isolation needed at auth layer
+
+### Customization
+
+**Additional User Fields**
+
+```typescript
+export const auth = betterAuth({
+  // ... other config
+  user: {
+    additionalFields: {
+      phoneNumber: {
+        type: "string",
+        required: false,
+      },
+      role: {
+        type: "string",
+        defaultValue: "user",
+      },
+      subscriptionTier: {
+        type: "string",
+        defaultValue: "free",
+      },
+    },
+  },
+});
+```
+
+**Custom Authentication Logic**
+
+```typescript
+export const auth = betterAuth({
+  // ... other config
+  hooks: {
+    after: [
+      {
+        matcher: (context) => context.path === "/sign-up/email",
+        handler: async (context) => {
+          // Custom logic after sign up
+          const user = context.returnValue;
+          await sendWelcomeEmail(user.email);
+        },
+      },
+    ],
+  },
+});
+```
+
+### Migration from Custom Auth
+
+If you already have a custom authentication system:
+
+1. **Map existing tables** to Better Auth schema
+2. **Migrate passwords**: Better Auth can validate existing hashes
+3. **Migrate sessions**: Force re-login or map session tokens
+4. **Update API calls**: Replace custom auth with Better Auth API
+
+### Further Resources
+
+- **Better Auth Docs**: https://www.better-auth.com/docs
+- **GitHub Repository**: https://github.com/better-auth/better-auth
+- **Example Apps**: https://github.com/better-auth/better-auth/tree/main/examples
+- **Discord Community**: Join for support and discussions
+
 ## Prerequisites
 
 ### Required Tools
