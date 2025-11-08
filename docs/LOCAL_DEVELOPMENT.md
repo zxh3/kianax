@@ -388,5 +388,5 @@ Production uses same Convex code, different deployment.
 
 **Questions?**
 - [Convex Docs](https://docs.convex.dev)
-- [trigger.dev Docs](https://trigger.dev/docs)
+- [Temporal Docs](https://docs.temporal.io)
 - Check `convex/README.md` for project-specific notes

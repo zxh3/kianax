@@ -16,9 +16,10 @@ Users describe what they want → AI translates to executable workflows → Plug
 
 **Frontend:** Next.js 16 + React 19 + Convex React hooks
 **Backend:** Convex (serverless functions + real-time database + auth)
-**Workflows:** trigger.dev (execution engine, triggers, retries)
+**Workflows:** Temporal Cloud (execution engine, triggers, retries, versioning)
+**Workers:** TypeScript Workers (execute plugin code as Temporal Activities)
 **AI:** OpenAI (GPT-4 for parsing, GPT-3.5 for transformations)
-**Deploy:** Vercel + Convex (zero infrastructure management)
+**Deploy:** Vercel (frontend) + Convex (backend) + Temporal Cloud (workflows)
 
 **Why Convex?**
 - Real-time by default (no WebSocket server needed)
@@ -392,11 +393,11 @@ Node 5: Trading Output (buy $1000)
 
 ### 7. Security
 
-**Built-in via Convex + trigger.dev:**
+**Built-in via Convex + Temporal:**
 - Encrypted credentials (Convex encryption)
-- Sandboxed plugin execution (trigger.dev tasks)
+- Sandboxed plugin execution (Temporal Activities)
 - Rate limiting (Convex automatic)
-- Audit logging (Convex function logs)
+- Audit logging (Convex + Temporal execution history)
 - Row-level security (Convex auth context)
 
 **Plugin Sandboxing:**
@@ -459,7 +460,7 @@ Users can share workflows as templates for others to use.
 2. **Audio** - Speak your workflow (Whisper transcription)
 3. **Visual** - React Flow editor for complex workflows
 
-**AI translates natural language → DAG → trigger.dev job**
+**AI translates natural language → DAG → Temporal workflow execution**
 
 ## Differentiation
 

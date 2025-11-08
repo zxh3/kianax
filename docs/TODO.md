@@ -135,7 +135,7 @@ npx convex deploy && vercel --prod
 ### Useful Links
 
 - [Convex Docs](https://docs.convex.dev)
-- [trigger.dev Docs](https://trigger.dev/docs)
+- [Temporal Docs](https://docs.temporal.io)
 - [Convex Dashboard](https://dashboard.convex.dev)
 
 ---

@@ -288,9 +288,9 @@ npx convex env set SECRET_NAME value --prod
 - Add via Vercel dashboard
 - Or use Vercel CLI: `vercel env add`
 
-**trigger.dev secrets:**
-- Add via trigger.dev dashboard
-- Or use CLI
+**Temporal credentials:**
+- Client certificates from Temporal Cloud dashboard
+- Stored as environment variables in workers
 
 ## Custom Domain
 
@@ -312,7 +312,8 @@ For custom domain, contact Convex support (Enterprise plan).
 
 **Convex:** Built-in health monitoring
 **Vercel:** Automatic health checks on deploy
-**trigger.dev:** Monitors workflow execution
+**Temporal Cloud:** Monitors workflow execution and worker health
+**Workers:** Health checks via process monitoring (Render/Railway)
 
 **No manual health check endpoints needed.**
 
@@ -327,15 +328,15 @@ npx convex logs --prod
 # Vercel logs
 vercel logs
 
-# trigger.dev logs
-# View in dashboard
+# Temporal logs (workers)
+# View in Temporal Cloud Dashboard or worker process logs
 ```
 
 ### Log Retention
 
 - **Convex:** 30 days
 - **Vercel:** 7 days (Hobby), 90 days (Pro)
-- **trigger.dev:** 30 days
+- **Temporal Cloud:** Unlimited (workflow history retained indefinitely)
 
 For longer retention, export to external service (Datadog, Sentry, etc.)
 
@@ -372,7 +373,8 @@ npx convex deployments list
 **Unexpected costs:**
 - Check Convex dashboard usage
 - Review Vercel bandwidth
-- Monitor trigger.dev task count
+- Monitor Temporal Cloud actions count
+- Check worker instance counts
 
 ---
 
