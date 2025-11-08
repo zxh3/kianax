@@ -91,23 +91,198 @@ This taxonomy is **future-proof**: any new plugin fits into one of these 5 categ
 - Called by other workflows
 - Example: "Send notification"
 
-### 3. Execution Flow
+### 3. Workflow Validation
 
+**Root Workflow Requirements:**
+- MUST have at least one Trigger node
+- All Trigger nodes must be entry points (no incoming edges)
+- Trigger nodes can only be: Cron, Webhook, Manual, or Platform Event types
+- At least one execution path from Trigger to an Output node
+- DAG structure (no cycles allowed)
+- No orphaned nodes (all nodes must be reachable from a Trigger)
+
+**Sub-Workflow Requirements:**
+- MUST NOT have any Trigger nodes
+- Must define input/output schemas (entry/exit points)
+- DAG structure (no cycles allowed)
+- All nodes must be connected in valid execution flow
+
+**General Validation:**
+- **Type Compatibility**: Connected nodes must have matching schemas (or AI Processor auto-inserted)
+- **Plugin Requirements**: All required plugin configurations present (API endpoints, parameters)
+- **Credentials**: All plugins requiring credentials have them configured by user
+- **No Cycles**: Graph is acyclic (topological sort possible)
+- **Reachability**: All nodes reachable from entry points
+
+**Workflow States:**
+- `draft` - Being edited, validation may fail, cannot execute
+- `active` - Validated and enabled, executing on triggers
+- `paused` - Validated but disabled, not executing
+- `archived` - Saved for reference, cannot execute
+
+**Activation Requirements:**
+Users can only activate a workflow (draft → active) when:
+1. Workflow passes all validation rules
+2. All required plugins are installed
+3. All required credentials are configured
+4. For workflows from templates: user has reviewed and customized
+
+**Validation Algorithms:**
+
+```typescript
+// 1. Check for Trigger nodes (Root workflows only)
+function validateTriggers(workflow) {
+  const triggerNodes = nodes.filter(n => n.type === 'trigger');
+
+  if (workflow.type === 'root' && triggerNodes.length === 0) {
+    return error("Root workflows must have at least one Trigger node");
+  }
+
+  if (workflow.type === 'sub-workflow' && triggerNodes.length > 0) {
+    return error("Sub-workflows cannot have Trigger nodes");
+  }
+
+  // Triggers must be entry points (no incoming edges)
+  for (const trigger of triggerNodes) {
+    if (edges.some(e => e.target === trigger.id)) {
+      return error("Trigger nodes cannot have incoming connections");
+    }
+  }
+}
+
+// 2. Check for cycles (must be DAG)
+function validateDAG(nodes, edges) {
+  const visited = new Set();
+  const recursionStack = new Set();
+
+  function hasCycle(nodeId) {
+    visited.add(nodeId);
+    recursionStack.add(nodeId);
+
+    const outgoing = edges.filter(e => e.source === nodeId);
+    for (const edge of outgoing) {
+      if (!visited.has(edge.target)) {
+        if (hasCycle(edge.target)) return true;
+      } else if (recursionStack.has(edge.target)) {
+        return true; // Cycle detected
+      }
+    }
+
+    recursionStack.delete(nodeId);
+    return false;
+  }
+
+  return nodes.some(n => hasCycle(n.id));
+}
+
+// 3. Check reachability (no orphaned nodes)
+function validateReachability(workflow) {
+  const entryPoints = workflow.type === 'root'
+    ? nodes.filter(n => n.type === 'trigger')
+    : [workflow.entryNode];
+
+  const reachable = new Set();
+
+  function dfs(nodeId) {
+    reachable.add(nodeId);
+    const outgoing = edges.filter(e => e.source === nodeId);
+    outgoing.forEach(e => {
+      if (!reachable.has(e.target)) dfs(e.target);
+    });
+  }
+
+  entryPoints.forEach(ep => dfs(ep.id));
+
+  const orphans = nodes.filter(n => !reachable.has(n.id));
+  if (orphans.length > 0) {
+    return error(`Orphaned nodes: ${orphans.map(n => n.id).join(', ')}`);
+  }
+}
+
+// 4. Check type compatibility
+function validateTypes(edges, nodes) {
+  for (const edge of edges) {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+
+    const sourceOutput = getPluginOutputSchema(sourceNode.pluginId);
+    const targetInput = getPluginInputSchema(targetNode.pluginId);
+
+    if (!schemasCompatible(sourceOutput, targetInput)) {
+      // Auto-insert AI Processor if schemas don't match
+      insertAIProcessor(edge, sourceOutput, targetInput);
+    }
+  }
+}
 ```
-User creates workflow in Convex
-  ↓
-Convex action compiles DAG → trigger.dev job
-  ↓
-trigger.dev handles triggers, queuing, retries
-  ↓
-Each node executes via io.runTask() (sandboxed)
-  ↓
-Results stored in Convex (real-time updates to frontend)
+
+### 4. Execution Flow
+
+**Workflow → trigger.dev Mapping:**
+
+Each Kianax workflow compiles to **one trigger.dev task** with nested subtasks:
+
+```typescript
+// Example: Root workflow with Cron trigger
+export const stockAlertWorkflow = task({
+  id: "workflow-{workflowId}",
+  run: async (payload) => {
+    // Node 1: Stock Price Input
+    const stockData = await triggerAndWait(stockPriceTask, { symbol: "AAPL" });
+
+    // Node 2: AI Processor
+    const analysis = await triggerAndWait(aiProcessorTask, {
+      input: stockData,
+      instruction: "Check if price dropped 5%"
+    });
+
+    // Node 3: Logic - Condition
+    if (analysis.dropped) {
+      // Node 4: Trading Output
+      await triggerAndWait(tradingTask, { action: "buy", amount: 1000 });
+    }
+  }
+});
+
+// Attach cron schedule dynamically
+await schedules.create({
+  task: stockAlertWorkflow.id,
+  cron: "*/5 * * * *",  // Every 5 minutes
+  externalId: userId,    // User-scoped schedule
+});
 ```
 
-**Real-time Updates:** Frontend uses `useQuery` to subscribe to executions table. Convex pushes updates automatically.
+**Trigger Types → trigger.dev:**
+- **Cron Trigger**: `schedules.create()` with cron pattern
+- **Webhook Trigger**: HTTP endpoint in Convex → `tasks.trigger()`
+- **Manual Trigger**: User button → `tasks.trigger()`
+- **Platform Event**: Convex subscription → `tasks.trigger()`
 
-### 4. Multi-Tenancy
+**Execution Process:**
+```
+1. User creates workflow in Convex (draft state)
+2. User activates workflow (validation runs)
+3. Convex action compiles DAG → trigger.dev task code
+4. Deploy task to trigger.dev
+5. For Cron triggers: Create schedule via schedules.create()
+6. For Webhooks: Register endpoint in Convex
+7. On trigger: task.trigger() → task execution begins
+8. Each node executes as subtask via triggerAndWait()
+9. Results stream back to Convex (workflow_executions table)
+10. Frontend receives real-time updates via useQuery
+```
+
+**DAG Compilation:**
+
+Kianax DAG (nodes + edges) → trigger.dev task code:
+- Topological sort determines execution order
+- Parallel branches execute concurrently (Promise.all)
+- Sequential nodes use await triggerAndWait()
+- Conditional branches use if/else based on Logic node outputs
+
+**Real-time Updates:** Frontend uses `useQuery` to subscribe to executions table. Convex pushes status updates automatically as task progresses.
+
+### 5. Multi-Tenancy
 
 **Automatic via Convex Auth:**
 - All queries filtered by `userId` from auth context
@@ -126,7 +301,7 @@ export const list = query({
 });
 ```
 
-### 5. Data Model
+### 6. Data Model
 
 **Workflow Structure (DAG):**
 
@@ -171,7 +346,7 @@ Node 5: Trading Output (buy $1000)
 
 **No SQL, no migrations.** Schema defined in TypeScript, stored as JSON in Convex.
 
-### 6. Security
+### 7. Security
 
 **Built-in via Convex + trigger.dev:**
 - Encrypted credentials (Convex encryption)
@@ -186,7 +361,7 @@ Node 5: Trading Output (buy $1000)
 - Network allowlist
 - No cross-user data access
 
-### 7. Marketplace
+### 8. Marketplace
 
 **Plugin Marketplace:**
 
