@@ -80,7 +80,8 @@ Comprehensive documentation is available in the [`docs/`](./docs) directory:
 ### Architecture & Design
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design, user flows, multi-tenant model
 - **[MICROSERVICES.md](./docs/MICROSERVICES.md)** - Service boundaries, communication patterns, migration strategy
-- **[TODO.md](./docs/TODO.md)** - 10-phase implementation roadmap (12-16 weeks)
+- **[ROADMAP.md](./docs/ROADMAP.md)** - Long-term product vision and development phases
+- **[TODO.md](./docs/TODO.md)** - Current sprint tasks and near-term work
 
 ### Deployment & Operations
 - **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - AWS EKS deployment guide with Terraform, CI/CD, monitoring
@@ -172,14 +173,15 @@ Never expose broker API keys or user credentials to the frontend.
 
 ## Status
 
-**Current Phase:** Phase 1 - Multi-user foundation (authentication, database)
+**Current Phase:** Phase 0 - Foundation
 
 Recent milestones:
 - ✅ Monorepo setup with Turborepo + Bun
-- ✅ Database schema with Drizzle ORM
-- ✅ Comprehensive deployment documentation
-- ✅ Better Auth integration
-- ✅ Statsig feature flags setup
-- 🚧 Next: User authentication implementation
+- ✅ Database package with Drizzle ORM
+- ✅ Basic Fastify server with health endpoints
+- ✅ Next.js 16 frontend with shadcn/ui
+- ✅ Docker Compose for local development
+- ✅ Comprehensive documentation
+- 🚧 Next: Database connection & user CRUD API
 
-See [`docs/TODO.md`](./docs/TODO.md) for the complete roadmap.
+See [`docs/TODO.md`](./docs/TODO.md) for current tasks and [`docs/ROADMAP.md`](./docs/ROADMAP.md) for long-term vision.
