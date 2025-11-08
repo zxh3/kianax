@@ -115,7 +115,8 @@ bun run build
 
 ### Important Rules
 
-1. **⚠️ Do not push to remote unless explicitly requested**
+1. **⚠️ Do not push to remote unless explicitly requested (AI coding assistants only)**
+   - This applies to AI tools like Claude Code
    - Always commit locally first
    - Wait for explicit approval before pushing
    - Use `git push origin main` only when asked
