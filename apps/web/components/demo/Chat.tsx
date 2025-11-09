@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@kianax/web/convex/_generated/api";
+import { api } from "@kianax/server/convex/_generated/api";
 import {
   Card,
   CardContent,

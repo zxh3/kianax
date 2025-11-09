@@ -13,12 +13,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@convex-dev/better-auth": "^0.9.7",
     "@kianax/shared": "*",
     "@kianax/ui": "*",
+    "@kianax/server": "*",
     "@tabler/icons-react": "^3.35.0",
     "@temporalio/client": "^1.13.0",
     "convex": "^1.28.2",
+    "lucide-react": "^0.553.0",
     "next": "^16.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

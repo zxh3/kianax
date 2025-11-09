@@ -1,0 +1,17 @@
+{
+  "name": "@kianax/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --until-success"
+  },
+  "dependencies": {
+    "convex": "^1.28.2",
+    "@convex-dev/better-auth": "^0.9.7"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}
