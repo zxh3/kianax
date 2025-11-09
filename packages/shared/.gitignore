@@ -1,0 +1,10 @@
+# TypeScript
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
