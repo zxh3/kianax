@@ -4,6 +4,9 @@ import withProvider from "@kianax/web/components/providers/with-provider";
 import { authClient } from "@kianax/web/lib/auth-client";
 import { Redirect } from "@kianax/web/components/redirect";
 import { Loader2 } from "lucide-react";
+import { AppSidebar } from "@kianax/web/components/dashboard/nav/app-sidebar";
+import { SiteHeader } from "@kianax/web/components/dashboard/nav/side-header";
+import { SidebarInset, SidebarProvider } from "@kianax/ui/components/sidebar";
 
 const DashboardLayout = ({
   children,
@@ -24,7 +27,22 @@ const DashboardLayout = ({
     return <Redirect to="/" />;
   }
 
-  return <>{children}</>;
+  return (
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
+  );
 };
 
 export default withProvider(ConvexClientProvider)(DashboardLayout);

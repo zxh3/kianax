@@ -1,15 +1,11 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconFolder,
-  IconInnerShadowTop,
-  IconSettings,
-} from "@tabler/icons-react";
+import { IconFolder, IconInnerShadowTop } from "@tabler/icons-react";
 
 import { NavPlugins } from "./nav-plugins";
 import { NavMain } from "./nav-main";
-import { NavSecondary } from "./nav-secondary";
+
 import { NavUser } from "./nav-user";
 import {
   Sidebar,
@@ -26,15 +22,8 @@ const data = {
   navMain: [
     {
       title: "Workflows",
-      url: "#",
+      url: "/dashboard/workflows",
       icon: IconFolder,
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
     },
   ],
 };
@@ -51,7 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <Link href="/dashboard">
                 <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">Kiana X</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -60,7 +49,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavPlugins />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

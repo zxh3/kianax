@@ -1,6 +1,8 @@
 "use client";
 
 import { IconPuzzle, IconShoppingBag } from "@tabler/icons-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   SidebarGroup,
@@ -11,24 +13,26 @@ import {
 } from "@kianax/ui/components/sidebar";
 
 export function NavPlugins() {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Plugins</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <a href="/plugins">
+          <SidebarMenuButton asChild isActive={pathname === "/dashboard/plugins"}>
+            <Link href="/dashboard/plugins">
               <IconPuzzle />
               <span>My Plugins</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <a href="/marketplace">
+          <SidebarMenuButton asChild isActive={pathname === "/dashboard/marketplace"}>
+            <Link href="/dashboard/marketplace">
               <IconShoppingBag />
               <span>Marketplace</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

@@ -1,5 +1,5 @@
-import Dashboard from "@kianax/web/components/dashboard";
+import { redirect } from "next/navigation";
 
 export default function DashboardPage() {
-  return <Dashboard />;
+  redirect("/dashboard/chat");
 }

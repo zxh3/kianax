@@ -62,13 +62,10 @@ export default function Chat() {
   return (
     <div className="w-full flex flex-col p-6">
       <div className="mb-6 shrink-0">
-        <h1 className="text-3xl font-bold">Welcome, {userName}!</h1>
-        <p className="text-muted-foreground">
-          Chat with your team in real-time
-        </p>
+        <h1 className="text-xl font-bold">Welcome, {userName}!</h1>
       </div>
 
-      <Card className="h-[600px] flex flex-col overflow-hidden">
+      <Card className="h-[80vh] flex flex-col overflow-hidden">
         <CardHeader className="shrink-0">
           <CardTitle>Messages</CardTitle>
           <CardDescription>
