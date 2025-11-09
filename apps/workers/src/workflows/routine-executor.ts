@@ -5,7 +5,7 @@
  * This is the ONLY workflow - it interprets ALL user routines at runtime.
  */
 
-import { proxyActivities } from '@temporalio/workflow';
+import { proxyActivities, workflowInfo } from '@temporalio/workflow';
 import type * as activities from '../activities';
 import type { RoutineInput } from '@kianax/shared/temporal';
 import { topologicalSort } from './utils/topological-sort';
@@ -37,6 +37,9 @@ const {
  */
 export async function routineExecutor(input: RoutineInput): Promise<void> {
   const { routineId, userId, nodes, connections, triggerData } = input;
+
+  // Get workflow execution ID to use as executionId
+  const { workflowId: executionId } = workflowInfo();
 
   // Update routine status to running
   await updateRoutineStatus({
@@ -80,6 +83,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
             context: {
               userId,
               routineId,
+              executionId,
               nodeId: node.id,
             },
           });

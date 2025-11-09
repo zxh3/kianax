@@ -4,6 +4,9 @@
     "outDir": "dist",
     "rootDir": "src",
     "composite": true,
+    "incremental": true,
+    "module": "ES2022",
+    "moduleResolution": "bundler",
     "declarationMap": true
   },
   "include": ["src/**/*"],

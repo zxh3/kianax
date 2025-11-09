@@ -3,6 +3,8 @@
  * Shared type definitions for Temporal workflows and activities
  */
 
+import type { PluginContext as BasePluginContext } from '../types/plugin';
+
 export interface RoutineInput {
   routineId: string;
   userId: string;
@@ -27,17 +29,19 @@ export interface Connection {
   targetHandle?: string;
 }
 
+/**
+ * Plugin execution context for Temporal workflows
+ * Extends base PluginContext with nodeId for workflow-specific tracking
+ */
+export interface TemporalPluginContext extends BasePluginContext {
+  nodeId: string;
+}
+
 export interface ExecutePluginInput {
   pluginId: string;
   config: any;
   inputs: any;
-  context: PluginContext;
-}
-
-export interface PluginContext {
-  userId: string;
-  routineId: string;
-  nodeId: string;
+  context: TemporalPluginContext;
 }
 
 export interface UpdateRoutineStatusInput {

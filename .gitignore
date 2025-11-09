@@ -43,3 +43,4 @@ convex/_generated/
 
 # Temporal Workers
 workers/dist/
+*.tsbuildinfo
