@@ -15,23 +15,23 @@ export type {
   CredentialSchema,
 } from "./plugin";
 
-// Workflow types
+// Routine types (formerly "workflow" - renamed to avoid confusion with Temporal Workflows)
 export type {
-  Workflow,
-  WorkflowNode,
-  WorkflowConnection,
-  WorkflowStatus,
-  WorkflowCreateInput,
-  WorkflowUpdateInput,
-  WorkflowTemplate,
-  WorkflowValidationError,
-  WorkflowValidationResult,
+  Routine,
+  RoutineNode,
+  RoutineConnection,
+  RoutineStatus,
+  RoutineCreateInput,
+  RoutineUpdateInput,
+  RoutineTemplate,
+  RoutineValidationError,
+  RoutineValidationResult,
   Position,
-} from "./workflow";
+} from "./routine";
 
 // Execution types
 export type {
-  WorkflowExecution,
+  RoutineExecution,
   ExecutionStatus,
   NodeExecutionState,
   ExecutionLog,
@@ -61,7 +61,7 @@ export interface UserSettings {
     timezone: string;
   };
   quotas: {
-    maxWorkflows: number;
+    maxRoutines: number;
     maxExecutionsPerMonth: number;
     maxPlugins: number;
   };

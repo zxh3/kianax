@@ -12,8 +12,8 @@ export default defineSchema({
     tokenIdentifier: v.string(),
   }).index("by_token", ["tokenIdentifier"]),
 
-  // Workflow tables
-  workflows: defineTable({
+  // Routine tables (user-created automation routines)
+  routines: defineTable({
     userId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
@@ -58,9 +58,9 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_user_and_status", ["userId", "status"]),
 
-  // Workflow execution history
-  workflow_executions: defineTable({
-    workflowId: v.id("workflows"),
+  // Routine execution history
+  routine_executions: defineTable({
+    routineId: v.id("routines"),
     userId: v.string(),
     status: v.union(
       v.literal("pending"),
@@ -101,7 +101,7 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     duration: v.optional(v.number()),
   })
-    .index("by_workflow", ["workflowId"])
+    .index("by_routine", ["routineId"])
     .index("by_user", ["userId"])
     .index("by_status", ["status"]),
 

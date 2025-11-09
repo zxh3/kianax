@@ -1,14 +1,16 @@
 /**
- * Workflow Type Definitions
+ * Routine Type Definitions
  *
- * Defines the structure for workflows, nodes, and connections.
- * Workflows are directed acyclic graphs (DAGs) of plugin nodes.
+ * Defines the structure for user-created automation routines (formerly "workflows").
+ * Routines are directed acyclic graphs (DAGs) of plugin nodes.
+ *
+ * Note: "Routine" is the product concept. "Workflow" refers to Temporal's execution engine.
  */
 
 import type { PluginType } from "./plugin";
 
 /**
- * Position coordinates for visual workflow editor
+ * Position coordinates for visual routine editor
  */
 export interface Position {
   x: number;
@@ -16,10 +18,10 @@ export interface Position {
 }
 
 /**
- * Workflow node representing a plugin instance in the workflow
+ * Routine node representing a plugin instance in the routine
  */
-export interface WorkflowNode {
-  /** Unique node ID within the workflow */
+export interface RoutineNode {
+  /** Unique node ID within the routine */
   id: string;
 
   /** Plugin ID this node uses */
@@ -42,9 +44,9 @@ export interface WorkflowNode {
 }
 
 /**
- * Connection between two workflow nodes
+ * Connection between two routine nodes
  */
-export interface WorkflowConnection {
+export interface RoutineConnection {
   /** Unique connection ID */
   id: string;
 
@@ -68,36 +70,36 @@ export interface WorkflowConnection {
 }
 
 /**
- * Workflow status
+ * Routine status
  */
-export type WorkflowStatus = "draft" | "active" | "paused" | "archived";
+export type RoutineStatus = "draft" | "active" | "paused" | "archived";
 
 /**
- * Complete workflow definition
+ * Complete routine definition
  */
-export interface Workflow {
-  /** Unique workflow ID */
+export interface Routine {
+  /** Unique routine ID */
   id: string;
 
-  /** User who owns this workflow */
+  /** User who owns this routine */
   userId: string;
 
-  /** Workflow name */
+  /** Routine name */
   name: string;
 
-  /** Workflow description */
+  /** Routine description */
   description?: string;
 
-  /** Workflow status */
-  status: WorkflowStatus;
+  /** Routine status */
+  status: RoutineStatus;
 
-  /** Workflow nodes */
-  nodes: WorkflowNode[];
+  /** Routine nodes */
+  nodes: RoutineNode[];
 
   /** Connections between nodes */
-  connections: WorkflowConnection[];
+  connections: RoutineConnection[];
 
-  /** Workflow-level configuration */
+  /** Routine-level configuration */
   config?: {
     /** Maximum execution time (ms) */
     timeout?: number;
@@ -114,10 +116,10 @@ export interface Workflow {
     };
   };
 
-  /** Workflow tags */
+  /** Routine tags */
   tags?: string[];
 
-  /** Workflow version (for versioning support) */
+  /** Routine version (for versioning support) */
   version: number;
 
   /** Timestamps */
@@ -129,24 +131,24 @@ export interface Workflow {
 }
 
 /**
- * Workflow creation input (before ID and timestamps are assigned)
+ * Routine creation input (before ID and timestamps are assigned)
  */
-export type WorkflowCreateInput = Omit<
-  Workflow,
+export type RoutineCreateInput = Omit<
+  Routine,
   "id" | "createdAt" | "updatedAt" | "version"
 >;
 
 /**
- * Workflow update input (partial update)
+ * Routine update input (partial update)
  */
-export type WorkflowUpdateInput = Partial<
-  Omit<Workflow, "id" | "userId" | "createdAt">
+export type RoutineUpdateInput = Partial<
+  Omit<Routine, "id" | "userId" | "createdAt">
 >;
 
 /**
- * Workflow template for sharing/marketplace
+ * Routine template for sharing/marketplace
  */
-export interface WorkflowTemplate {
+export interface RoutineTemplate {
   /** Template ID */
   id: string;
 
@@ -168,8 +170,8 @@ export interface WorkflowTemplate {
   /** Template tags */
   tags: string[];
 
-  /** Workflow structure (without credentials) */
-  workflow: Omit<Workflow, "id" | "userId" | "createdAt" | "updatedAt">;
+  /** Routine structure (without credentials) */
+  routine: Omit<Routine, "id" | "userId" | "createdAt" | "updatedAt">;
 
   /** Required plugins */
   requiredPlugins: string[];
@@ -186,9 +188,9 @@ export interface WorkflowTemplate {
 }
 
 /**
- * Workflow validation error
+ * Routine validation error
  */
-export interface WorkflowValidationError {
+export interface RoutineValidationError {
   type: "missing_plugin" | "invalid_connection" | "missing_credentials" | "cycle_detected" | "invalid_config";
   message: string;
   nodeId?: string;
@@ -196,10 +198,10 @@ export interface WorkflowValidationError {
 }
 
 /**
- * Workflow validation result
+ * Routine validation result
  */
-export interface WorkflowValidationResult {
+export interface RoutineValidationResult {
   valid: boolean;
-  errors: WorkflowValidationError[];
-  warnings: WorkflowValidationError[];
+  errors: RoutineValidationError[];
+  warnings: RoutineValidationError[];
 }

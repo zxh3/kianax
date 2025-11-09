@@ -2,10 +2,15 @@
  * Temporal Client Singleton
  *
  * Provides a singleton Temporal client for the Next.js app.
- * Used by API routes and Convex functions to start workflows.
+ * Used by API routes and Convex functions to start routine executions.
  *
  * IMPORTANT: Only use this in server-side code (API routes, Server Components, Convex).
  * Never import this in client components.
+ *
+ * TERMINOLOGY NOTE:
+ * - "Routine" = user-facing automation (product concept)
+ * - "Workflow" = Temporal's execution engine (infrastructure concept)
+ * - We start Temporal Workflows to execute user Routines
  */
 
 import { Client, Connection } from '@temporalio/client';
@@ -54,19 +59,19 @@ export async function getTemporalClient(): Promise<Client> {
 }
 
 /**
- * Start a workflow execution
+ * Start a routine execution (via Temporal Workflow)
  *
  * @example
- * const handle = await startWorkflow('userWorkflowExecutor', {
- *   workflowId: 'workflow-123',
+ * const handle = await startRoutine('routineExecutor', {
+ *   workflowId: 'routine-123',
  *   taskQueue: 'kianax-workflows',
- *   args: [workflowDefinition],
+ *   args: [routineDefinition],
  * });
  */
-export async function startWorkflow<T = any>(
+export async function startRoutine<T = any>(
   workflowType: string,
   options: {
-    workflowId: string;
+    workflowId: string; // Still called workflowId for Temporal compatibility
     taskQueue: string;
     args: any[];
     cronSchedule?: string;
@@ -85,25 +90,25 @@ export async function startWorkflow<T = any>(
 }
 
 /**
- * Get workflow execution handle
+ * Get routine execution handle
  */
-export async function getWorkflowHandle(workflowId: string) {
+export async function getRoutineHandle(routineId: string) {
   const client = await getTemporalClient();
-  return client.workflow.getHandle(workflowId);
+  return client.workflow.getHandle(routineId);
 }
 
 /**
- * Cancel a workflow execution
+ * Cancel a routine execution
  */
-export async function cancelWorkflow(workflowId: string) {
-  const handle = await getWorkflowHandle(workflowId);
+export async function cancelRoutine(routineId: string) {
+  const handle = await getRoutineHandle(routineId);
   await handle.cancel();
 }
 
 /**
- * Query workflow status
+ * Query routine execution status
  */
-export async function getWorkflowStatus(workflowId: string) {
-  const handle = await getWorkflowHandle(workflowId);
+export async function getRoutineStatus(routineId: string) {
+  const handle = await getRoutineHandle(routineId);
   return await handle.describe();
 }

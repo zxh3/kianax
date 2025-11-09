@@ -1,7 +1,7 @@
 /**
  * Execution Type Definitions
  *
- * Defines types for workflow execution state, history, and monitoring.
+ * Defines types for routine execution state, history, and monitoring.
  */
 
 /**
@@ -48,14 +48,14 @@ export interface NodeExecutionState {
 }
 
 /**
- * Workflow execution record
+ * Routine execution record
  */
-export interface WorkflowExecution {
+export interface RoutineExecution {
   /** Unique execution ID */
   id: string;
 
-  /** Workflow ID */
-  workflowId: string;
+  /** Routine ID */
+  routineId: string;
 
   /** User ID */
   userId: string;
@@ -105,10 +105,10 @@ export interface ExecutionLog {
 }
 
 /**
- * Execution statistics for a workflow
+ * Execution statistics for a routine
  */
 export interface ExecutionStatistics {
-  workflowId: string;
+  routineId: string;
   totalExecutions: number;
   successfulExecutions: number;
   failedExecutions: number;
@@ -130,7 +130,7 @@ export interface ExecutionStatistics {
  */
 export interface ExecutionEvent {
   executionId: string;
-  workflowId: string;
+  routineId: string;
   type: "started" | "node_started" | "node_completed" | "node_failed" | "completed" | "failed";
   timestamp: number;
   nodeId?: string;
