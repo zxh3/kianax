@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "^0.9.7",
     "@kianax/ui": "*",
-    "@kianax/server": "*",
     "convex": "^1.28.2",
     "next": "^16.0.1",
     "react": "^19.2.0",

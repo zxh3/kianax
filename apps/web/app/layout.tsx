@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import "@kianax/ui/globals.css";
-import { ConvexClientProvider } from "@kianax/web/components/providers/ConvexClientProvider";
 
 export const metadata: Metadata = {
   title: "kianax",
@@ -15,9 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <ConvexClientProvider>{children}</ConvexClientProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

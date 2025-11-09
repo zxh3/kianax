@@ -34,7 +34,8 @@
       },
       "suspicious": {
         "noArrayIndexKey": "off",
-        "noDoubleEquals": "off"
+        "noDoubleEquals": "off",
+        "noExplicitAny": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"

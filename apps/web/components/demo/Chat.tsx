@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@kianax/server/convex/_generated/api";
+import { api } from "@kianax/web/convex/_generated/api";
 import {
   Card,
   CardContent,
@@ -12,17 +12,19 @@ import {
 } from "@kianax/ui/components/card";
 import { Input } from "@kianax/ui/components/input";
 import { Button } from "@kianax/ui/components/button";
-import { Avatar, AvatarFallback } from "@kianax/ui/components/avatar";
 import { Badge } from "@kianax/ui/components/badge";
 import { Send, Loader2 } from "lucide-react";
+import { authClient } from "@kianax/web/lib/auth-client";
 
 export default function Chat() {
-  const [userName, setUserName] = useState("Guest");
   const [messageBody, setMessageBody] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messages = useQuery(api.messages.getMessages);
   const sendMessage = useMutation(api.messages.sendMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data } = authClient.useSession();
+  const userName = data?.user?.name || "Guest";
 
   // Auto-scroll to bottom when new messages arrive
   // biome-ignore lint: expected use of dependency
@@ -59,23 +61,15 @@ export default function Chat() {
 
   return (
     <div className="w-full flex flex-col p-6">
-      <div className="mb-6 flex-shrink-0">
+      <div className="mb-6 shrink-0">
         <h1 className="text-3xl font-bold">Welcome, {userName}!</h1>
         <p className="text-muted-foreground">
           Chat with your team in real-time
         </p>
-        <div className="mt-4 flex gap-2 items-center">
-          <Input
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            placeholder="Enter your name..."
-            className="max-w-xs"
-          />
-        </div>
       </div>
 
       <Card className="h-[600px] flex flex-col overflow-hidden">
-        <CardHeader className="flex-shrink-0">
+        <CardHeader className="shrink-0">
           <CardTitle>Messages</CardTitle>
           <CardDescription>
             {messages ? `${messages.length} messages` : "Loading..."}
@@ -93,11 +87,6 @@ export default function Chat() {
                       key={msg._id}
                       className={`flex gap-3 items-start ${isMyMessage ? "flex-row-reverse" : ""}`}
                     >
-                      <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarFallback className="text-xs">
-                          {msg.user.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
                       <div
                         className={`flex-1 space-y-1 min-w-0 ${isMyMessage ? "items-end" : ""}`}
                       >
@@ -115,7 +104,7 @@ export default function Chat() {
                           </span>
                         </div>
                         <p
-                          className={`text-sm break-words ${isMyMessage ? "text-right" : ""}`}
+                          className={`text-sm wrap-break-words ${isMyMessage ? "text-right" : ""}`}
                         >
                           {msg.body}
                         </p>
@@ -134,10 +123,7 @@ export default function Chat() {
             </div>
           </div>
 
-          <form
-            onSubmit={handleSendMessage}
-            className="p-4 border-t flex-shrink-0"
-          >
+          <form onSubmit={handleSendMessage} className="p-4 border-t shrink-0">
             <div className="flex gap-2">
               <Input
                 value={messageBody}
