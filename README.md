@@ -1,24 +1,24 @@
 # Kianax
 
-An AI-native workflow orchestration platform where users build powerful automations by simply describing what they want. Extensible plugin marketplace lets you connect any data source to any action.
+An AI-native routine orchestration platform where users build powerful automations by simply describing what they want. Extensible plugin marketplace lets you connect any data source to any action.
 
 ## Overview
 
-**"Talk to Create Workflows"** - The only workflow platform where AI builds automations for you.
+**"Talk to Create Routines"** - The only automation platform where AI builds routines for you.
 
 Kianax enables users to:
-- **Create Workflows with Natural Language** - Describe what you want, AI builds it
+- **Create Routines with Natural Language** - Describe what you want, AI builds it
 - **Connect Any Data Source** - Twitter, Reddit, earnings reports, stock prices, RSS feeds
 - **Trigger on Any Event** - Time-based, data changes, webhooks, custom events
 - **Take Any Action** - Trade stocks, send emails/SMS, make phone calls, HTTP requests
 - **Build with Plugins** - Extensible marketplace where anyone can publish plugins
-- **Powered by AI** - LLM decision nodes for intelligent, context-aware workflows
+- **Powered by AI** - LLM decision nodes for intelligent, context-aware routines
 
-Each user has complete data isolation with their own workflows, credentials, and execution history.
+Each user has complete data isolation with their own routines, credentials, and execution history.
 
 ## Key Features
 
-- 🤖 **AI-Powered Workflow Creation**: Describe workflows in plain English or audio
+- 🤖 **AI-Powered Routine Creation**: Describe routines in plain English or audio
 - 🧩 **Plugin Marketplace**: Extensible ecosystem - anyone can build and publish plugins
 - 🔌 **Type-Safe Connections**: Plugins automatically connect when input/output types match
 - 📊 **Multi-Source Data Ingestion**: Unify data from Twitter, Reddit, APIs, databases, and more
@@ -34,50 +34,58 @@ Each user has complete data isolation with their own workflows, credentials, and
 "When AAPL drops 5%, analyze recent news sentiment.
 If positive, buy $1000 worth. If negative, wait."
 ```
-**Workflow:** Cron Trigger → Stock Price Input → AI Processor (check if dropped 5%) → News Input → AI Processor (sentiment analysis) → Logic Condition → Trading Output
+**Routine:**
+- Trigger: Cron (every 5 minutes)
+- Steps: Stock Price Input → AI Processor (check if dropped 5%) → News Input → AI Processor (sentiment analysis) → Logic Condition → Trading Output
 
 ### 2. Social Media Monitoring
 ```
 "When my company is mentioned on Reddit with negative sentiment,
 send me an SMS alert."
 ```
-**Workflow:** Webhook Trigger → Reddit Input → AI Processor (sentiment analysis) → Logic Condition → SMS Output
+**Routine:**
+- Trigger: Webhook (on Reddit mention)
+- Steps: Reddit Input → AI Processor (sentiment analysis) → Logic Condition → SMS Output
 
 ### 3. Earnings Alert System
 ```
 "Every day at 4pm, check if any tech companies reported earnings.
 Summarize with AI and email me."
 ```
-**Workflow:** Cron Trigger → Earnings Input → AI Processor (summarize) → Email Output
+**Routine:**
+- Trigger: Cron (daily at 4pm)
+- Steps: Earnings Input → AI Processor (summarize) → Email Output
 
 ### 4. Custom Business Automation
 ```
 "When a new customer signs up, enrich their data from Clearbit,
 add to Salesforce, and send welcome email."
 ```
-**Workflow:** Webhook Trigger → Clearbit Input → AI Processor (format data) → Salesforce Output → AI Processor (generate email) → Email Output
+**Routine:**
+- Trigger: Webhook (on customer signup)
+- Steps: Clearbit Input → AI Processor (format data) → Salesforce Output → AI Processor (generate email) → Email Output
 
 ## Tech Stack
 
-**Frontend:** Next.js 16 (React 19), Tailwind CSS v4, shadcn/ui, React Flow (workflow editor)
+**Frontend:** Next.js 16 (React 19), Tailwind CSS v4, shadcn/ui, React Flow (routine editor)
 **Backend:** Convex (managed database + serverless functions + real-time subscriptions)
-**Workflow Engine:** Temporal Cloud (dynamic workflow execution, versioning, observability)
+**Routine Engine:** Temporal Cloud (dynamic Temporal workflow execution, versioning, observability)
 **Workers:** TypeScript Workers (execute plugin code as Temporal Activities)
 **Auth:** Convex Auth (built-in authentication)
 **File Storage:** Convex file storage (for plugin code)
-**Infrastructure:** Vercel (frontend), Convex (backend + database), Temporal Cloud (workflows)
-**AI Services:** OpenAI (GPT-4 for workflow parsing, GPT-3.5 Turbo for AI Processor)
+**Infrastructure:** Vercel (frontend), Convex (backend + database), Temporal Cloud (Temporal workflows)
+**AI Services:** OpenAI (GPT-4 for routine parsing, GPT-3.5 Turbo for AI Processor)
 
-**Why Temporal for Workflows?**
-- Dynamic execution: Purpose-built for user-defined workflows at runtime
-- Workflow versioning: Update engine without breaking running workflows
-- Superior observability: Time-travel debugging, workflow history replay
+**Why Temporal for Routine Execution?**
+- Dynamic execution: Purpose-built for user-defined routines at runtime
+- Workflow versioning: Update engine without breaking running routines (Temporal workflows)
+- Superior observability: Time-travel debugging, Temporal workflow history replay
 - Multi-tenancy: Task queues per user, isolated execution
-- Battle-tested: Used by Uber, Netflix, Stripe for mission-critical workflows
+- Battle-tested: Used by Uber, Netflix, Stripe for mission-critical Temporal workflows
 
 **Why Convex for Data?**
 - Zero DevOps: No PostgreSQL, Redis, or Kubernetes management
-- Built-in real-time: Live workflow execution updates without WebSocket server
+- Built-in real-time: Live routine execution updates without WebSocket server
 - TypeScript-native: Schema and functions defined in code, no migrations
 - Serverless: Auto-scaling, pay-per-use
 - Perfect for solo developers focusing on product, not infrastructure
@@ -88,20 +96,20 @@ add to Salesforce, and send welcome email."
 kianax/
 ├── app/                  # Next.js 16 app directory (frontend)
 │   ├── page.tsx          # Homepage
-│   ├── workflows/        # Workflow builder UI
+│   ├── routines/         # Routine builder UI
 │   ├── marketplace/      # Plugin marketplace
 │   └── chat/             # AI chat interface
 ├── convex/               # Convex backend (database + functions)
-│   ├── schema.ts         # Database schema (workflows, plugins, users)
-│   ├── workflows.ts      # Workflow CRUD mutations/queries
+│   ├── schema.ts         # Database schema (routines, plugins, users)
+│   ├── routines.ts       # Routine CRUD mutations/queries
 │   ├── plugins.ts        # Plugin marketplace functions
 │   ├── executions.ts     # Execution history queries
 │   ├── auth.ts           # Convex Auth configuration
 │   └── lib/
 │       └── temporal.ts   # Temporal Client integration
-├── workers/              # Temporal Workers (execute workflows)
-│   ├── workflows/        # Workflow definitions
-│   │   └── executor.ts   # Generic workflow executor
+├── workers/              # Temporal Workers (execute routines as Temporal workflows)
+│   ├── workflows/        # Temporal workflow definitions
+│   │   └── executor.ts   # Generic routine executor (Temporal workflow)
 │   ├── activities/       # Activities (plugin execution)
 │   │   └── plugins.ts    # Plugin activity implementations
 │   └── index.ts          # Worker entry point
@@ -110,10 +118,10 @@ kianax/
 │   ├── plugin-sdk/       # Plugin development SDK
 │   └── typescript-config/
 ├── plugins/              # Core platform plugins (executed as Temporal Activities)
-│   ├── triggers/
-│   │   ├── cron/         # Time-based triggers
-│   │   ├── webhook/      # HTTP webhook triggers
-│   │   └── manual/       # User-initiated triggers
+│   ├── triggers/         # Trigger configuration handlers (NOT plugins)
+│   │   ├── cron/         # Cron schedule setup (Temporal Schedules)
+│   │   ├── webhook/      # Webhook endpoint handlers
+│   │   └── manual/       # Manual trigger handlers
 │   ├── data-sources/
 │   │   ├── stock-price/  # Stock market data (Polygon.io)
 │   │   ├── twitter/      # Twitter API integration
@@ -169,7 +177,7 @@ CONVEX_DEPLOYMENT=dev:your-project-name  # Auto-generated by convex dev
 NEXT_PUBLIC_CONVEX_URL=https://...       # Auto-generated
 TEMPORAL_ADDRESS=localhost:7233          # Local Temporal server
 TEMPORAL_NAMESPACE=default               # Temporal namespace
-OPENAI_API_KEY=...                       # For AI workflow parsing
+OPENAI_API_KEY=...                       # For AI routine parsing
 ```
 
 ## Plugin System
@@ -183,11 +191,18 @@ interface Plugin {
   id: string;                    // 'alpaca-trading'
   name: string;                  // 'Alpaca Trading'
   version: string;               // '1.0.0'
-  type: 'trigger' | 'input' | 'processor' | 'logic' | 'output';
+  type: 'input' | 'processor' | 'logic' | 'output';
   inputSchema: JSONSchema;       // Typed inputs
   outputSchema: JSONSchema;      // Typed outputs
   credentials?: CredentialSchema; // API keys, tokens
   execute: (input, context) => Promise<output>;
+}
+
+// Note: Triggers are routine-level config, not plugins
+interface Routine {
+  id: string;
+  trigger: { type: 'cron' | 'webhook' | 'manual' | 'event'; config: any };
+  steps: PluginStep[];  // DAG of plugin nodes
 }
 ```
 
@@ -217,11 +232,11 @@ Trading Output
 - **Version Control**: Semantic versioning with upgrade paths
 - **Revenue Sharing**: Monetize your plugins (optional)
 
-**Workflow Marketplace:**
-- **Share**: Publish workflows as templates for others
-- **Browse**: Discover pre-built workflow templates
-- **Install**: Draft workflow from template, configure your credentials
-- **Activate**: Enable workflow when all plugins installed and credentials set
+**Routine Marketplace:**
+- **Share**: Publish routines as templates for others
+- **Browse**: Discover pre-built routine templates
+- **Install**: Draft routine from template, configure your credentials
+- **Activate**: Enable routine when all plugins installed and credentials set
 - **Privacy**: Templates contain structure only, no credentials shared
 
 ## Documentation
@@ -229,7 +244,7 @@ Trading Output
 Comprehensive documentation is available in the [`docs/`](./docs) directory:
 
 ### Architecture & Design
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Plugin system, workflow engine, Convex + Temporal Cloud architecture
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Plugin system, routine engine, Convex + Temporal Cloud architecture
 - **[PLUGIN_DEVELOPMENT.md](./docs/PLUGIN_DEVELOPMENT.md)** - Build and publish plugins
 - **[ROADMAP.md](./docs/ROADMAP.md)** - Long-term product vision and development phases
 - **[TODO.md](./docs/TODO.md)** - Current sprint tasks and near-term work
@@ -250,12 +265,12 @@ bun run workers/dev
 bun run dev
 
 # Run Convex functions in development
-npx convex run workflows:create --args '{"name": "test"}'
+npx convex run routines:create --args '{"name": "test"}'
 
-# Test Temporal workflows
+# Test Temporal workflows (these execute user routines)
 temporal workflow execute \
-  --task-queue kianax-workflows \
-  --type userWorkflowExecutor \
+  --task-queue kianax-routines \
+  --type routineExecutor \
   --workflow-id test-1
 
 # View dashboards
@@ -275,10 +290,10 @@ bun run typecheck
 1. **Multi-Tenancy**: Every resource scoped to `user_id` - complete user isolation (Convex row-level security)
 2. **Plugin Sandboxing**: Plugins run in isolated environments, cannot access other users' data
 3. **Type Safety**: Plugins connect only when input/output schemas match
-4. **AI-First**: Natural language and audio as primary workflow creation interface
+4. **AI-First**: Natural language and audio as primary routine creation interface
 5. **Security First**: Backend validation, encrypted credentials, sandboxed execution
 6. **Extensibility**: Anyone can build and publish plugins to the marketplace
-7. **Real-Time**: Live updates via Convex subscriptions for instant workflow execution feedback
+7. **Real-Time**: Live updates via Convex subscriptions for instant routine execution feedback
 8. **Serverless-First**: Zero DevOps, fully managed infrastructure via Convex + Temporal Cloud
 
 ## Contributing
@@ -295,7 +310,7 @@ bun run typecheck
    - Update `docs/TODO.md` when completing tasks
    - Update `docs/ROADMAP.md` if phases change
    - Keep documentation in sync with code changes
-   - Document new features, APIs, and workflows
+   - Document new features, APIs, and routines
 
 ### Git Workflow
 
@@ -343,12 +358,12 @@ chore(deps): update dependencies
 
 ## Security
 
-- ✅ All workflow execution happens server-side (Convex functions + Temporal Workers)
+- ✅ All routine execution happens server-side (Convex functions + Temporal Workers)
 - ✅ Plugin sandboxing prevents unauthorized access
 - ✅ API keys encrypted at rest (Convex encrypted fields)
 - ✅ User data isolated per `user_id` (Convex authentication + row-level security)
-- ✅ Rate limiting per user and per workflow (Convex built-in)
-- ✅ Audit logging for all workflow executions (Convex function logs)
+- ✅ Rate limiting per user and per routine (Convex built-in)
+- ✅ Audit logging for all routine executions (Convex function logs)
 - ✅ Plugin code review before marketplace approval
 - ✅ Credential scoping (plugins access only granted credentials)
 
@@ -372,13 +387,13 @@ Recent milestones:
 - ✅ Next.js 16 frontend with shadcn/ui
 - ✅ Comprehensive platform architecture redesign
 - ✅ Migration to Convex (serverless backend + real-time database)
-- ✅ Migration to Temporal Cloud (workflow execution engine)
+- ✅ Migration to Temporal Cloud (routine execution engine using Temporal workflows)
 - 🚧 Next: Convex schema setup and Plugin SDK foundation
 
 **Flagship Use Case:** AI-powered stock trading (proof-of-concept for plugin system)
 
-**Platform Vision:** Universal workflow orchestration with plugin marketplace where:
-- Users describe workflows in natural language
+**Platform Vision:** Universal routine orchestration with plugin marketplace where:
+- Users describe routines in natural language
 - Plugins provide data sources and actions
 - AI powers intelligent decision-making
 - Community builds and shares plugins

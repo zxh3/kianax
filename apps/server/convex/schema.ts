@@ -23,13 +23,20 @@ export default defineSchema({
       v.literal("paused"),
       v.literal("archived")
     ),
-    // Workflow definition (DAG structure)
+    // Trigger configuration (routine-level, not a node in the DAG)
+    triggerType: v.union(
+      v.literal("manual"),
+      v.literal("cron"),
+      v.literal("webhook"),
+      v.literal("event")
+    ),
+    triggerConfig: v.optional(v.any()), // Type depends on triggerType
+    // Routine definition (DAG structure)
     nodes: v.array(
       v.object({
         id: v.string(),
         pluginId: v.string(),
         type: v.union(
-          v.literal("trigger"),
           v.literal("input"),
           v.literal("processor"),
           v.literal("logic"),
@@ -56,7 +63,8 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
-    .index("by_user_and_status", ["userId", "status"]),
+    .index("by_user_and_status", ["userId", "status"])
+    .index("by_trigger_type", ["triggerType", "status"]),
 
   // Routine execution history
   routine_executions: defineTable({

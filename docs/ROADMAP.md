@@ -1,6 +1,6 @@
 # Kianax Roadmap
 
-Long-term product vision for the AI-native workflow platform.
+Long-term product vision for the AI-native routine platform.
 
 > For current tasks, see [TODO.md](./TODO.md)
 
@@ -14,10 +14,10 @@ Long-term product vision for the AI-native workflow platform.
 
 **What doesn't:**
 - No Convex integration yet
-- No workflows or plugins
+- No routines or plugins
 - No AI parsing
 
-**Next:** Set up Convex and build first workflow
+**Next:** Set up Convex and build first routine
 
 ---
 
@@ -28,11 +28,11 @@ Long-term product vision for the AI-native workflow platform.
 **Goal:** Get Convex working with basic data flow
 
 - Set up Convex project
-- Define workflows schema
+- Define routines schema
 - Create first mutations/queries
 - Frontend integration with real-time updates
 
-**Done when:** Can create workflow and see it live
+**Done when:** Can create routine and see it live
 
 ### Phase 1: Auth & Multi-Tenancy - 1 week
 
@@ -43,7 +43,7 @@ Long-term product vision for the AI-native workflow platform.
 - Automatic user isolation in queries
 - Protected routes
 
-**Done when:** Users can register, login, see only their workflows
+**Done when:** Users can register, login, see only their routines
 
 ### Phase 2: Plugin SDK - 2-3 weeks
 
@@ -57,59 +57,61 @@ Long-term product vision for the AI-native workflow platform.
 
 **Done when:** Developers can build plugins following SDK
 
-### Phase 3: Workflow Engine - 2-3 weeks
+### Phase 3: Routine Engine - 2-3 weeks
 
-**Goal:** Execute simple workflows via Temporal Cloud
+**Goal:** Execute simple routines via Temporal Cloud
 
 - Temporal Cloud setup (account, namespace)
 - TypeScript Worker implementation
-- Generic workflow executor (interprets DAG at runtime)
+- Generic routine executor (interprets DAG at runtime using Temporal workflows)
 - Plugin execution as Temporal Activities
-- Workflow types (root vs sub-workflow)
+- Routine types (root vs sub-routine)
+- Trigger configuration (cron, webhook, manual, event)
 - Basic execution UI with real-time status
 
-**Done when:** Can run "Cron → Stock Price → Email" workflow with live execution tracking
+**Done when:** Can run "Cron-triggered Stock Price → Email" routine with live execution tracking
 
 ### Phase 4: Core Plugins - 3-4 weeks
 
-**Build 6 essential plugins:**
+**Build 5 essential plugins:**
 
-1. Cron Trigger (time-based)
-2. Stock Price Input (Polygon.io)
-3. AI Processor (GPT-3.5)
-4. HTTP Output
-5. Email Output (SendGrid)
-6. If/Else Logic
+1. Stock Price Input (Polygon.io)
+2. AI Processor (GPT-3.5)
+3. HTTP Output
+4. Email Output (SendGrid)
+5. If/Else Logic
 
-**Done when:** Can build "Stock alert" workflow end-to-end
+**Note:** Triggers are routine-level config, not plugins
 
-### Phase 5: AI Workflow Creation - 3-4 weeks
+**Done when:** Can build "Stock alert" routine end-to-end
 
-**Goal:** Natural language → workflows
+### Phase 5: AI Routine Creation - 3-4 weeks
+
+**Goal:** Natural language → routines
 
 - Chat interface (shadcn/ui)
 - OpenAI integration (GPT-4)
-- Workflow parsing from text
+- Routine parsing from text
 - Interactive clarification questions
 - Credential collection flow
 
-**Done when:** "Alert me when TSLA drops 10%" creates working workflow
+**Done when:** "Alert me when TSLA drops 10%" creates working routine
 
 ### Phase 6: Visual Editor - 3-4 weeks
 
-**Goal:** Complex workflows via drag-and-drop
+**Goal:** Complex routines via drag-and-drop
 
 - React Flow integration
 - Plugin palette
 - Node configuration forms
 - Testing with sample data
-- Multi-branch workflows
+- Multi-branch routines
 
-**Done when:** Can build complex workflows visually
+**Done when:** Can build complex routines visually
 
 ### Phase 7: Marketplace - 2-3 weeks
 
-**Goal:** Browse and install community plugins and workflow templates
+**Goal:** Browse and install community plugins and routine templates
 
 **Plugin Marketplace:**
 - Marketplace UI (browse, search, filter)
@@ -118,25 +120,25 @@ Long-term product vision for the AI-native workflow platform.
 - Code review process
 - Ratings and reviews
 
-**Workflow Marketplace:**
-- Share workflows as templates
-- Browse workflow templates
+**Routine Marketplace:**
+- Share routines as templates
+- Browse routine templates
 - Draft from template
 - Validate plugin requirements and credentials
-- Enable workflow when ready
+- Enable routine when ready
 
-**Done when:** Users can discover plugins and workflow templates, install plugins, and activate shared workflows
+**Done when:** Users can discover plugins and routine templates, install plugins, and activate shared routines
 
 ### Phase 8: Audio Interface - 1-2 weeks
 
-**Goal:** Voice workflow creation
+**Goal:** Voice routine creation
 
 - Whisper API integration
 - Audio recording UI
-- Transcription → workflow parsing
+- Transcription → routine parsing
 - Voice feedback
 
-**Done when:** Can speak workflow and it's created
+**Done when:** Can speak routine and it's created
 
 ### Phase 9: More Input Plugins - 2-3 weeks
 
@@ -164,29 +166,29 @@ Long-term product vision for the AI-native workflow platform.
 
 - Parallel execution
 - Error handling (try/catch)
-- Sub-workflows (call-sub-workflow plugin)
-- Scheduled triggers (multiple per workflow)
-- Workflow templates
+- Sub-routines (call-sub-routine plugin)
+- Multiple trigger types per routine
+- Routine templates
 
-**Done when:** Can build production-grade complex workflows
+**Done when:** Can build production-grade complex routines
 
 ### Phase 12: Mobile Apps - 4-6 weeks
 
 **iOS + Android:**
-- View workflows and executions
-- Enable/disable workflows
+- View routines and executions
+- Enable/disable routines
 - Push notifications
-- Chat interface for workflow creation
+- Chat interface for routine creation
 
-**Done when:** Full workflow management from mobile
+**Done when:** Full routine management from mobile
 
 ---
 
 ## Success Metrics
 
 **User Success:**
-- Create workflow in < 2 minutes
-- 90% workflows succeed first try
+- Create routine in < 2 minutes
+- 90% routines succeed first try
 - Users feel in control
 
 **Platform Success:**

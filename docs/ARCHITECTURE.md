@@ -1,25 +1,27 @@
 # Kianax Architecture
 
-AI-native workflow platform where users describe automations in natural language, and plugins connect any data source to any action.
+AI-native routine platform where users describe automations in natural language, and plugins connect any data source to any action.
 
 ## Core Vision
 
-**"Talk to Create Workflows"** - AI builds automations for you.
+**"Talk to Create Routines"** - AI builds automations for you.
 
-Users describe what they want → AI translates to executable workflows → Plugins provide the building blocks.
+Users describe what they want → AI translates to executable routines → Plugins provide the building blocks.
 
 **Example:** "When AAPL drops 5%, analyze sentiment. If positive, buy $1000."
 
-**Result:** Cron Trigger → Stock Price Input → AI Processor → News Input → AI Processor → Logic Condition → Trading Output
+**Result:**
+- Trigger: Cron (every 5 minutes)
+- Steps: Stock Price Input → AI Processor → News Input → AI Processor → Logic Condition → Trading Output
 
 ## Stack
 
 **Frontend:** Next.js 16 + React 19 + Convex React hooks
 **Backend:** Convex (serverless functions + real-time database + auth)
-**Workflows:** Temporal Cloud (execution engine, triggers, retries, versioning)
+**Routine Engine:** Temporal Cloud (execution engine using Temporal workflows, retries, versioning)
 **Workers:** TypeScript Workers (execute plugin code as Temporal Activities)
 **AI:** OpenAI (GPT-4 for parsing, GPT-3.5 for transformations)
-**Deploy:** Vercel (frontend) + Convex (backend) + Temporal Cloud (workflows)
+**Deploy:** Vercel (frontend) + Convex (backend) + Temporal Cloud (Temporal workflows)
 
 **Why Convex?**
 - Real-time by default (no WebSocket server needed)
@@ -30,46 +32,62 @@ Users describe what they want → AI translates to executable workflows → Plug
 
 ## Core Concepts
 
-### 1. Node Types
+### 1. Triggers (Routine-Level Configuration)
 
-Workflows are built from **5 fundamental node types**:
+**Triggers are NOT plugin nodes** - they are routine-level configuration that determines when a routine starts.
 
-**1. Triggers** - Start workflow execution
-- Cron (time-based schedules)
-- Webhook (HTTP events)
-- Manual (user-initiated)
-- Platform events (data changes, system events)
+**Trigger Types:**
+- **Cron** - Time-based schedules (e.g., "every 5 minutes", "daily at 9am")
+- **Webhook** - HTTP events (external systems POST data to trigger routine)
+- **Manual** - User-initiated (click "Run" button in UI)
+- **Event** - Platform events (data changes, system events via Convex subscriptions)
 
-**2. Inputs** - Fetch data from external sources
+**Example Routine:**
+```typescript
+{
+  id: "routine-123",
+  trigger: {
+    type: "cron",
+    config: { schedule: "*/5 * * * *" }  // Every 5 minutes
+  },
+  steps: [ /* DAG of plugin nodes */ ]
+}
+```
+
+### 2. Node Types (Plugin DAG)
+
+Routines are built from **4 fundamental node types**:
+
+**1. Inputs** - Fetch data from external sources
 - APIs (REST, GraphQL, web scraping)
 - Databases (queries, reads)
 - Files (download, parse)
 - Streams (RSS, WebSocket)
 
-**3. Processors** - Transform and analyze data
+**2. Processors** - Transform and analyze data
 - AI (LLMs, sentiment, summarization, classification)
 - Data transformation (format conversion, mapping, filtering)
 - Computation (math, aggregation, validation)
 - Parsing (JSON, XML, CSV)
 
-**4. Logic** - Control execution flow
+**3. Logic** - Control execution flow
 - Conditions (if/else branching)
 - Switches (multi-branch routing)
 - Loops (iterate over arrays)
 - Error handling (try/catch, retry)
 - Delays (wait, sleep)
 
-**5. Outputs** - Write data or perform actions
+**4. Outputs** - Write data or perform actions
 - APIs (POST, PUT, DELETE)
 - Databases (insert, update, delete)
 - Notifications (email, SMS, push)
 - Integrations (trading, CRM, storage)
-- Sub-workflows (call other workflows)
+- Sub-routines (call other routines)
 
 **Type-Safe Connections:**
 - Nodes connect when output schema matches input schema
 - If types don't match, insert an AI Processor to adapt data
-- All connections validated before workflow activation
+- All connections validated before routine activation
 
 **AI Processor = Universal Adapter:**
 ```typescript
@@ -78,32 +96,33 @@ Instruction: "Transform to { ticker, currentPrice, action: 'buy' }"
 Output: { ticker: "AAPL", currentPrice: 150, action: "buy" }
 ```
 
-This taxonomy is **future-proof**: any new plugin fits into one of these 5 categories based on its role in the workflow.
+This taxonomy is **future-proof**: any new plugin fits into one of these 4 categories based on its role in the routine.
 
-### 2. Workflow Types
+### 3. Routine Types
 
-**Root Workflows** (autonomous):
-- MUST have trigger node
+**Root Routines** (autonomous):
+- MUST have trigger configuration
 - Run independently on schedule/event
-- Example: "Stock price monitor"
+- Example: "Stock price monitor" with cron trigger
 
-**Sub-Workflows** (reusable):
-- NO trigger nodes
-- Called by other workflows
+**Sub-Routines** (reusable):
+- NO trigger configuration (triggered by parent routine)
+- Called by other routines via Output nodes
+- Must define input/output schemas
 - Example: "Send notification"
 
-### 3. Workflow Validation
+### 4. Routine Validation
 
-**Root Workflow Requirements:**
-- MUST have at least one Trigger node
-- All Trigger nodes must be entry points (no incoming edges)
-- Trigger nodes can only be: Cron, Webhook, Manual, or Platform Event types
-- At least one execution path from Trigger to an Output node
+**Root Routine Requirements:**
+- MUST have trigger configuration
+- Trigger type must be one of: cron, webhook, manual, event
+- Trigger config must be valid for the trigger type (e.g., valid cron schedule)
+- At least one execution path ending in an Output node
 - DAG structure (no cycles allowed)
-- No orphaned nodes (all nodes must be reachable from a Trigger)
+- No orphaned nodes (all nodes must be connected)
 
-**Sub-Workflow Requirements:**
-- MUST NOT have any Trigger nodes
+**Sub-Routine Requirements:**
+- MUST NOT have trigger configuration (or set to "manual" only)
 - Must define input/output schemas (entry/exit points)
 - DAG structure (no cycles allowed)
 - All nodes must be connected in valid execution flow
@@ -115,39 +134,48 @@ This taxonomy is **future-proof**: any new plugin fits into one of these 5 categ
 - **No Cycles**: Graph is acyclic (topological sort possible)
 - **Reachability**: All nodes reachable from entry points
 
-**Workflow States:**
+**Routine States:**
 - `draft` - Being edited, validation may fail, cannot execute
 - `active` - Validated and enabled, executing on triggers
 - `paused` - Validated but disabled, not executing
 - `archived` - Saved for reference, cannot execute
 
 **Activation Requirements:**
-Users can only activate a workflow (draft → active) when:
-1. Workflow passes all validation rules
+Users can only activate a routine (draft → active) when:
+1. Routine passes all validation rules
 2. All required plugins are installed
 3. All required credentials are configured
-4. For workflows from templates: user has reviewed and customized
+4. For routines from templates: user has reviewed and customized
 
 **Validation Algorithms:**
 
 ```typescript
-// 1. Check for Trigger nodes (Root workflows only)
-function validateTriggers(workflow) {
-  const triggerNodes = nodes.filter(n => n.type === 'trigger');
-
-  if (workflow.type === 'root' && triggerNodes.length === 0) {
-    return error("Root workflows must have at least one Trigger node");
-  }
-
-  if (workflow.type === 'sub-workflow' && triggerNodes.length > 0) {
-    return error("Sub-workflows cannot have Trigger nodes");
-  }
-
-  // Triggers must be entry points (no incoming edges)
-  for (const trigger of triggerNodes) {
-    if (edges.some(e => e.target === trigger.id)) {
-      return error("Trigger nodes cannot have incoming connections");
+// 1. Validate trigger configuration (Root routines only)
+function validateTrigger(routine) {
+  if (routine.type === 'root') {
+    if (!routine.trigger || !routine.trigger.type) {
+      return error("Root routines must have a trigger configuration");
     }
+
+    const validTypes = ['cron', 'webhook', 'manual', 'event'];
+    if (!validTypes.includes(routine.trigger.type)) {
+      return error(`Invalid trigger type: ${routine.trigger.type}`);
+    }
+
+    // Validate trigger-specific config
+    if (routine.trigger.type === 'cron') {
+      if (!isValidCronSchedule(routine.trigger.config.schedule)) {
+        return error("Invalid cron schedule");
+      }
+    } else if (routine.trigger.type === 'webhook') {
+      if (!routine.trigger.config.secret) {
+        return error("Webhook triggers require a secret");
+      }
+    }
+  }
+
+  if (routine.type === 'sub-routine' && routine.trigger?.type !== 'manual') {
+    return error("Sub-routines cannot have automatic triggers");
   }
 }
 
@@ -177,10 +205,11 @@ function validateDAG(nodes, edges) {
 }
 
 // 3. Check reachability (no orphaned nodes)
-function validateReachability(workflow) {
-  const entryPoints = workflow.type === 'root'
-    ? nodes.filter(n => n.type === 'trigger')
-    : [workflow.entryNode];
+function validateReachability(routine) {
+  // Entry points are nodes with no incoming edges
+  const entryPoints = routine.type === 'root'
+    ? nodes.filter(n => !edges.some(e => e.target === n.id))
+    : [routine.entryNode];
 
   const reachable = new Set();
 
@@ -217,23 +246,23 @@ function validateTypes(edges, nodes) {
 }
 ```
 
-### 4. Execution Flow
+### 5. Execution Flow
 
 > **Note:** See [WORKFLOW_EXECUTION_ANALYSIS.md](./WORKFLOW_EXECUTION_ANALYSIS.md) for detailed comparison of Temporal vs trigger.dev execution engines.
 
-**Recommended: Temporal Cloud** (designed for dynamic, user-defined workflows)
+**Recommended: Temporal Cloud** (designed for dynamic, user-defined routines)
 
 **Architecture:**
 
 ```typescript
-// Workflow executor (runs in Temporal Worker)
-async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
+// Routine executor (runs as Temporal Workflow in Temporal Worker)
+async function routineExecutor(routineDef: RoutineDAG, triggerData?: any) {
   const results = new Map();
 
   // Execute nodes in topological order
-  for (const node of topologicalSort(workflowDef.nodes, workflowDef.edges)) {
+  for (const node of topologicalSort(routineDef.nodes, routineDef.edges)) {
     // Gather inputs from connected nodes
-    const inputs = workflowDef.edges
+    const inputs = routineDef.edges
       .filter(e => e.target === node.id)
       .map(e => results.get(e.source));
 
@@ -243,7 +272,8 @@ async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
       {
         config: node.config,
         inputs: inputs,
-        userId: workflowDef.userId
+        userId: routineDef.userId,
+        triggerData  // Pass trigger data (webhook payload, event data, etc.)
       },
       {
         startToCloseTimeout: '5m',
@@ -255,7 +285,7 @@ async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
 
     // Update execution status in Convex (via activity)
     await executeActivity(updateExecutionStatus, {
-      workflowId: workflowDef.id,
+      routineId: routineDef.id,
       nodeId: node.id,
       status: 'completed',
       output
@@ -265,38 +295,53 @@ async function userWorkflowExecutor(workflowDef: WorkflowDAG) {
   return results;
 }
 
-// Start workflow dynamically when user activates
-await temporal.workflow.start(userWorkflowExecutor, {
-  taskQueue: `user-${userId}`,  // Multi-tenant isolation
-  workflowId: `workflow-${workflowId}`,
-  args: [workflowDAG],
-  cronSchedule: workflow.cronPattern  // For Cron triggers
-});
+// Start routine based on trigger configuration
+if (routine.trigger.type === 'cron') {
+  // Use Temporal Schedule for cron triggers
+  await temporal.schedule.create({
+    scheduleId: `routine-${routineId}`,
+    spec: { cronExpressions: [routine.trigger.config.schedule] },
+    action: {
+      type: 'startWorkflow',
+      workflowType: routineExecutor,
+      taskQueue: `user-${userId}`,
+      args: [routineDAG]
+    }
+  });
+} else {
+  // For webhook/manual/event: start workflow on demand
+  await temporal.workflow.start(routineExecutor, {
+    taskQueue: `user-${userId}`,
+    workflowId: `routine-${routineId}-${Date.now()}`,
+    args: [routineDAG, triggerData]
+  });
+}
 ```
 
 **Trigger Types → Temporal:**
-- **Cron Trigger**: `cronSchedule` parameter in workflow.start()
-- **Webhook Trigger**: HTTP endpoint in Convex → `workflow.start()`
-- **Manual Trigger**: User button → `workflow.start()`
-- **Platform Event**: Convex subscription → `workflow.start()`
+- **Cron**: Temporal Schedule with `cronExpressions`
+- **Webhook**: HTTP endpoint in Convex → `workflow.start()` with webhook payload
+- **Manual**: User button → `workflow.start()`
+- **Event**: Convex subscription detects change → `workflow.start()` with event data
 
 **Execution Process:**
 ```
-1. User creates workflow in Convex (draft state)
-2. User activates workflow (validation runs)
-3. Convex mutation → Temporal Client
-4. Temporal starts workflow execution
-5. Temporal Workers execute activities (plugin code)
-6. Each node execution:
-   - Worker calls plugin.execute()
+1. User creates routine in Convex (draft state)
+2. User configures trigger (cron schedule, webhook secret, etc.)
+3. User activates routine (validation runs)
+4. Convex mutation → Temporal Client
+5. For cron: Temporal Schedule created | For others: workflow started on demand
+6. Temporal Workers execute Temporal workflows (routine executor)
+7. Each node execution:
+   - Worker calls plugin.execute() as Temporal Activity
    - Plugin interacts with external APIs
    - Results saved to Convex via activity
-7. Convex broadcasts updates via subscriptions
-8. Frontend receives real-time status via useQuery
+8. Convex broadcasts updates via subscriptions
+9. Frontend receives real-time status via useQuery
 ```
 
 **Why Temporal over trigger.dev:**
-- ✅ **Dynamic workflows**: Purpose-built for user-defined workflows at runtime
+- ✅ **Dynamic Temporal workflows**: Purpose-built for user-defined routines at runtime
 - ✅ **Workflow versioning**: Update engine without breaking running workflows
 - ✅ **Superior observability**: Time-travel debugging, workflow history replay
 - ✅ **Multi-tenancy**: Task queues per user, isolated execution
@@ -309,14 +354,14 @@ await temporal.workflow.start(userWorkflowExecutor, {
 If using trigger.dev, deploy ONE generic executor task:
 
 ```typescript
-export const workflowExecutor = task({
-  id: "workflow-executor",
-  run: async ({ workflowId, userId }) => {
-    // Load workflow from Convex
-    const workflow = await convex.query("workflows:get", { workflowId });
+export const routineExecutor = task({
+  id: "routine-executor",
+  run: async ({ routineId, userId }) => {
+    // Load routine from Convex
+    const routine = await convex.query("routines:get", { routineId });
 
     // Execute nodes in order
-    for (const node of topologicalSort(workflow.nodes)) {
+    for (const node of topologicalSort(routine.nodes)) {
       const plugin = await getPlugin(node.pluginId);
       const inputs = gatherInputs(node, results);
       results[node.id] = await plugin.execute(inputs, node.config);
@@ -339,7 +384,7 @@ See [WORKFLOW_EXECUTION_ANALYSIS.md](./WORKFLOW_EXECUTION_ANALYSIS.md) for full 
 export const list = query({
   handler: async (ctx) => {
     const userId = (await ctx.auth.getUserIdentity())?.subject;
-    return await ctx.db.query("workflows")
+    return await ctx.db.query("routines")
       .withIndex("by_user", q => q.eq("userId", userId))
       .collect();
   },
@@ -348,43 +393,48 @@ export const list = query({
 
 ### 6. Data Model
 
-**Workflow Structure (DAG):**
+**Routine Structure:**
 
-A workflow is a **Directed Acyclic Graph (DAG)** consisting of:
+A routine consists of:
 
-- **Nodes** - Plugin instances with configuration
-  - Each node references a plugin (e.g., "stock-price-v1.0.0")
-  - Contains plugin-specific config (API keys, parameters, prompts)
-  - Has unique ID for connections
+- **Trigger Configuration** (routine-level, NOT a node)
+  - Type: cron, webhook, manual, event
+  - Config: trigger-specific settings (schedule, webhook secret, etc.)
 
-- **Edges** - Data flow between nodes
-  - Defines execution order (source → target)
-  - Maps output from one node to input of next
-  - Validates type compatibility (or inserts AI Processor)
+- **DAG (Directed Acyclic Graph)** of Plugin Nodes
+  - **Nodes** - Plugin instances with configuration
+    - Each node references a plugin (e.g., "stock-price-v1.0.0")
+    - Contains plugin-specific config (API keys, parameters, prompts)
+    - Has unique ID for connections
+  - **Edges** - Data flow between nodes
+    - Defines execution order (source → target)
+    - Maps output from one node to input of next
+    - Validates type compatibility (or inserts AI Processor)
 
-- **Workflow Metadata**
-  - Name, description, type (root vs sub-workflow)
+- **Routine Metadata**
+  - Name, description, type (root vs sub-routine)
   - Owner (userId for multi-tenancy)
   - Status (draft, active, paused, archived)
   - Source (original or from template ID)
 
-**Example Workflow:**
+**Example Routine:**
 ```
-Node 1: Cron Trigger (every 5 min)
-   ↓ edge
-Node 2: Stock Price Input (symbol: "AAPL")
+Trigger: Cron (every 5 min)
+
+DAG:
+Node 1: Stock Price Input (symbol: "AAPL")
    ↓ edge (output: {symbol, price, timestamp})
-Node 3: AI Processor (check if price dropped 5%)
+Node 2: AI Processor (check if price dropped 5%)
    ↓ edge (output: {dropped: boolean, ...})
-Node 4: Logic - Condition (if dropped === true)
+Node 3: Logic - Condition (if dropped === true)
    ↓ edge
-Node 5: Trading Output (buy $1000)
+Node 4: Trading Output (buy $1000)
 ```
 
 **Key Convex Tables:**
-- `workflows` - User's workflow definitions (nodes + edges + metadata)
-- `workflow_executions` - Execution history, status, logs
-- `workflow_templates` - Shared workflows in marketplace
+- `routines` - User's routine definitions (trigger + nodes + edges + metadata)
+- `routine_executions` - Execution history, status, logs
+- `routine_templates` - Shared routines in marketplace
 - `plugins` - Available plugins in marketplace
 - `credentials` - Encrypted API keys per user
 - `plugin_installs` - User's installed plugins

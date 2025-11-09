@@ -2,22 +2,23 @@
  * Plugin Type Definitions
  *
  * Defines the structure and types for the Kianax plugin system.
- * Plugins are the building blocks of workflows.
+ * Plugins are the building blocks of routines.
  */
 
 import type { JSONSchema7 } from "json-schema";
 
 /**
- * Plugin types determine their role in a workflow
+ * Plugin types determine their role in a routine
+ * Note: Triggers are routine-level config, not plugin nodes
  */
-export type PluginType = "trigger" | "input" | "processor" | "logic" | "output";
+export type PluginType = "input" | "processor" | "logic" | "output";
 
 /**
  * Plugin execution context passed to the execute function
  */
 export interface PluginContext {
   userId: string;
-  workflowId: string;
+  routineId: string;
   executionId: string;
   credentials?: Record<string, string>;
 }
