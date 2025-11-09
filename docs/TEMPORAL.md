@@ -1261,6 +1261,850 @@ spec:
 
 ---
 
+## Implementation Plan
+
+This section provides a step-by-step guide to implement the Temporal-based routine execution engine in your codebase.
+
+### File Structure Overview
+
+```
+kianax/
+├── apps/
+│   └── server/                         # Convex backend
+│       ├── package.json                # Add @temporalio/client
+│       └── convex/
+│           ├── lib/
+│           │   └── temporal.ts         # 🆕 Temporal Client (singleton)
+│           ├── triggers/               # 🆕 Trigger handlers
+│           │   ├── cron.ts             # Activate/deactivate cron schedules
+│           │   ├── webhook.ts          # Webhook validation/parsing
+│           │   ├── manual.ts           # Manual execution handler
+│           │   └── events.ts           # Event-based trigger checking
+│           ├── routines.ts             # Update: add activateRoutine mutation
+│           ├── executions.ts           # Update: add status update mutations
+│           └── http.ts                 # Update: add webhook endpoint
+│
+├── workers/                            # Temporal Worker app
+│   ├── src/
+│   │   ├── workflows/
+│   │   │   ├── routine-executor.ts     # 🆕 Main workflow implementation
+│   │   │   ├── utils/
+│   │   │   │   ├── topological-sort.ts # 🆕 DAG sorting
+│   │   │   │   └── gather-inputs.ts    # 🆕 Input gathering logic
+│   │   │   └── index.ts                # 🆕 Export workflows
+│   │   ├── activities/
+│   │   │   ├── plugins.ts              # 🆕 executePlugin activity
+│   │   │   ├── convex.ts               # 🆕 Convex update activities
+│   │   │   └── index.ts                # 🆕 Export activities
+│   │   ├── worker.ts                   # 🆕 Worker bootstrap
+│   │   └── dev-worker.ts               # 🆕 Dev entry point
+│   ├── package.json                    # ✅ Already has Temporal deps
+│   ├── tsconfig.json
+│   └── Dockerfile                      # 🆕 Production deployment
+│
+├── packages/
+│   └── shared/
+│       └── src/
+│           └── temporal/               # 🆕 Shared types
+│               ├── types.ts            # Workflow/Activity interfaces
+│               ├── constants.ts        # Timeouts, queue names
+│               └── index.ts            # Re-exports
+│
+└── .env.local                          # Update with Temporal vars
+```
+
+### Dependencies to Install
+
+#### 1. Convex Backend (Temporal Client)
+
+```bash
+cd apps/server
+npm install @temporalio/client
+```
+
+**Update `apps/server/package.json`:**
+```json
+{
+  "dependencies": {
+    "@temporalio/client": "^1.13.0",
+    "convex": "^1.28.2"
+  }
+}
+```
+
+#### 2. Workers (Already Installed)
+
+Verify `workers/package.json` has:
+```json
+{
+  "dependencies": {
+    "@temporalio/worker": "^1.13.0",
+    "@temporalio/workflow": "^1.13.0",
+    "@temporalio/activity": "^1.13.0",
+    "convex": "^1.28.2",
+    "@kianax/shared": "*"
+  }
+}
+```
+
+#### 3. Shared Package
+
+No additional dependencies needed (just TypeScript types).
+
+### Implementation Phases
+
+---
+
+#### **Phase 1: Foundation Setup** (1-2 hours)
+
+**Goal:** Set up shared types and environment configuration
+
+- [ ] **1.1 Create Shared Types**
+
+  **File:** `packages/shared/src/temporal/types.ts`
+
+  ```typescript
+  export interface RoutineInput {
+    routineId: string;
+    userId: string;
+    nodes: Node[];
+    connections: Connection[];
+    triggerData?: any;
+  }
+
+  export interface Node {
+    id: string;
+    pluginId: string;
+    type: 'input' | 'processor' | 'logic' | 'output';
+    config: any;
+    enabled: boolean;
+  }
+
+  export interface Connection {
+    id: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+  }
+
+  export interface ExecutePluginInput {
+    pluginId: string;
+    config: any;
+    inputs: any;
+    context: PluginContext;
+  }
+
+  export interface PluginContext {
+    userId: string;
+    routineId: string;
+    nodeId: string;
+  }
+
+  export interface UpdateRoutineStatusInput {
+    routineId: string;
+    status: 'running' | 'completed' | 'failed';
+    startedAt?: number;
+    completedAt?: number;
+    error?: { message: string; stack?: string };
+  }
+
+  export interface StoreNodeResultInput {
+    routineId: string;
+    nodeId: string;
+    status: 'completed' | 'failed';
+    output?: any;
+    error?: { message: string; stack?: string };
+    completedAt: number;
+  }
+  ```
+
+  **File:** `packages/shared/src/temporal/constants.ts`
+
+  ```typescript
+  export const TASK_QUEUE_PREFIX = 'user-';
+  export const DEFAULT_TASK_QUEUE = 'kianax-default';
+
+  export const TIMEOUTS = {
+    ACTIVITY_START_TO_CLOSE: '5 minutes',
+    ACTIVITY_SCHEDULE_TO_CLOSE: '10 minutes',
+    ACTIVITY_HEARTBEAT: '30 seconds'
+  };
+
+  export const RETRY_POLICY = {
+    initialInterval: '1s',
+    backoffCoefficient: 2,
+    maximumInterval: '1m',
+    maximumAttempts: 3
+  };
+  ```
+
+  **File:** `packages/shared/src/temporal/index.ts`
+
+  ```typescript
+  export * from './types';
+  export * from './constants';
+  ```
+
+- [ ] **1.2 Set Up Environment Variables**
+
+  **Update `.env.local`:**
+  ```bash
+  # Temporal Configuration
+  TEMPORAL_ADDRESS=localhost:7233
+  TEMPORAL_NAMESPACE=default
+
+  # Convex (already exists)
+  CONVEX_DEPLOYMENT=dev:your-project
+  NEXT_PUBLIC_CONVEX_URL=https://...
+  CONVEX_DEPLOY_KEY=...
+  ```
+
+- [ ] **1.3 Install Dependencies**
+
+  ```bash
+  # In root
+  bun install
+
+  # In apps/server
+  cd apps/server
+  npm install @temporalio/client
+
+  # Verify workers deps
+  cd ../../workers
+  bun install
+  ```
+
+**Validation:** TypeScript compiles without errors, env vars loaded
+
+---
+
+#### **Phase 2: Temporal Client (Convex)** (2-3 hours)
+
+**Goal:** Enable Convex to start Temporal workflows
+
+- [ ] **2.1 Create Temporal Client**
+
+  **File:** `apps/server/convex/lib/temporal.ts`
+
+  ```typescript
+  import { Client, WorkflowHandle } from '@temporalio/client';
+
+  let temporalClient: Client | null = null;
+
+  export async function getTemporalClient(): Promise<Client> {
+    if (!temporalClient) {
+      const address = process.env.TEMPORAL_ADDRESS || 'localhost:7233';
+      const namespace = process.env.TEMPORAL_NAMESPACE || 'default';
+
+      if (process.env.NODE_ENV === 'production') {
+        // Production: Temporal Cloud with mTLS
+        temporalClient = new Client({
+          namespace,
+          connection: {
+            address,
+            tls: {
+              clientCertPair: {
+                crt: Buffer.from(process.env.TEMPORAL_CLIENT_CERT!, 'base64'),
+                key: Buffer.from(process.env.TEMPORAL_CLIENT_KEY!, 'base64')
+              }
+            }
+          }
+        });
+      } else {
+        // Development: local server, no TLS
+        temporalClient = new Client({
+          namespace,
+          connection: { address }
+        });
+      }
+    }
+
+    return temporalClient;
+  }
+
+  export async function startRoutineWorkflow(
+    routineId: string,
+    userId: string,
+    nodes: any[],
+    connections: any[],
+    triggerData?: any
+  ): Promise<WorkflowHandle> {
+    const client = await getTemporalClient();
+
+    return await client.workflow.start('routineExecutor', {
+      taskQueue: `user-${userId}`,
+      workflowId: `routine-${routineId}-${Date.now()}`,
+      args: [{
+        routineId,
+        userId,
+        nodes,
+        connections,
+        triggerData
+      }]
+    });
+  }
+
+  export async function createCronSchedule(
+    routineId: string,
+    userId: string,
+    schedule: string,
+    timezone: string,
+    nodes: any[],
+    connections: any[]
+  ): Promise<void> {
+    const client = await getTemporalClient();
+
+    await client.schedule.create({
+      scheduleId: `routine-${routineId}`,
+      spec: {
+        cronExpressions: [schedule],
+        timeZone: timezone || 'UTC'
+      },
+      action: {
+        type: 'startWorkflow',
+        workflowType: 'routineExecutor',
+        taskQueue: `user-${userId}`,
+        args: [{ routineId, userId, nodes, connections }]
+      },
+      policies: {
+        pauseOnFailure: false,
+        overlap: 'BUFFER_ONE'
+      }
+    });
+  }
+
+  export async function deleteCronSchedule(routineId: string): Promise<void> {
+    const client = await getTemporalClient();
+    await client.schedule.delete(`routine-${routineId}`);
+  }
+  ```
+
+- [ ] **2.2 Create Trigger Handlers**
+
+  **File:** `apps/server/convex/triggers/manual.ts`
+
+  ```typescript
+  import { mutation } from '../_generated/server';
+  import { v } from 'convex/values';
+  import { startRoutineWorkflow } from '../lib/temporal';
+
+  export const executeRoutine = mutation({
+    args: { routineId: v.id('routines') },
+    handler: async (ctx, { routineId }) => {
+      const userId = (await ctx.auth.getUserIdentity())?.subject;
+      if (!userId) throw new Error('Not authenticated');
+
+      const routine = await ctx.db.get(routineId);
+      if (!routine || routine.userId !== userId) {
+        throw new Error('Routine not found');
+      }
+
+      // Start workflow
+      const handle = await startRoutineWorkflow(
+        routine._id,
+        userId,
+        routine.nodes,
+        routine.connections
+      );
+
+      // Create execution record
+      await ctx.db.insert('routine_executions', {
+        routineId: routine._id,
+        userId,
+        workflowId: handle.workflowId,
+        status: 'running',
+        triggerType: 'manual',
+        startedAt: Date.now(),
+        nodeStates: []
+      });
+
+      return { executionId: handle.workflowId };
+    }
+  });
+  ```
+
+  **File:** `apps/server/convex/triggers/cron.ts`
+
+  ```typescript
+  import { internalMutation } from '../_generated/server';
+  import { v } from 'convex/values';
+  import { createCronSchedule, deleteCronSchedule } from '../lib/temporal';
+
+  export const activateCronTrigger = internalMutation({
+    args: { routineId: v.id('routines') },
+    handler: async (ctx, { routineId }) => {
+      const routine = await ctx.db.get(routineId);
+      if (!routine || routine.trigger.type !== 'cron') {
+        throw new Error('Invalid routine for cron trigger');
+      }
+
+      await createCronSchedule(
+        routine._id,
+        routine.userId,
+        routine.trigger.config.schedule,
+        routine.trigger.config.timezone,
+        routine.nodes,
+        routine.connections
+      );
+    }
+  });
+
+  export const deactivateCronTrigger = internalMutation({
+    args: { routineId: v.id('routines') },
+    handler: async (ctx, { routineId }) => {
+      await deleteCronSchedule(routineId);
+    }
+  });
+  ```
+
+**Validation:** Can call `getTemporalClient()` without errors
+
+---
+
+#### **Phase 3: Worker Implementation** (4-6 hours)
+
+**Goal:** Implement workflow and activities that execute routines
+
+- [ ] **3.1 Implement Workflow Utilities**
+
+  **File:** `workers/src/workflows/utils/topological-sort.ts`
+
+  ```typescript
+  import type { Node, Connection } from '@kianax/shared/temporal';
+
+  export function topologicalSort(
+    nodes: Node[],
+    connections: Connection[]
+  ): Node[] {
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const inDegree = new Map<string, number>();
+    const adjacency = new Map<string, string[]>();
+
+    // Initialize
+    for (const node of nodes) {
+      inDegree.set(node.id, 0);
+      adjacency.set(node.id, []);
+    }
+
+    // Build graph
+    for (const conn of connections) {
+      adjacency.get(conn.sourceNodeId)!.push(conn.targetNodeId);
+      inDegree.set(conn.targetNodeId, inDegree.get(conn.targetNodeId)! + 1);
+    }
+
+    // Find entry points
+    const queue: string[] = [];
+    for (const [nodeId, degree] of inDegree.entries()) {
+      if (degree === 0) queue.push(nodeId);
+    }
+    queue.sort(); // Determinism
+
+    // Kahn's algorithm
+    const sorted: Node[] = [];
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      sorted.push(nodeMap.get(nodeId)!);
+
+      const neighbors = adjacency.get(nodeId)! || [];
+      for (const neighborId of neighbors) {
+        const newDegree = inDegree.get(neighborId)! - 1;
+        inDegree.set(neighborId, newDegree);
+        if (newDegree === 0) queue.push(neighborId);
+      }
+      queue.sort(); // Determinism
+    }
+
+    if (sorted.length !== nodes.length) {
+      throw new Error('Cycle detected in routine DAG');
+    }
+
+    return sorted;
+  }
+  ```
+
+  **File:** `workers/src/workflows/utils/gather-inputs.ts`
+
+  ```typescript
+  import type { Connection } from '@kianax/shared/temporal';
+
+  export function gatherNodeInputs(
+    nodeId: string,
+    connections: Connection[],
+    results: Map<string, any>,
+    triggerData?: any
+  ): any {
+    const incoming = connections.filter(c => c.targetNodeId === nodeId);
+
+    if (incoming.length === 0) {
+      return triggerData || {};
+    }
+
+    if (incoming.length === 1) {
+      return results.get(incoming[0].sourceNodeId);
+    }
+
+    // Multiple inputs
+    const inputs: any = {};
+    for (const conn of incoming) {
+      const handle = conn.targetHandle || 'default';
+      inputs[handle] = results.get(conn.sourceNodeId);
+    }
+    return inputs;
+  }
+  ```
+
+- [ ] **3.2 Implement Main Workflow**
+
+  **File:** `workers/src/workflows/routine-executor.ts`
+
+  ```typescript
+  import { proxyActivities } from '@temporalio/workflow';
+  import type * as activities from '../activities';
+  import type { RoutineInput } from '@kianax/shared/temporal';
+  import { topologicalSort } from './utils/topological-sort';
+  import { gatherNodeInputs } from './utils/gather-inputs';
+
+  const {
+    executePlugin,
+    updateRoutineStatus,
+    storeNodeResult
+  } = proxyActivities<typeof activities>({
+    startToCloseTimeout: '5 minutes',
+    retry: {
+      initialInterval: '1s',
+      backoffCoefficient: 2,
+      maximumInterval: '1m',
+      maximumAttempts: 3
+    }
+  });
+
+  export async function routineExecutor(input: RoutineInput): Promise<void> {
+    const { routineId, userId, nodes, connections, triggerData } = input;
+
+    await updateRoutineStatus({
+      routineId,
+      status: 'running',
+      startedAt: Date.now()
+    });
+
+    try {
+      const sortedNodes = topologicalSort(nodes, connections);
+      const nodeResults = new Map<string, any>();
+
+      for (const node of sortedNodes) {
+        if (!node.enabled) continue;
+
+        const inputs = gatherNodeInputs(
+          node.id,
+          connections,
+          nodeResults,
+          triggerData
+        );
+
+        try {
+          const output = await executePlugin({
+            pluginId: node.pluginId,
+            config: node.config,
+            inputs,
+            context: { userId, routineId, nodeId: node.id }
+          });
+
+          nodeResults.set(node.id, output);
+
+          await storeNodeResult({
+            routineId,
+            nodeId: node.id,
+            status: 'completed',
+            output,
+            completedAt: Date.now()
+          });
+        } catch (error: any) {
+          await storeNodeResult({
+            routineId,
+            nodeId: node.id,
+            status: 'failed',
+            error: { message: error.message, stack: error.stack },
+            completedAt: Date.now()
+          });
+          throw error;
+        }
+      }
+
+      await updateRoutineStatus({
+        routineId,
+        status: 'completed',
+        completedAt: Date.now()
+      });
+    } catch (error: any) {
+      await updateRoutineStatus({
+        routineId,
+        status: 'failed',
+        error: { message: error.message, stack: error.stack },
+        completedAt: Date.now()
+      });
+      throw error;
+    }
+  }
+  ```
+
+  **File:** `workers/src/workflows/index.ts`
+
+  ```typescript
+  export * from './routine-executor';
+  ```
+
+- [ ] **3.3 Implement Activities**
+
+  **File:** `workers/src/activities/plugins.ts`
+
+  ```typescript
+  import { Context } from '@temporalio/activity';
+  import type { ExecutePluginInput } from '@kianax/shared/temporal';
+
+  export async function executePlugin(
+    input: ExecutePluginInput
+  ): Promise<any> {
+    const { pluginId, config, inputs, context } = input;
+
+    Context.current().heartbeat();
+
+    // TODO: Load plugin from Convex and execute
+    // For now, return mock data
+    console.log('Executing plugin:', pluginId, 'for user:', context.userId);
+
+    return { success: true, data: 'Mock plugin output' };
+  }
+  ```
+
+  **File:** `workers/src/activities/convex.ts`
+
+  ```typescript
+  import { ConvexHttpClient } from 'convex/browser';
+  import type {
+    UpdateRoutineStatusInput,
+    StoreNodeResultInput
+  } from '@kianax/shared/temporal';
+
+  const convex = new ConvexHttpClient(process.env.CONVEX_URL!);
+
+  export async function updateRoutineStatus(
+    input: UpdateRoutineStatusInput
+  ): Promise<void> {
+    // TODO: Implement Convex mutation to update execution status
+    console.log('Updating routine status:', input);
+  }
+
+  export async function storeNodeResult(
+    input: StoreNodeResultInput
+  ): Promise<void> {
+    // TODO: Implement Convex mutation to store node result
+    console.log('Storing node result:', input);
+  }
+  ```
+
+  **File:** `workers/src/activities/index.ts`
+
+  ```typescript
+  export * from './plugins';
+  export * from './convex';
+  ```
+
+- [ ] **3.4 Create Worker Bootstrap**
+
+  **File:** `workers/src/worker.ts`
+
+  ```typescript
+  import { NativeConnection, Worker } from '@temporalio/worker';
+  import * as activities from './activities';
+
+  export async function createWorker(taskQueue: string): Promise<Worker> {
+    const connection = await NativeConnection.connect({
+      address: process.env.TEMPORAL_ADDRESS || 'localhost:7233'
+    });
+
+    return await Worker.create({
+      connection,
+      namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+      taskQueue,
+      workflowsPath: require.resolve('./workflows'),
+      activities
+    });
+  }
+
+  export async function runWorker(taskQueue: string = 'default'): Promise<void> {
+    const worker = await createWorker(taskQueue);
+    console.log(`Worker started on task queue: ${taskQueue}`);
+    await worker.run();
+  }
+  ```
+
+  **File:** `workers/src/dev-worker.ts`
+
+  ```typescript
+  import { runWorker } from './worker';
+
+  async function main() {
+    const taskQueue = process.env.TASK_QUEUE || 'user-default';
+    await runWorker(taskQueue);
+  }
+
+  main().catch(err => {
+    console.error('Worker failed:', err);
+    process.exit(1);
+  });
+  ```
+
+- [ ] **3.5 Update Worker Package Scripts**
+
+  **Update `workers/package.json`:**
+  ```json
+  {
+    "scripts": {
+      "dev": "tsx watch src/dev-worker.ts",
+      "start": "node dist/worker.js",
+      "build": "tsc"
+    }
+  }
+  ```
+
+**Validation:** Worker starts without errors, connects to Temporal server
+
+---
+
+#### **Phase 4: Integration & Testing** (2-3 hours)
+
+**Goal:** Wire everything together and test end-to-end
+
+- [ ] **4.1 Start Local Temporal Server**
+
+  ```bash
+  temporal server start-dev
+  ```
+
+  Verify:
+  - Server running on `localhost:7233`
+  - Web UI accessible at `localhost:8233`
+
+- [ ] **4.2 Start Worker**
+
+  ```bash
+  cd workers
+  bun run dev
+  ```
+
+  Verify: Worker connects and logs "Worker started on task queue: user-default"
+
+- [ ] **4.3 Test Manual Trigger**
+
+  ```bash
+  # Create a test routine in Convex
+  npx convex run routines:create --args '{
+    "name": "Test Routine",
+    "trigger": {"type": "manual"},
+    "nodes": [
+      {
+        "id": "node1",
+        "pluginId": "test-plugin",
+        "type": "input",
+        "config": {},
+        "enabled": true
+      }
+    ],
+    "connections": []
+  }'
+
+  # Execute it manually
+  npx convex run triggers/manual:executeRoutine --args '{"routineId": "<id>"}'
+  ```
+
+  Verify in Temporal Web UI:
+  - Workflow `routine-<id>-<timestamp>` appears
+  - Workflow completes successfully
+  - Activities executed in order
+
+- [ ] **4.4 Test Cron Trigger**
+
+  ```bash
+  # Activate cron trigger
+  npx convex run triggers/cron:activateCronTrigger --args '{"routineId": "<id>"}'
+  ```
+
+  Verify:
+  - Schedule appears in Temporal Web UI
+  - Workflow executes on schedule
+  - Can pause/resume schedule
+
+**Validation:** Manual trigger works, cron schedule created successfully
+
+---
+
+### Testing Checklist
+
+- [ ] **Unit Tests**
+  - [ ] `topologicalSort` handles DAGs correctly
+  - [ ] `topologicalSort` detects cycles
+  - [ ] `gatherNodeInputs` handles single/multiple inputs
+
+- [ ] **Integration Tests**
+  - [ ] Worker connects to Temporal server
+  - [ ] Workflow can be started via Temporal Client
+  - [ ] Activities execute and return values
+  - [ ] Convex receives status updates
+
+- [ ] **End-to-End Tests**
+  - [ ] User activates routine → workflow starts
+  - [ ] Routine executes → plugins run in order
+  - [ ] Errors handled gracefully
+  - [ ] UI shows real-time updates
+
+---
+
+### Production Deployment Checklist
+
+- [ ] **Environment Variables**
+  - [ ] `TEMPORAL_ADDRESS` set to Temporal Cloud
+  - [ ] `TEMPORAL_NAMESPACE` configured
+  - [ ] `TEMPORAL_CLIENT_CERT` (base64)
+  - [ ] `TEMPORAL_CLIENT_KEY` (base64)
+  - [ ] `CONVEX_URL` set to production Convex
+
+- [ ] **Worker Deployment**
+  - [ ] Docker image built
+  - [ ] Deployed to production (server/Kubernetes)
+  - [ ] Auto-scaling configured
+  - [ ] Health checks enabled
+
+- [ ] **Monitoring**
+  - [ ] Temporal Cloud dashboard accessible
+  - [ ] Convex logs streaming
+  - [ ] Alerts configured for failures
+
+---
+
+### Troubleshooting
+
+**Worker won't connect to Temporal:**
+- Check `TEMPORAL_ADDRESS` is correct
+- Verify Temporal server is running (`temporal server start-dev`)
+- Check network connectivity / firewalls
+
+**Workflow not executing:**
+- Verify worker is polling the correct task queue (`user-${userId}`)
+- Check Temporal Web UI for pending tasks
+- Review worker logs for errors
+
+**Activities failing:**
+- Check activity timeout configuration
+- Review error messages in Temporal Web UI
+- Verify Convex URL is accessible from workers
+
+**Type errors:**
+- Ensure `@kianax/shared` is built: `cd packages/shared && npm run build`
+- Verify TypeScript path mappings in `tsconfig.json`
+
+---
+
 ## Summary
 
 **Key Takeaways:**
