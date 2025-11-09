@@ -1,11 +1,5 @@
-import Chat from "@kianax/web/components/demo/Chat";
-import { SignOut } from "@kianax/web/components/auth/sign-out";
+import Dashboard from "@kianax/web/components/dashboard";
 
 export default function DashboardPage() {
-  return (
-    <div>
-      <SignOut />
-      <Chat />
-    </div>
-  );
+  return <Dashboard />;
 }

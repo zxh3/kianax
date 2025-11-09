@@ -15,6 +15,7 @@
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
     "@kianax/ui": "*",
+    "@tabler/icons-react": "^3.35.0",
     "convex": "^1.28.2",
     "next": "^16.0.1",
     "react": "^19.2.0",
