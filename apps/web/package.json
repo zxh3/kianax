@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
+    "@kianax/shared": "*",
     "@kianax/ui": "*",
     "@tabler/icons-react": "^3.35.0",
+    "@temporalio/client": "^1.13.0",
     "convex": "^1.28.2",
     "next": "^16.0.1",
     "react": "^19.2.0",
@@ -23,7 +25,6 @@
   },
   "devDependencies": {
     "@kianax/typescript-config": "*",
-    "@types/json-schema": "^7.0.15",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",

@@ -1,0 +1,25 @@
+{
+  "name": "@kianax/workers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/dev-worker.ts",
+    "start": "node dist/worker.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kianax/shared": "*",
+    "@temporalio/activity": "^1.13.0",
+    "@temporalio/worker": "^1.13.0",
+    "@temporalio/workflow": "^1.13.0",
+    "convex": "^1.28.2"
+  },
+  "devDependencies": {
+    "@kianax/typescript-config": "*",
+    "@types/node": "^22.15.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.2"
+  }
+}
