@@ -30,8 +30,8 @@ const {
  * Main routine executor workflow
  *
  * Executes a user-defined routine by:
- * 1. Sorting nodes topologically
- * 2. Executing each node as an activity
+ * 1. Sorting nodes into execution levels (topological sort)
+ * 2. Executing nodes in each level in parallel
  * 3. Passing outputs to downstream nodes
  * 4. Updating status in Convex
  */
@@ -46,67 +46,78 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   });
 
   try {
-    // Sort nodes in execution order (deterministic)
-    const sortedNodes = topologicalSort(nodes, connections);
+    // Sort nodes into execution levels - nodes in same level can run in parallel
+    const executionLevels = topologicalSort(nodes, connections);
 
     // Store node outputs for downstream nodes
     const nodeResults = new Map<string, any>();
 
-    // Execute nodes in order
-    for (const node of sortedNodes) {
-      // Skip disabled nodes
-      if (!node.enabled) {
+    // Execute each level sequentially, but nodes within each level in parallel
+    for (const level of executionLevels) {
+      // Filter out disabled nodes
+      const enabledNodes = level.filter(node => node.enabled);
+
+      if (enabledNodes.length === 0) {
         continue;
       }
 
-      // Gather inputs from connected upstream nodes
-      const inputs = gatherNodeInputs(
-        node.id,
-        connections,
-        nodeResults,
-        triggerData
-      );
+      // Execute all nodes in this level in parallel
+      const levelExecutions = enabledNodes.map(async (node) => {
+        // Gather inputs from connected upstream nodes
+        const inputs = gatherNodeInputs(
+          node.id,
+          connections,
+          nodeResults,
+          triggerData
+        );
 
-      try {
-        // Execute node as activity
-        const output = await executePlugin({
-          pluginId: node.pluginId,
-          config: node.config,
-          inputs,
-          context: {
-            userId,
+        try {
+          // Execute node as activity
+          const output = await executePlugin({
+            pluginId: node.pluginId,
+            config: node.config,
+            inputs,
+            context: {
+              userId,
+              routineId,
+              nodeId: node.id,
+            },
+          });
+
+          // Store result for downstream nodes
+          nodeResults.set(node.id, output);
+
+          // Update Convex with node completion
+          await storeNodeResult({
             routineId,
             nodeId: node.id,
-          },
-        });
+            status: 'completed',
+            output,
+            completedAt: Date.now(),
+          });
 
-        // Store result for downstream nodes
-        nodeResults.set(node.id, output);
+          return { nodeId: node.id, success: true };
+        } catch (error: any) {
+          // Node execution failed
+          await storeNodeResult({
+            routineId,
+            nodeId: node.id,
+            status: 'failed',
+            error: {
+              message: error.message,
+              stack: error.stack,
+            },
+            completedAt: Date.now(),
+          });
 
-        // Update Convex with node completion
-        await storeNodeResult({
-          routineId,
-          nodeId: node.id,
-          status: 'completed',
-          output,
-          completedAt: Date.now(),
-        });
-      } catch (error: any) {
-        // Node execution failed
-        await storeNodeResult({
-          routineId,
-          nodeId: node.id,
-          status: 'failed',
-          error: {
-            message: error.message,
-            stack: error.stack,
-          },
-          completedAt: Date.now(),
-        });
+          // Re-throw to stop execution
+          throw error;
+        }
+      });
 
-        // Stop execution on first failure
-        throw error;
-      }
+      // Wait for all nodes in this level to complete
+      // If any node fails, Promise.all will reject and throw
+      await Promise.all(levelExecutions);
     }
 
     // All nodes completed successfully

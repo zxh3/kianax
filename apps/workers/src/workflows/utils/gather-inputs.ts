@@ -25,7 +25,7 @@ export function gatherNodeInputs(
 
   if (incomingConnections.length === 1) {
     // Single input - return output from source node
-    const sourceId = incomingConnections[0].sourceNodeId;
+    const sourceId = incomingConnections[0]!.sourceNodeId;
     return results.get(sourceId);
   }
 
