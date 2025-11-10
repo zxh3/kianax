@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as executions from "../executions.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as plugins from "../plugins.js";
 import type * as routines from "../routines.js";
 import type * as users from "../users.js";
 
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   executions: typeof executions;
   http: typeof http;
   messages: typeof messages;
+  plugins: typeof plugins;
   routines: typeof routines;
   users: typeof users;
 }>;
