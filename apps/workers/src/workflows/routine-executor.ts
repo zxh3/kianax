@@ -11,7 +11,7 @@
 
 import { proxyActivities, workflowInfo } from "@temporalio/workflow";
 import type * as activities from "../activities/index.js";
-import type { RoutineInput, Node, Connection } from "@kianax/shared/temporal";
+import type { RoutineInput } from "@kianax/shared/temporal";
 import {
   buildExecutionGraph,
   findEntryNodes,
@@ -24,16 +24,17 @@ import {
 } from "../lib/graph-executor.js";
 
 // Proxy activities with timeout and retry configuration
-const { executePlugin, updateRoutineStatus, storeNodeResult } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-    retry: {
-      initialInterval: "1s",
-      backoffCoefficient: 2,
-      maximumInterval: "1m",
-      maximumAttempts: 3,
-    },
-  });
+const { executePlugin, updateRoutineStatus, storeNodeResult } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    initialInterval: "1s",
+    backoffCoefficient: 2,
+    maximumInterval: "1m",
+    maximumAttempts: 3,
+  },
+});
 
 /**
  * Dynamic Routine Executor
@@ -52,9 +53,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   // Validate graph structure
   const validation = validateGraph(input);
   if (!validation.valid) {
-    throw new Error(
-      `Invalid routine graph:\n${validation.errors.join("\n")}`,
-    );
+    throw new Error(`Invalid routine graph:\n${validation.errors.join("\n")}`);
   }
 
   // Update routine status to running
@@ -129,9 +128,7 @@ async function executeBFS(
 
     // Execute ready nodes in parallel
     await Promise.all(
-      ready.map((nodeId) =>
-        executeNode(nodeId, graph, state, executionId),
-      ),
+      ready.map((nodeId) => executeNode(nodeId, graph, state, executionId)),
     );
 
     // Remove executed nodes from queue
