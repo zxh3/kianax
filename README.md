@@ -143,32 +143,25 @@ kianax/
 
 ## Quick Start
 
-**Prerequisites:** Node.js 18+, npm/bun, Docker Desktop (for Temporal)
+**Prerequisites:**
+- Bun (v1.2.23 or later)
+- [Temporal CLI](https://docs.temporal.io/cli) - Install with `brew install temporal` on macOS
 
 ```bash
 # Install dependencies
 bun install
 
-# Set up Convex (first time only)
-npx convex dev
-# This will:
-# 1. Create a Convex project
-# 2. Generate convex/ directory with schema
-# 3. Start local Convex dev server
-
-# In a new terminal, start local Temporal server
-temporal server start-dev
-# Or use Docker Compose (see LOCAL_DEVELOPMENT.md)
-
-# In another terminal, start Temporal Workers
-bun run workers/dev
-
-# In another terminal, start Next.js frontend
-bun run dev
-# Frontend runs on localhost:3000
+# Start everything with one command! 🚀
+bun dev
 ```
 
-**For full local development setup**, see [LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)
+That's it! This starts:
+- ⚡ Temporal Server (localhost:7233)
+- 🔧 Convex Backend
+- 🌐 Next.js Web (localhost:3000)
+- 👷 Temporal Workers
+
+**For detailed development guide**, see [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 **Environment Variables:**
 ```env
