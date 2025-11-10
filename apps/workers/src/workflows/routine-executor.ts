@@ -5,23 +5,21 @@
  * This is the ONLY workflow - it interprets ALL user routines at runtime.
  */
 
-import { proxyActivities, workflowInfo } from '@temporalio/workflow';
-import type * as activities from '../activities';
-import type { RoutineInput } from '@kianax/shared/temporal';
-import { topologicalSort } from './utils/topological-sort';
-import { gatherNodeInputs } from './utils/gather-inputs';
+import { proxyActivities, workflowInfo } from "@temporalio/workflow";
+import type * as activities from "../activities";
+import type { RoutineInput } from "@kianax/shared/temporal";
+import { topologicalSort } from "./utils/topological-sort";
+import { gatherNodeInputs } from "./utils/gather-inputs";
 
 // Proxy activities with timeout and retry configuration
-const {
-  executePlugin,
-  updateRoutineStatus,
-  storeNodeResult,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: '5 minutes',
+const { executePlugin, updateRoutineStatus, storeNodeResult } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
   retry: {
-    initialInterval: '1s',
+    initialInterval: "1s",
     backoffCoefficient: 2,
-    maximumInterval: '1m',
+    maximumInterval: "1m",
     maximumAttempts: 3,
   },
 });
@@ -44,7 +42,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   // Update routine status to running
   await updateRoutineStatus({
     routineId,
-    status: 'running',
+    status: "running",
     startedAt: Date.now(),
   });
 
@@ -58,7 +56,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
     // Execute each level sequentially, but nodes within each level in parallel
     for (const level of executionLevels) {
       // Filter out disabled nodes
-      const enabledNodes = level.filter(node => node.enabled);
+      const enabledNodes = level.filter((node) => node.enabled);
 
       if (enabledNodes.length === 0) {
         continue;
@@ -71,7 +69,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
           node.id,
           connections,
           nodeResults,
-          triggerData
+          triggerData,
         );
 
         try {
@@ -95,7 +93,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
           await storeNodeResult({
             routineId,
             nodeId: node.id,
-            status: 'completed',
+            status: "completed",
             output,
             completedAt: Date.now(),
           });
@@ -106,7 +104,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
           await storeNodeResult({
             routineId,
             nodeId: node.id,
-            status: 'failed',
+            status: "failed",
             error: {
               message: error.message,
               stack: error.stack,
@@ -127,14 +125,14 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
     // All nodes completed successfully
     await updateRoutineStatus({
       routineId,
-      status: 'completed',
+      status: "completed",
       completedAt: Date.now(),
     });
   } catch (error: any) {
     // Workflow failed
     await updateRoutineStatus({
       routineId,
-      status: 'failed',
+      status: "failed",
       error: {
         message: error.message,
         stack: error.stack,

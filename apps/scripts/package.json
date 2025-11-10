@@ -1,0 +1,19 @@
+{
+  "name": "@kianax/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "@kianax/shared": "*",
+    "@kianax/workers": "*",
+    "@temporalio/client": "^1.13.0",
+    "nanoid": "^5.0.1"
+  },
+  "devDependencies": {
+    "@kianax/typescript-config": "*",
+    "@types/node": "^22.15.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.2"
+  }
+}

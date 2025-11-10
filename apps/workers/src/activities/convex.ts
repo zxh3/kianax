@@ -5,39 +5,39 @@
  * These activities call Convex mutations to store real-time status.
  */
 
-import { ConvexHttpClient } from 'convex/browser';
+import { ConvexHttpClient } from "convex/browser";
 import type {
   UpdateRoutineStatusInput,
   StoreNodeResultInput,
-} from '@kianax/shared/temporal';
+} from "@kianax/shared/temporal";
 
 // Initialize Convex client
 // In production, CONVEX_URL should be set in environment variables
 const convex = new ConvexHttpClient(
-  process.env.CONVEX_URL || 'http://localhost:3000'
+  process.env.CONVEX_URL || "http://localhost:3000",
 );
 
 export async function updateRoutineStatus(
-  input: UpdateRoutineStatusInput
+  input: UpdateRoutineStatusInput,
 ): Promise<void> {
   // TODO: Implement Convex mutation to update execution status
   // This should call a Convex mutation like:
   // await convex.mutation('executions:updateStatus', input);
 
-  console.log('Updating routine status:', input);
+  console.log("Updating routine status:", input);
 
   // For development, just log
   // In production, this will write to Convex and trigger real-time UI updates
 }
 
 export async function storeNodeResult(
-  input: StoreNodeResultInput
+  input: StoreNodeResultInput,
 ): Promise<void> {
   // TODO: Implement Convex mutation to store node execution result
   // This should call a Convex mutation like:
   // await convex.mutation('executions:updateNodeStatus', input);
 
-  console.log('Storing node result:', input);
+  console.log("Storing node result:", input);
 
   // For development, just log
   // In production, this will write to Convex for execution history and debugging

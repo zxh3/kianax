@@ -7,3 +7,4 @@
 
 export * from './plugins';
 export * from './convex';
+export * from './example';

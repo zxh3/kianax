@@ -4,32 +4,39 @@
  * Creates and configures Temporal Workers that execute workflows and activities.
  */
 
-import { NativeConnection, Worker } from '@temporalio/worker';
-import * as activities from './activities';
+import { NativeConnection, Worker } from "@temporalio/worker";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import * as activities from "./activities";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function createWorker(taskQueue: string): Promise<Worker> {
   // Connect to Temporal server
   const connection = await NativeConnection.connect({
-    address: process.env.TEMPORAL_ADDRESS || 'localhost:7233',
+    address: process.env.TEMPORAL_ADDRESS || "localhost:7233",
   });
 
   // Create worker
   return await Worker.create({
     connection,
-    namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+    namespace: process.env.TEMPORAL_NAMESPACE || "default",
     taskQueue,
-    workflowsPath: require.resolve('./workflows'),
+    workflowsPath: join(__dirname, "workflows"),
     activities,
   });
 }
 
 export async function runWorker(
-  taskQueue: string = 'kianax-default'
+  taskQueue: string = "kianax-default",
 ): Promise<void> {
   const worker = await createWorker(taskQueue);
   console.log(`✅ Worker started on task queue: ${taskQueue}`);
-  console.log(`📍 Temporal server: ${process.env.TEMPORAL_ADDRESS || 'localhost:7233'}`);
-  console.log(`🔧 Namespace: ${process.env.TEMPORAL_NAMESPACE || 'default'}`);
+  console.log(
+    `📍 Temporal server: ${process.env.TEMPORAL_ADDRESS || "localhost:7233"}`,
+  );
+  console.log(`🔧 Namespace: ${process.env.TEMPORAL_NAMESPACE || "default"}`);
 
   await worker.run();
 }
