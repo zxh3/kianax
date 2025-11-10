@@ -1,67 +1,64 @@
 # Kianax
 
-**"Talk to Create Routines"** - An AI-native automation platform where users build powerful workflows by simply describing what they want.
+**"Talk to Create Routines"** - An AI-native automation platform (in development) where users will build workflows by describing them in natural language.
 
-Connect any data source to any action through an extensible plugin marketplace. AI builds routines for you—no coding required.
+> **⚠️ Early Development:** This project is in Phase 0-1 (Foundation & Auth). Core workflow functionality is being built. See [Current Status](#status) for what's implemented.
 
-## Overview
+## Vision
 
-Kianax enables users to:
-- 🗣️ **Create Routines with Natural Language** - Describe what you want, AI builds it
-- 🔌 **Connect Any Data Source** - Twitter, Reddit, stock prices, APIs, databases, RSS feeds
-- ⚡ **Trigger on Any Event** - Cron schedules, webhooks, data changes, custom events
-- 🎯 **Take Any Action** - Trade stocks, send emails/SMS, make API calls, run custom code
-- 🧩 **Build with Plugins** - Extensible marketplace where anyone can publish plugins
-- 🤖 **AI-Powered Intelligence** - LLM decision nodes for context-aware, intelligent automation
+Connect any data source to any action through an extensible plugin marketplace. Users describe workflows in plain English, AI builds them, and plugins provide the capabilities.
 
-Complete multi-tenancy with user isolation, encrypted credentials, and sandboxed execution.
-
-## Key Features
-
-- **AI-First**: Natural language and voice input for routine creation
-- **Type-Safe Plugin System**: Plugins auto-connect when input/output types match
-- **Real-Time Updates**: Live execution status via Convex subscriptions
-- **Serverless Architecture**: Zero DevOps—fully managed infrastructure
-- **Workflow Versioning**: Update engine without breaking running routines
-- **Superior Observability**: Time-travel debugging with Temporal
-- **Multi-Tenant**: Complete user isolation with row-level security
-
-## Example Use Cases
-
-### AI-Powered Stock Trading
+**Example Future Workflow:**
 ```
-"When AAPL drops 5%, analyze news sentiment.
-If positive, buy $1000 worth. If negative, wait."
+"When AAPL drops 5%, analyze news sentiment. If positive, buy $1000."
 ```
-→ Stock Price Input → AI Processor → News Input → AI Processor → Trading Output
+This would create: Stock Price Monitor → AI Analysis → Conditional Logic → Trading Action
 
-### Social Media Monitoring
-```
-"When my company is mentioned on Reddit with negative sentiment, send SMS alert."
-```
-→ Reddit Input → AI Processor → Logic Condition → SMS Output
+## Current Status
 
-### Earnings Alert System
-```
-"Every day at 4pm, check tech company earnings. Summarize with AI and email me."
-```
-→ Earnings Input → AI Processor → Email Output
+**Phase 0-1: Foundation & Auth** ✅ **Complete**
+
+**What's Working:**
+- ✅ Next.js 16 + React 19 frontend with shadcn/ui
+- ✅ Convex backend (serverless functions + real-time database)
+- ✅ Better Auth with Google OAuth and email/password
+- ✅ Protected dashboard with route-based navigation
+- ✅ Database schema for routines, executions, plugins, credentials
+- ✅ Temporal Workers setup with example workflows
+- ✅ Single-command dev environment (`bun dev`)
+- ✅ Bun monorepo with Turbo
+
+**What's Being Built (Current Sprint):**
+- 🚧 Workflow CRUD functionality
+- 🚧 User-specific workflow management
+- 🚧 Real-time workflow list updates
+
+**What's Planned:**
+- 📋 Plugin system architecture (Phase 2)
+- 📋 Workflow execution engine (Phase 3)
+- 📋 Visual workflow builder (Phase 6)
+- 📋 AI-powered workflow generation (Phase 5)
+- 📋 Plugin marketplace (Phase 7)
+
+See [docs/TODO.md](./docs/TODO.md) for detailed current tasks and [docs/ROADMAP.md](./docs/ROADMAP.md) for long-term vision.
 
 ## Tech Stack
 
 | Layer | Technology | Why? |
 |-------|-----------|------|
-| **Frontend** | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui, React Flow | Modern DX, built-in features, visual routine editor |
-| **Backend** | Convex | Zero DevOps, real-time subscriptions, TypeScript-native, serverless |
-| **Workflows** | Temporal Cloud | Dynamic execution, versioning, time-travel debugging, battle-tested |
-| **Workers** | TypeScript | Execute plugins as Temporal Activities |
-| **Auth** | Convex Auth | Built-in authentication with row-level security |
-| **AI** | OpenAI GPT-4 | Routine parsing and AI Processor nodes |
-| **Infra** | Vercel + Convex + Temporal Cloud | Fully managed, auto-scaling, pay-per-use |
+| **Frontend** | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui | Modern DX, server components, built-in features |
+| **Backend** | Convex | Zero DevOps, real-time subscriptions, TypeScript-native |
+| **Auth** | Better Auth | Simple setup, OAuth providers, Convex integration |
+| **Workflows** | Temporal | Dynamic execution, versioning, time-travel debugging |
+| **Workers** | TypeScript | Execute workflow logic as Temporal Activities |
+| **AI** | OpenAI (planned) | Workflow parsing and transformations |
+| **Infra** | Vercel + Convex + Temporal | Fully managed, auto-scaling |
 
-**Why Temporal?** Purpose-built for user-defined workflows at runtime. Used by Uber, Netflix, Stripe for mission-critical systems.
+**Why Temporal?** Purpose-built for user-defined workflows at runtime. Battle-tested by Uber, Netflix, Stripe.
 
-**Why Convex?** No PostgreSQL, Redis, or Kubernetes to manage. Built-in real-time, TypeScript schemas, perfect for solo developers.
+**Why Convex?** No PostgreSQL, Redis, or Kubernetes. Built-in real-time, TypeScript schemas, perfect for rapid development.
+
+**Why Better Auth?** Simple OAuth setup with Convex integration. Email/password and social providers out of the box.
 
 ## Getting Started
 
@@ -80,7 +77,7 @@ bun install
 bun dev
 ```
 
-That's it! All services start in parallel with color-coded logs:
+This starts all services in parallel with color-coded logs:
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -93,32 +90,34 @@ That's it! All services start in parallel with color-coded logs:
 ### Environment Variables
 
 ```bash
-# .env.local
-CONVEX_DEPLOYMENT=dev:your-project    # Auto-generated by convex dev
-NEXT_PUBLIC_CONVEX_URL=https://...    # Auto-generated
-TEMPORAL_ADDRESS=localhost:7233       # Local Temporal server
-TEMPORAL_NAMESPACE=default            # Temporal namespace
-OPENAI_API_KEY=sk-...                 # For AI routine parsing
-```
+# .env.local (apps/web)
+NEXT_PUBLIC_CONVEX_URL=https://...    # From convex dev
+CONVEX_DEPLOYMENT=dev:your-project    # From convex dev
+SITE_URL=http://localhost:3000        # Local dev URL
 
-### Individual Services
+# .env.local (apps/server)
+CONVEX_URL=https://...                # Same as web
+GOOGLE_CLIENT_ID=...                  # OAuth (optional)
+GOOGLE_CLIENT_SECRET=...              # OAuth (optional)
+SITE_URL=http://localhost:3000
 
-```bash
-# Start only Temporal server
-bun run dev:temporal
-
-# Start only apps (without Temporal)
-bun run dev:apps
-
-# Start specific apps
-cd apps/web && bun dev       # Next.js
-cd apps/workers && bun dev   # Workers
-cd apps/server && bun dev    # Convex
+# .env.local (apps/workers)
+TEMPORAL_ADDRESS=localhost:7233
+TEMPORAL_NAMESPACE=default
 ```
 
 ### Development Commands
 
 ```bash
+# Start everything
+bun dev
+
+# Start only Temporal
+bun run dev:temporal
+
+# Start only apps
+bun run dev:apps
+
 # Build all apps
 bun run build
 
@@ -130,7 +129,8 @@ bun run format
 bun run typecheck
 
 # Run Convex functions
-npx convex run routines:create --args '{"name": "test"}'
+cd apps/server
+npx convex run users:getCurrentUser
 
 # Test Temporal workflows
 temporal workflow execute \
@@ -143,24 +143,41 @@ temporal workflow execute \
 
 **Temporal won't start:**
 ```bash
-ps aux | grep temporal    # Check if already running
-pkill -f temporal         # Kill existing processes
+ps aux | grep temporal
+pkill -f temporal
 ```
 
 **Port already in use:**
 ```bash
-lsof -ti:3000             # Check what's using port 3000
-kill -9 $(lsof -ti:3000)  # Kill the process
+lsof -ti:3000
+kill -9 $(lsof -ti:3000)
 ```
 
-**Workers can't connect:** Check the blue-colored "temporal" output in your terminal to ensure Temporal started successfully.
+**Workers can't connect:** Check the blue "temporal" output to ensure Temporal started successfully.
 
-### Dev Tips
+### First Time Setup
 
-- **Turbo TUI**: Dashboard shows all running services with live logs
-- **Hot Reload**: All services auto-restart on file changes
-- **Color Logs**: Blue = Temporal, Magenta = Apps
-- **Stop All**: Press `Ctrl+C` once to stop all services
+1. **Start Convex:**
+   ```bash
+   cd apps/server
+   npx convex dev
+   # Follow prompts to create account/project
+   # Copy URLs to .env.local files
+   ```
+
+2. **Configure OAuth (optional):**
+   - Create Google OAuth app
+   - Add credentials to `.env.local`
+
+3. **Start development:**
+   ```bash
+   bun dev
+   ```
+
+4. **Visit app:**
+   - http://localhost:3000
+   - Sign in with Google or email
+   - Access dashboard
 
 ## Architecture
 
@@ -169,23 +186,27 @@ kill -9 $(lsof -ti:3000)  # Kill the process
 ```
 kianax/
 ├── apps/
-│   ├── web/              # Next.js frontend (React Flow routine editor)
-│   ├── server/           # Convex backend (database + serverless functions)
-│   └── workers/          # Temporal Workers (execute routines as workflows)
-│       ├── workflows/    # Workflow definitions (routine executor)
-│       └── activities/   # Activities (plugin execution)
+│   ├── web/              # Next.js frontend
+│   │   └── app/          # App router pages
+│   │       └── dashboard/# Protected dashboard routes
+│   ├── server/           # Convex backend
+│   │   └── convex/       # Database schema + functions
+│   ├── workers/          # Temporal Workers
+│   │   ├── workflows/    # Workflow definitions
+│   │   └── activities/   # Activity implementations
+│   └── scripts/          # Test scripts and utilities
 ├── packages/
-│   ├── shared/           # Shared types and utilities
+│   ├── shared/           # Shared types (Temporal, etc.)
 │   ├── ui/               # Shared React components (shadcn/ui)
 │   └── typescript-config/# Shared TypeScript configs
 └── docs/                 # Documentation
-    ├── ARCHITECTURE.md
-    ├── PLUGIN_DEVELOPMENT.md
-    ├── ROADMAP.md
-    └── TODO.md
+    ├── ARCHITECTURE.md   # System design
+    ├── ROADMAP.md        # Product vision
+    ├── TODO.md           # Current tasks
+    └── TEMPORAL.md       # Temporal implementation
 ```
 
-### Development Architecture
+### Development Flow
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -206,126 +227,105 @@ kianax/
           └──────────┘   └──────────┘  └──────────┘
 ```
 
-## Plugin System
+## Planned Features
 
-### Plugin Contract
+### Workflow System (In Development)
 
-Every plugin has a strongly-typed interface:
+**Triggers** (routine-level configuration):
+- **Cron** - Time-based schedules
+- **Webhook** - HTTP events
+- **Manual** - User-initiated
+- **Event** - Platform events
 
-```typescript
-interface Plugin {
-  id: string;                    // 'alpaca-trading'
-  name: string;                  // 'Alpaca Trading'
-  version: string;               // '1.0.0'
-  type: 'input' | 'processor' | 'logic' | 'output';
-  inputSchema: JSONSchema;       // Typed inputs
-  outputSchema: JSONSchema;      // Typed outputs
-  credentials?: CredentialSchema;// API keys, tokens
-  execute: (input, context) => Promise<output>;
-}
-```
+**Node Types** (plugin DAG):
+1. **Inputs** - Fetch data (APIs, databases, files)
+2. **Processors** - Transform data (AI, computation, parsing)
+3. **Logic** - Control flow (if/else, loops, error handling)
+4. **Outputs** - Perform actions (APIs, notifications, integrations)
 
-### Type-Safe Connections
+**Type-Safe Connections:**
+- Nodes auto-connect when schemas match
+- AI Processor acts as universal adapter for mismatched types
 
-Plugins auto-connect when types match. When they don't, AI Processor acts as a universal adapter:
+### Future Plugin Examples
 
-```
-Stock Price Input {symbol, price, timestamp}
-         ↓
-AI Processor "Transform to {ticker, currentPrice, action: 'buy'}"
-         ↓
-Trading Output {ticker, currentPrice, action}
-```
+**Data Sources** (Planned):
+- Stock prices (Polygon.io)
+- Twitter/X monitoring
+- Reddit tracking
+- RSS feeds
+- Web scraping
 
-**No complex field mapping needed!** AI handles all transformations.
+**Actions** (Planned):
+- Trading (Alpaca)
+- Email (SendGrid)
+- SMS (Twilio)
+- HTTP requests
+- Slack/Discord
 
-### Marketplace
-
-- **Discover** plugins by category, rating, popularity
-- **Publish** your own plugins (with review)
-- **One-click install** to your workspace
-- **Version control** with semantic versioning
-- **Revenue sharing** for monetized plugins
-- **Template sharing** for pre-built routine workflows
+**AI Processing** (Planned):
+- Sentiment analysis
+- Summarization
+- Classification
+- Data transformation
 
 ## Core Principles
 
-1. **Multi-Tenancy** - Every resource scoped to `user_id` with complete isolation
-2. **Type Safety** - Plugins connect only when schemas match
-3. **AI-First** - Natural language as primary interface
-4. **Security First** - Backend validation, encrypted credentials, sandboxed execution
-5. **Extensibility** - Open plugin marketplace for community contributions
-6. **Real-Time** - Live updates via Convex subscriptions
-7. **Serverless-First** - Zero DevOps, fully managed infrastructure
-8. **Observability** - Time-travel debugging with Temporal
+1. **Iteration Speed** - Ship fast, learn fast, improve fast
+2. **AI-First** - Natural language as primary interface (when ready)
+3. **Plugin-Driven** - Community builds the ecosystem (when ready)
+4. **Serverless-First** - Zero infrastructure management
+5. **Real-Time Native** - Live updates everywhere
+6. **User-Centric** - Simple beats powerful
 
-## Security
+## Security (Planned)
 
-✅ **Server-side execution** - All routines run in Convex + Temporal Workers
-✅ **Plugin sandboxing** - Isolated execution environments
-✅ **Encrypted credentials** - API keys encrypted at rest
-✅ **User isolation** - Row-level security per `user_id`
-✅ **Rate limiting** - Per user and per routine
-✅ **Audit logging** - Complete execution history
-✅ **Schema validation** - All plugin I/O validated
-✅ **Execution timeouts** - Prevent infinite loops
-
-**Security Model:**
-- Plugins cannot access other users' data (Convex auth context)
-- Network requests require URL allowlist
-- Schema validation on all plugin inputs/outputs
-- Resource quotas per user (Convex + Temporal Cloud)
+- 🔒 Server-side execution only
+- 🔒 Plugin sandboxing
+- 🔒 Encrypted credentials
+- 🔒 Row-level user isolation
+- 🔒 Rate limiting
+- 🔒 Schema validation
+- 🔒 Audit logging
 
 ## Contributing
 
 ### Git Workflow
 
-**Important for AI assistants:**
+**For AI assistants:**
 - ⚠️ **Never push to remote** unless explicitly requested
-- Always commit locally first and wait for approval
-- Use `git push origin main` only when asked
+- Always commit locally first
+- Wait for approval before pushing
 
-**Commit Convention:** Follow [Conventional Commits](https://www.conventionalcommits.org/)
+**Commit Convention:** [Conventional Commits](https://www.conventionalcommits.org/)
 
 ```bash
-feat(server): add agent execution engine
-fix(web): correct portfolio calculation
-docs: update deployment guide
+feat(server): add workflow CRUD functions
+fix(web): correct auth redirect
+docs: update architecture docs
 chore(deps): update dependencies
 ```
 
 **Types:** `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`, `build`
 
-**Feature Branches (optional):**
-```bash
-git checkout -b feature/agent-execution
-# Make changes
-git commit -m "feat: add feature"
-git checkout main && git merge feature/agent-execution
-```
-
 ## Documentation
 
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design and technical architecture
-- **[PLUGIN_DEVELOPMENT.md](./docs/PLUGIN_DEVELOPMENT.md)** - How to build and publish plugins
 - **[ROADMAP.md](./docs/ROADMAP.md)** - Product vision and development phases
-- **[TODO.md](./docs/TODO.md)** - Current sprint tasks and near-term work
+- **[TODO.md](./docs/TODO.md)** - Current sprint tasks
+- **[TEMPORAL.md](./docs/TEMPORAL.md)** - Temporal implementation details
 
-## Status
+## Roadmap Highlights
 
-**Current Phase:** Phase 0 - Foundation
+- **Phase 0-1:** Foundation & Auth ✅ (Complete)
+- **Phase 2:** Plugin SDK (Next, 2-3 weeks)
+- **Phase 3:** Workflow Engine (2-3 weeks)
+- **Phase 4:** Core Plugins (3-4 weeks)
+- **Phase 5:** AI Workflow Creation (3-4 weeks)
+- **Phase 6:** Visual Editor (3-4 weeks)
+- **Phase 7:** Marketplace (2-3 weeks)
 
-**Recent Milestones:**
-- ✅ Bun monorepo setup with Turbo
-- ✅ Next.js 16 + React 19 frontend with shadcn/ui
-- ✅ Convex serverless backend + real-time database
-- ✅ Temporal Cloud workflow engine
-- ✅ Example workflows and type-safe invocation
-- 🚧 **Next:** Convex schema setup and Plugin SDK
-
-**Flagship Use Case:** AI-powered stock trading (proof-of-concept)
-
-**Platform Vision:** Universal automation platform where users describe workflows in natural language, plugins provide capabilities, AI powers intelligent decision-making, and the community builds the ecosystem.
+See [ROADMAP.md](./docs/ROADMAP.md) for full timeline and details.
 
 ## License
 
@@ -333,4 +333,6 @@ git checkout main && git merge feature/agent-execution
 
 ---
 
-Built with ❤️ using Next.js, Convex, and Temporal
+**Status:** Phase 0-1 Complete | **Next:** Workflow CRUD (Phase 2 prep)
+
+Built with Next.js, Convex, Better Auth, and Temporal
