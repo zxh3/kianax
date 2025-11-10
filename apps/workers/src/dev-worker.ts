@@ -5,11 +5,9 @@
  * In production, workers are deployed with specific task queues.
  */
 
-import { config } from "dotenv";
-import { resolve } from "path";
+import dotenv from "dotenv";
 
-// Load environment variables from .env.local in the workers directory
-config({ path: resolve(import.meta.dirname || __dirname, "../.env.local") });
+dotenv.config();
 
 import { runWorker } from "./worker";
 
@@ -20,7 +18,7 @@ async function main() {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`📦 Task Queue: ${taskQueue}`);
   console.log(
-    `🔗 Convex URL: ${process.env.CONVEX_URL ? "✅ Loaded" : "❌ Not found"}`
+    `🔗 Convex URL: ${process.env.CONVEX_URL ? "✅ Loaded" : "❌ Not found"}`,
   );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
