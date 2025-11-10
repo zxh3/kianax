@@ -6,84 +6,101 @@ Long-term product vision for the AI-native routine platform.
 
 ---
 
-## Current Status: Phase 0
+## Current Status: Phase 2 - Backend Complete
 
 **What exists:**
-- Next.js 16 frontend with shadcn/ui
-- Project structure and documentation
+- ✅ Next.js 16 frontend with shadcn/ui
+- ✅ Convex backend (real-time database + serverless functions)
+- ✅ Better Auth with Google OAuth
+- ✅ Complete routine CRUD operations
+- ✅ Workflow execution engine with conditional branching
+- ✅ Execution tracking and observability
+- ✅ Temporal Workers with dynamic workflow executor
+- ✅ Mock plugins for local testing (static-data, mock-weather, if-else)
+- ✅ E2E test infrastructure
+- ✅ Protected dashboard with route-based navigation
 
-**What doesn't:**
-- No Convex integration yet
-- No routines or plugins
-- No AI parsing
+**What's in progress:**
+- 🚧 Frontend integration with Convex backend
+- 🚧 Routines list UI with real-time updates
 
-**Next:** Set up Convex and build first routine
+**Next:** Complete frontend integration, then move to plugin SDK development
 
 ---
 
 ## Phases
 
-### Phase 0: Foundation (Current) - 1 week
+### Phase 0: Foundation ✅ **Complete** - 1 week
 
 **Goal:** Get Convex working with basic data flow
 
-- Set up Convex project
-- Define routines schema
-- Create first mutations/queries
-- Frontend integration with real-time updates
+- ✅ Set up Convex project
+- ✅ Define routines schema
+- ✅ Create first mutations/queries
+- ✅ Frontend integration with real-time updates
 
 **Done when:** Can create routine and see it live
 
-### Phase 1: Auth & Multi-Tenancy - 1 week
+### Phase 1: Auth & Multi-Tenancy ✅ **Complete** - 1 week
 
 **Goal:** Users can sign up and have isolated data
 
-- Convex Auth setup (email/password)
-- Auth UI components
-- Automatic user isolation in queries
-- Protected routes
+- ✅ Better Auth setup (Google OAuth + email/password)
+- ✅ Auth UI components
+- ✅ Automatic user isolation in queries
+- ✅ Protected routes
 
 **Done when:** Users can register, login, see only their routines
 
-### Phase 2: Plugin SDK - 2-3 weeks
+### Phase 2: Workflow System & Plugin Foundation 🚧 **Backend Complete** - 2-3 weeks
 
-**Goal:** Foundation for plugin system
+**Goal:** Build workflow execution engine and plugin foundation
 
-- Plugin interface definition
-- Plugin registry (Convex schema)
-- Type system (JSON Schema validation)
+**Backend (✅ Complete):**
+- ✅ Routine CRUD operations (create, read, update, delete, list)
+- ✅ Execution tracking system (routine_executions table)
+- ✅ Plugin interface definition
+- ✅ Plugin registry implementation
+- ✅ TypeScript Worker implementation
+- ✅ Generic routine executor with BFS traversal
+- ✅ Plugin execution as Temporal Activities
+- ✅ Conditional branching support (if-else logic)
+- ✅ Parallel execution support
+- ✅ Mock plugins for local testing (static-data, mock-weather, if-else)
+- ✅ E2E test infrastructure
+
+**Frontend (🚧 In Progress):**
+- 🚧 Routines list UI with real-time updates
+- 🚧 Routine creation interface
+- 🚧 Execution history display
+
+**Done when:** Users can create, list, and execute routines via UI; execution status updates in real-time
+
+### Phase 3: Plugin SDK & Marketplace - 2-3 weeks
+
+**Goal:** Enable plugin development and distribution
+
 - Plugin SDK package for developers
 - Plugin marketplace schema
+- Plugin submission and review process
+- Plugin versioning support
+- Plugin installation UI
 
-**Done when:** Developers can build plugins following SDK
-
-### Phase 3: Routine Engine - 2-3 weeks
-
-**Goal:** Execute simple routines via Temporal Cloud
-
-- Temporal Cloud setup (account, namespace)
-- TypeScript Worker implementation
-- Generic routine executor (interprets DAG at runtime using Temporal workflows)
-- Plugin execution as Temporal Activities
-- Routine types (root vs sub-routine)
-- Trigger configuration (cron, webhook, manual, event)
-- Basic execution UI with real-time status
-
-**Done when:** Can run "Cron-triggered Stock Price → Email" routine with live execution tracking
+**Done when:** Developers can build and publish plugins; users can install plugins from marketplace
 
 ### Phase 4: Core Plugins - 3-4 weeks
 
-**Build 5 essential plugins:**
+**Build essential plugins:**
 
 1. Stock Price Input (Polygon.io)
 2. AI Processor (GPT-3.5)
 3. HTTP Output
 4. Email Output (SendGrid)
-5. If/Else Logic
+5. Additional logic nodes (switch, loops)
 
 **Note:** Triggers are routine-level config, not plugins
 
-**Done when:** Can build "Stock alert" routine end-to-end
+**Done when:** Can build "Stock alert" routine end-to-end with real API integrations
 
 ### Phase 5: AI Routine Creation - 3-4 weeks
 

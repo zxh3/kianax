@@ -2,7 +2,7 @@
 
 **"Talk to Create Routines"** - An AI-native automation platform (in development) where users will build workflows by describing them in natural language.
 
-> **⚠️ Early Development:** This project is in Phase 0-1 (Foundation & Auth). Core workflow functionality is being built. See [Current Status](#status) for what's implemented.
+> **⚠️ Early Development:** This project is in Phase 2 (Workflow System & Plugin Foundation). The backend workflow execution engine is complete and tested. See [Current Status](#status) for what's implemented.
 
 ## Vision
 
@@ -17,6 +17,7 @@ This would create: Stock Price Monitor → AI Analysis → Conditional Logic →
 ## Current Status
 
 **Phase 0-1: Foundation & Auth** ✅ **Complete**
+**Phase 2: Workflow System & Plugin Foundation** ✅ **Backend Complete**
 
 **What's Working:**
 - ✅ Next.js 16 + React 19 frontend with shadcn/ui
@@ -24,14 +25,19 @@ This would create: Stock Price Monitor → AI Analysis → Conditional Logic →
 - ✅ Better Auth with Google OAuth and email/password
 - ✅ Protected dashboard with route-based navigation
 - ✅ Database schema for routines, executions, plugins, credentials
-- ✅ Temporal Workers setup with example workflows
+- ✅ Complete routine CRUD operations (create, read, update, delete, list)
+- ✅ Workflow execution engine with conditional branching support
+- ✅ Execution tracking and observability (node results, status updates)
+- ✅ Mock plugins for local testing (static-data, mock-weather, if-else)
+- ✅ E2E test infrastructure (simple & conditional routines)
+- ✅ Temporal Workers with dynamic workflow executor
 - ✅ Single-command dev environment (`bun dev`)
 - ✅ Bun monorepo with Turbo
 
 **What's Being Built (Current Sprint):**
-- 🚧 Workflow CRUD functionality
-- 🚧 User-specific workflow management
-- 🚧 Real-time workflow list updates
+- 🚧 Frontend integration with Convex backend
+- 🚧 Routines list UI with real-time updates
+- 🚧 Routine creation and management interface
 
 **What's Planned:**
 - 📋 Plugin system architecture (Phase 2)
@@ -104,6 +110,12 @@ SITE_URL=http://localhost:3000
 # .env.local (apps/workers)
 TEMPORAL_ADDRESS=localhost:7233
 TEMPORAL_NAMESPACE=default
+CONVEX_URL=https://...                # Same as web
+
+# .env.local (apps/scripts)
+CONVEX_URL=https://...                # Same as web
+TEMPORAL_ADDRESS=localhost:7233
+TEMPORAL_NAMESPACE=default
 ```
 
 ### Development Commands
@@ -132,10 +144,15 @@ bun run typecheck
 cd apps/server
 npx convex run users:getCurrentUser
 
-# Test Temporal workflows
+# Test routine execution (E2E with Convex + Temporal)
+cd apps/scripts
+bun run test:routine:simple        # Test simple 2-node routine
+bun run test:routine:conditional   # Test conditional branching
+
+# Test Temporal workflows directly
 temporal workflow execute \
-  --task-queue kianax-default \
-  --type example \
+  --task-queue default \
+  --type routineExecutor \
   --workflow-id test-1
 ```
 
@@ -333,6 +350,6 @@ See [ROADMAP.md](./docs/ROADMAP.md) for full timeline and details.
 
 ---
 
-**Status:** Phase 0-1 Complete | **Next:** Workflow CRUD (Phase 2 prep)
+**Status:** Phase 2 Backend Complete | **Next:** Frontend Integration
 
 Built with Next.js, Convex, Better Auth, and Temporal

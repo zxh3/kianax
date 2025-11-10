@@ -171,22 +171,96 @@ Currently, we enforce **DAG (Directed Acyclic Graph)** - no cycles allowed. This
 - Break conditions (loop until condition met)
 - Temporal's continue-as-new for long-running loops
 
+## Critical Design Decision: Uniform Node Execution
+
+**Decision**: ALL nodes work identically regardless of their `type` field.
+
+### The Problem
+
+Initially, we special-cased "input" nodes to use their `config` directly as outputs:
+```typescript
+// ❌ BAD: Special-casing by node type
+const inputs = node.type === 'input'
+  ? (node.config || {})  // Input nodes: use config
+  : gatherNodeInputs(nodeId, graph.edges, state);  // Other nodes: gather from upstream
+```
+
+This created inconsistency and made the system harder to reason about.
+
+### The Solution
+
+**All nodes receive inputs from upstream nodes via `gatherNodeInputs()`**. The `type` field is purely for UI labeling.
+
+```typescript
+// ✅ GOOD: All nodes work identically
+const inputs = gatherNodeInputs(nodeId, graph.edges, state);
+```
+
+### How Entry Nodes Work
+
+For nodes with no incoming edges (entry nodes), `gatherNodeInputs()` returns `{}` (empty object). To provide constant input values, we use the **static-data plugin**:
+
+```typescript
+// Static Data Plugin
+{
+  id: "n1",
+  pluginId: "static-data",
+  type: "input",  // Type is just a UI label
+  config: {
+    data: { city: "San Francisco", units: "fahrenheit" }
+  }
+}
+```
+
+The static-data plugin simply returns `config.data` as its output, which then flows to downstream nodes.
+
+### Benefits
+
+1. **Architectural Uniformity**: No special-casing anywhere in the executor
+2. **Predictable Behavior**: All nodes follow same rules (inputs → process → outputs)
+3. **Simpler Code**: Single code path for all node types
+4. **Better Testing**: One execution pattern to test
+5. **Clear Semantics**: `type` is for UI organization, not execution behavior
+
+### Node Type Semantics
+
+```typescript
+type: 'input' | 'processor' | 'logic' | 'output'
+```
+
+- **Purpose**: UI categorization and visual distinction
+- **Not Used For**: Execution logic, data flow, or special-casing
+- **Examples**:
+  - `input`: Data sources (static-data, mock-weather, API calls)
+  - `processor`: Data transformation (AI, formatting, computation)
+  - `logic`: Control flow (if-else, switch, loops)
+  - `output`: Actions (HTTP POST, email, notifications)
+
+### Config vs Inputs
+
+- **`config`**: Behavior settings for the plugin (timeout, format, API endpoint, etc.)
+- **`inputs`**: Data flowing from upstream nodes
+- **Both are passed to plugin**: `execute(inputs, config, context)`
+
 ## Implementation Status
 
 ### ✅ Completed
 - [x] Enhanced Connection schema with conditions
 - [x] Graph executor utilities (BFS, validation, data flow)
-- [x] Dynamic workflow implementation (routine-executor-v2.ts)
+- [x] Dynamic workflow implementation (routine-executor.ts)
+- [x] Uniform node execution (no special-casing by type)
+- [x] Static-data plugin for constant values
+- [x] Mock plugins for local testing (mock-weather, if-else)
+- [x] E2E test infrastructure (simple & conditional routines)
 - [x] Comprehensive documentation
-- [x] Example patterns (linear, branch, parallel, nested, diamond)
+- [x] Example patterns (linear, branch, parallel)
 
 ### 🚧 Next Steps
-- [ ] Replace old executor with new one
 - [ ] UI support for conditional edges (React Flow)
 - [ ] Graph validation in routine editor
 - [ ] Execution visualization (highlight active path)
-- [ ] Integration tests for all patterns
 - [ ] Error handling improvements (partial failures, retries)
+- [ ] Additional plugin types (API calls, data transforms)
 
 ## Migration Path
 

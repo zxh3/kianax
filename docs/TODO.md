@@ -1,7 +1,7 @@
 # TODO - Current Tasks
 
-**Last Updated:** 2025-01-08
-**Current Phase:** Phase 0-1 - Foundation & Auth (Partially Complete)
+**Last Updated:** 2025-01-09
+**Current Phase:** Phase 2 - Workflow System & Plugin Foundation (In Progress)
 
 > For long-term vision, see [ROADMAP.md](./ROADMAP.md)
 
@@ -37,47 +37,77 @@
   - [x] Dynamic header titles based on route
   - [x] User menu with settings navigation
 
+### Phase 2: Workflow System & Plugin Foundation
+
+- [x] **Routine Schema** (renamed from "workflows" to "routines")
+  - [x] Add `routines` table to `convex/schema.ts`
+  - [x] Add `routine_executions` table for execution tracking
+  - [x] Add `installed_plugins` and `plugin_credentials` tables
+  - [x] Define routine structure (nodes, connections, triggers, config)
+  - [x] Schema includes execution path tracking for conditional branching
+
+- [x] **Routine CRUD Functions**
+  - [x] Create `convex/routines.ts`
+  - [x] Add `listByUser` query (get user's routines with filters)
+  - [x] Add `create` mutation (create routine)
+  - [x] Add `update` mutation (update routine with versioning)
+  - [x] Add `deleteRoutine` mutation (delete routine)
+  - [x] Add `get` query (get single routine by ID)
+  - [x] Add `updateLastExecuted` mutation
+
+- [x] **Execution Tracking Functions**
+  - [x] Create `convex/executions.ts`
+  - [x] Add `create` mutation (create execution record)
+  - [x] Add `updateStatus` mutation (track execution lifecycle)
+  - [x] Add `storeNodeResult` mutation (track individual node results)
+  - [x] Add queries for execution history and details
+
+- [x] **Workflow Execution Architecture**
+  - [x] Fixed execution record creation in workflows
+  - [x] All nodes now work identically (no special-casing by type)
+  - [x] Node `type` field is purely for UI labeling
+  - [x] Implemented proper data flow (inputs from upstream, config for behavior)
+
+- [x] **Core Mock Plugins** (for local testing)
+  - [x] Created `static-data` plugin (outputs constant values)
+  - [x] Created `mock-weather` plugin (deterministic mock data, no API calls)
+  - [x] Registered plugins in plugin registry
+  - [x] Both plugins work with zero external dependencies
+
+- [x] **E2E Testing Infrastructure**
+  - [x] Created test script for routine execution
+  - [x] Simple weather routine (2 nodes: static-data → mock-weather)
+  - [x] Conditional branching routine (if-else with dead branch handling)
+  - [x] Full flow: Convex write → fetch → Temporal execution → result tracking
+  - [x] Test commands: `bun test:routine:simple` and `bun test:routine:conditional`
+
 ---
 
-## 🎯 Current Sprint - Workflow Foundation
+## 🎯 Current Sprint - Frontend Integration
 
-**Goal:** Build actual workflow CRUD functionality with Convex
+**Goal:** Connect the Workflows UI to real Convex data
 
 ### Tasks
 
-- [ ] **Workflow Schema**
-  - [ ] Add `workflows` table to `convex/schema.ts`
-  - [ ] Add `plugins` table (for installed plugins)
-  - [ ] Add `plugin_credentials` table (encrypted)
-  - [ ] Define workflow structure (nodes, connections, config)
-  - [ ] Test schema compiles
-
-- [ ] **Workflow Functions**
-  - [ ] Create `convex/workflows.ts`
-  - [ ] Add `list` query (get user's workflows with auth check)
-  - [ ] Add `create` mutation (create workflow)
-  - [ ] Add `update` mutation (update workflow)
-  - [ ] Add `delete` mutation (delete workflow)
-  - [ ] Add `get` query (get single workflow by ID)
-  - [ ] Test with CLI: `npx convex run workflows:create`
-
-- [ ] **Workflows Page Implementation**
+- [ ] **Routines Page Implementation**
   - [ ] Update `app/dashboard/workflows/page.tsx` with real functionality
-  - [ ] Use `useQuery(api.workflows.list)` to fetch workflows
-  - [ ] Use `useMutation(api.workflows.create)` for creating
-  - [ ] Add workflow list UI (card grid or table)
-  - [ ] Add "Create Workflow" button/modal
+  - [ ] Use `useQuery(api.routines.listByUser)` to fetch routines
+  - [ ] Use `useMutation(api.routines.create)` for creating
+  - [ ] Add routine list UI (card grid or table)
+  - [ ] Add "Create Routine" button/modal
+  - [ ] Show execution history for each routine
   - [ ] Verify real-time updates (open 2 tabs)
 
 - [ ] **Route Protection**
   - [ ] Ensure all queries filter by authenticated user ID
-  - [ ] Test user isolation (two users can't see each other's workflows)
+  - [ ] Test user isolation (two users can't see each other's routines)
   - [ ] Add loading states for auth checks
 
 **Done when:**
-- Users can create, view, update, and delete workflows
+- Users can create, view, update, and delete routines via UI
 - Changes sync in real-time across tabs
-- Each user only sees their own workflows
+- Each user only sees their own routines
+- Execution history is visible
 
 ---
 
