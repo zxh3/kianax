@@ -13,9 +13,18 @@ import type {
 import { api } from "../../../server/convex/_generated/api";
 
 // Initialize Convex client
-const convex = new ConvexHttpClient(
-  process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL || "",
-);
+const convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+
+if (!convexUrl) {
+  console.warn(
+    "⚠️  CONVEX_URL not found in environment variables. Convex integration will not work.",
+  );
+  console.warn(
+    "   Make sure .env.local exists in apps/workers/ with CONVEX_URL set.",
+  );
+}
+
+const convex = new ConvexHttpClient(convexUrl || "");
 
 /**
  * Update routine execution status
