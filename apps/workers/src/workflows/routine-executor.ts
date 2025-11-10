@@ -58,6 +58,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
 
   // Update routine status to running
   await updateRoutineStatus({
+    workflowId: executionId,
     routineId,
     status: "running",
     startedAt: Date.now(),
@@ -73,13 +74,16 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
 
     // All nodes completed successfully
     await updateRoutineStatus({
+      workflowId: executionId,
       routineId,
       status: "completed",
       completedAt: Date.now(),
+      executionPath: state.executionPath,
     });
   } catch (error: any) {
     // Workflow failed
     await updateRoutineStatus({
+      workflowId: executionId,
       routineId,
       status: "failed",
       error: {
@@ -199,6 +203,7 @@ async function executeNode(
 
     // Persist to Convex for observability
     await storeNodeResult({
+      workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
       status: "completed",
@@ -208,6 +213,7 @@ async function executeNode(
   } catch (error: any) {
     // Node execution failed
     await storeNodeResult({
+      workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
       status: "failed",

@@ -55,6 +55,13 @@ export default defineSchema({
         targetNodeId: v.string(),
         sourceHandle: v.optional(v.string()),
         targetHandle: v.optional(v.string()),
+        // Conditional execution (for logic nodes)
+        condition: v.optional(
+          v.object({
+            type: v.union(v.literal("branch"), v.literal("default")),
+            value: v.optional(v.string()), // Branch value: "true", "false", etc.
+          })
+        ),
       })
     ),
     tags: v.optional(v.array(v.string())),
@@ -70,6 +77,11 @@ export default defineSchema({
   routine_executions: defineTable({
     routineId: v.id("routines"),
     userId: v.string(),
+
+    // Temporal workflow identifiers
+    workflowId: v.string(),
+    runId: v.string(),
+
     status: v.union(
       v.literal("pending"),
       v.literal("running"),
@@ -86,6 +98,10 @@ export default defineSchema({
       v.literal("event")
     ),
     triggerData: v.optional(v.any()),
+
+    // Execution path (ordered list of executed node IDs for conditional branching)
+    executionPath: v.optional(v.array(v.string())),
+
     // Node execution states
     nodeStates: v.array(
       v.object({
@@ -104,6 +120,15 @@ export default defineSchema({
         duration: v.optional(v.number()),
       })
     ),
+
+    // Error information (workflow-level)
+    error: v.optional(
+      v.object({
+        message: v.string(),
+        stack: v.optional(v.string()),
+      })
+    ),
+
     // Metrics
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -111,7 +136,8 @@ export default defineSchema({
   })
     .index("by_routine", ["routineId"])
     .index("by_user", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_workflow_id", ["workflowId"]),
 
   // Installed plugins (per user)
   installed_plugins: defineTable({

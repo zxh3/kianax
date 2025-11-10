@@ -51,6 +51,7 @@ export interface ExecutePluginInput {
 }
 
 export interface UpdateRoutineStatusInput {
+  workflowId: string;  // Temporal workflow ID for tracking
   routineId: string;
   status: 'running' | 'completed' | 'failed';
   startedAt?: number;
@@ -59,9 +60,11 @@ export interface UpdateRoutineStatusInput {
     message: string;
     stack?: string;
   };
+  executionPath?: string[];  // Track which nodes executed (for conditional branching)
 }
 
 export interface StoreNodeResultInput {
+  workflowId: string;  // Temporal workflow ID for tracking
   routineId: string;
   nodeId: string;
   status: 'completed' | 'failed';

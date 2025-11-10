@@ -10,35 +10,56 @@ import type {
   UpdateRoutineStatusInput,
   StoreNodeResultInput,
 } from "@kianax/shared/temporal";
+import { api } from "../../../server/convex/_generated/api";
 
 // Initialize Convex client
-// In production, CONVEX_URL should be set in environment variables
 const convex = new ConvexHttpClient(
-  process.env.CONVEX_URL || "http://localhost:3000",
+  process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL || "",
 );
 
+/**
+ * Update routine execution status
+ * Called by workflow during execution lifecycle
+ */
 export async function updateRoutineStatus(
   input: UpdateRoutineStatusInput,
 ): Promise<void> {
-  // TODO: Implement Convex mutation to update execution status
-  // This should call a Convex mutation like:
-  // await convex.mutation('executions:updateStatus', input);
-
-  console.log("Updating routine status:", input);
-
-  // For development, just log
-  // In production, this will write to Convex and trigger real-time UI updates
+  try {
+    await convex.mutation(api.executions.updateStatus, {
+      workflowId: input.workflowId,
+      status: input.status === "running" ? "running"
+        : input.status === "completed" ? "completed"
+        : input.status === "failed" ? "failed"
+        : "cancelled",
+      ...(input.startedAt !== undefined && { startedAt: input.startedAt }),
+      ...(input.completedAt !== undefined && { completedAt: input.completedAt }),
+      ...(input.error !== undefined && { error: input.error }),
+      ...(input.executionPath !== undefined && { executionPath: input.executionPath }),
+    });
+  } catch (error: any) {
+    console.error("Failed to update routine status:", error);
+    // Don't throw - we don't want Convex update failures to fail the workflow
+  }
 }
 
+/**
+ * Store node execution result
+ * Called by workflow after each node executes
+ */
 export async function storeNodeResult(
   input: StoreNodeResultInput,
 ): Promise<void> {
-  // TODO: Implement Convex mutation to store node execution result
-  // This should call a Convex mutation like:
-  // await convex.mutation('executions:updateNodeStatus', input);
-
-  console.log("Storing node result:", input);
-
-  // For development, just log
-  // In production, this will write to Convex for execution history and debugging
+  try {
+    await convex.mutation(api.executions.storeNodeResult, {
+      workflowId: input.workflowId,
+      nodeId: input.nodeId,
+      status: input.status,
+      ...(input.output !== undefined && { output: input.output }),
+      ...(input.error !== undefined && { error: input.error }),
+      completedAt: input.completedAt,
+    });
+  } catch (error: any) {
+    console.error("Failed to store node result:", error);
+    // Don't throw - we don't want Convex update failures to fail the workflow
+  }
 }
