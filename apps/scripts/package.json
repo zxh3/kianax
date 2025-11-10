@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "test:routine": "tsx src/test-routine.ts",
-    "test:routine:conditional": "tsx src/test-routine.ts conditional",
-    "test:routine:parallel": "tsx src/test-routine.ts parallel",
-    "test:routine:linear": "tsx src/test-routine.ts linear"
+    "test:routine:simple": "tsx src/test-routine.ts simple",
+    "test:routine:conditional": "tsx src/test-routine.ts conditional"
   },
   "dependencies": {
+    "@kianax/server": "*",
     "@kianax/shared": "*",
     "@kianax/workers": "*",
     "@temporalio/client": "^1.13.0",
+    "convex": "^1.17.5",
+    "dotenv": "^16.4.7",
     "nanoid": "^5.0.1"
   },
   "devDependencies": {

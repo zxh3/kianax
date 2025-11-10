@@ -41,10 +41,10 @@ export default defineSchema({
           v.literal("processor"),
           v.literal("logic"),
           v.literal("output")
-        ),
+        ), // Type is for UI labeling only - all nodes behave identically
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
-        config: v.optional(v.any()),
+        config: v.optional(v.any()), // Plugin behavior settings (timeout, format, etc.)
         enabled: v.boolean(),
       })
     ),

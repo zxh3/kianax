@@ -4,18 +4,23 @@
  * Creates and configures Temporal Workers that execute workflows and activities.
  */
 
-// IMPORTANT: Load environment variables BEFORE importing activities
-// Activities run in a separate context and need env vars available at module load time
+/**
+ * Load environment variables BEFORE importing activities
+ * Activities use lazy initialization and need env vars available when they execute
+ */
 import dotenv from "dotenv";
-dotenv.config();
-
-import { NativeConnection, Worker } from "@temporalio/worker";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import * as activities from "./activities";
+import { dirname, join, resolve } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load .env from the workers directory (one level up from src/)
+const envPath = resolve(__dirname, "../.env");
+dotenv.config({ path: envPath });
+
+import { NativeConnection, Worker } from "@temporalio/worker";
+import * as activities from "./activities";
 
 export async function createWorker(taskQueue: string): Promise<Worker> {
   // Connect to Temporal server

@@ -16,7 +16,19 @@ export interface RoutineInput {
 export interface Node {
   id: string;
   pluginId: string;
+  /**
+   * Node type (for UI categorization/labeling only)
+   * All nodes behave identically regardless of type:
+   * - Receive inputs from upstream nodes
+   * - Process via plugin
+   * - Output data to downstream nodes
+   */
   type: 'input' | 'processor' | 'logic' | 'output';
+  /**
+   * Plugin configuration (behavior settings)
+   * Examples: timeout, format, retries, model, etc.
+   * Note: Use static-data plugin for constant input values
+   */
   config: Record<string, unknown>;
   enabled: boolean;
 }
@@ -48,6 +60,15 @@ export interface ExecutePluginInput {
   config: Record<string, unknown>;
   inputs: Record<string, unknown>;
   context: TemporalPluginContext;
+}
+
+export interface CreateRoutineExecutionInput {
+  routineId: string;
+  userId: string;
+  workflowId: string;
+  runId: string;
+  triggerType: 'manual' | 'scheduled' | 'webhook' | 'event';
+  triggerData?: unknown;
 }
 
 export interface UpdateRoutineStatusInput {

@@ -24,7 +24,7 @@ import {
 } from "../lib/graph-executor";
 
 // Proxy activities with timeout and retry configuration
-const { executePlugin, updateRoutineStatus, storeNodeResult } = proxyActivities<
+const { executePlugin, createRoutineExecution, updateRoutineStatus, storeNodeResult } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "5 minutes",
@@ -45,16 +45,26 @@ const { executePlugin, updateRoutineStatus, storeNodeResult } = proxyActivities<
  * - Dynamic routing (runtime path determination)
  */
 export async function routineExecutor(input: RoutineInput): Promise<void> {
-  const { routineId, userId } = input;
+  const { routineId, userId, triggerData } = input;
 
-  // Get workflow execution ID
-  const { workflowId: executionId } = workflowInfo();
+  // Get workflow execution info
+  const { workflowId: executionId, runId } = workflowInfo();
 
   // Validate graph structure
   const validation = validateGraph(input);
   if (!validation.valid) {
     throw new Error(`Invalid routine graph:\n${validation.errors.join("\n")}`);
   }
+
+  // Create execution record in Convex
+  await createRoutineExecution({
+    routineId,
+    userId,
+    workflowId: executionId,
+    runId,
+    triggerType: (triggerData as any)?.triggerType || "manual",
+    triggerData,
+  });
 
   // Update routine status to running
   await updateRoutineStatus({
@@ -179,6 +189,8 @@ async function executeNode(
   }
 
   // Gather inputs from upstream nodes
+  // All nodes work identically: inputs come from upstream outputs
+  // For nodes with no upstream (entry nodes), inputs will be empty {}
   const inputs = gatherNodeInputs(nodeId, graph.edges, state);
 
   try {

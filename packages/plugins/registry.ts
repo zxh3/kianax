@@ -9,6 +9,8 @@ import type { Plugin } from "@kianax/plugin-sdk";
 // Import all plugins
 import { aiTransform } from "./transformers/ai/index.js";
 import { stockPrice } from "./data-sources/stock-price/index.js";
+import { mockWeather } from "./data-sources/mock-weather/index.js";
+import { staticData } from "./data-sources/static-data/index.js";
 import { httpRequest } from "./actions/http/index.js";
 import { email } from "./actions/email/index.js";
 import { ifElse } from "./conditions/if-else/index.js";
@@ -22,6 +24,8 @@ export const pluginRegistry = new Map<string, Plugin<any, any, any>>([
 
   // Data Sources / Inputs
   [stockPrice.id, stockPrice],
+  [mockWeather.id, mockWeather],
+  [staticData.id, staticData],
 
   // Actions / Outputs
   [httpRequest.id, httpRequest],
