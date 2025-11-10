@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "test:routine": "tsx src/test-routine.ts",
+    "test:routine:conditional": "tsx src/test-routine.ts conditional",
+    "test:routine:parallel": "tsx src/test-routine.ts parallel",
+    "test:routine:linear": "tsx src/test-routine.ts linear"
+  },
   "dependencies": {
     "@kianax/shared": "*",
     "@kianax/workers": "*",

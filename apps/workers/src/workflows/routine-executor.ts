@@ -10,7 +10,7 @@
  */
 
 import { proxyActivities, workflowInfo } from "@temporalio/workflow";
-import type * as activities from "../activities/index.js";
+import type * as activities from "../activities";
 import type { RoutineInput } from "@kianax/shared/temporal";
 import {
   buildExecutionGraph,
@@ -21,7 +21,7 @@ import {
   validateGraph,
   ExecutionState,
   type ExecutionGraph,
-} from "../lib/graph-executor.js";
+} from "../lib/graph-executor";
 
 // Proxy activities with timeout and retry configuration
 const { executePlugin, updateRoutineStatus, storeNodeResult } = proxyActivities<

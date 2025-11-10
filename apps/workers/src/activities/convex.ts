@@ -27,14 +27,22 @@ export async function updateRoutineStatus(
   try {
     await convex.mutation(api.executions.updateStatus, {
       workflowId: input.workflowId,
-      status: input.status === "running" ? "running"
-        : input.status === "completed" ? "completed"
-        : input.status === "failed" ? "failed"
-        : "cancelled",
+      status:
+        input.status === "running"
+          ? "running"
+          : input.status === "completed"
+            ? "completed"
+            : input.status === "failed"
+              ? "failed"
+              : "cancelled",
       ...(input.startedAt !== undefined && { startedAt: input.startedAt }),
-      ...(input.completedAt !== undefined && { completedAt: input.completedAt }),
+      ...(input.completedAt !== undefined && {
+        completedAt: input.completedAt,
+      }),
       ...(input.error !== undefined && { error: input.error }),
-      ...(input.executionPath !== undefined && { executionPath: input.executionPath }),
+      ...(input.executionPath !== undefined && {
+        executionPath: input.executionPath,
+      }),
     });
   } catch (error: any) {
     console.error("Failed to update routine status:", error);
