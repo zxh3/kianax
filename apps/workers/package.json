@@ -10,9 +10,13 @@
     "dev": "tsx watch src/dev-worker.ts",
     "start": "node dist/worker.js",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@kianax/plugin-sdk": "*",
+    "@kianax/plugins": "*",
     "@kianax/shared": "*",
     "@temporalio/activity": "^1.13.0",
     "@temporalio/worker": "^1.13.0",
@@ -23,6 +27,7 @@
     "@kianax/typescript-config": "*",
     "@types/node": "^22.15.3",
     "tsx": "^4.7.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.8"
   }
 }

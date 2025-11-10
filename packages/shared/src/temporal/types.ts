@@ -10,14 +10,14 @@ export interface RoutineInput {
   userId: string;
   nodes: Node[];
   connections: Connection[];
-  triggerData?: any;
+  triggerData?: unknown;
 }
 
 export interface Node {
   id: string;
   pluginId: string;
   type: 'input' | 'processor' | 'logic' | 'output';
-  config: any;
+  config: Record<string, unknown>;
   enabled: boolean;
 }
 
@@ -25,8 +25,14 @@ export interface Connection {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
-  sourceHandle?: string;
-  targetHandle?: string;
+  sourceHandle?: string;  // Output port on source node
+  targetHandle?: string;  // Input port on target node
+
+  // Conditional execution (for logic nodes)
+  condition?: {
+    type: 'branch' | 'default';
+    value?: string;  // Branch value: "true", "false", etc.
+  };
 }
 
 /**
@@ -39,8 +45,8 @@ export interface TemporalPluginContext extends BasePluginContext {
 
 export interface ExecutePluginInput {
   pluginId: string;
-  config: any;
-  inputs: any;
+  config: Record<string, unknown>;
+  inputs: Record<string, unknown>;
   context: TemporalPluginContext;
 }
 
@@ -59,7 +65,7 @@ export interface StoreNodeResultInput {
   routineId: string;
   nodeId: string;
   status: 'completed' | 'failed';
-  output?: any;
+  output?: unknown;
   error?: {
     message: string;
     stack?: string;

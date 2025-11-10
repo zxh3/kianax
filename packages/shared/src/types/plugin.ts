@@ -21,6 +21,7 @@ export interface PluginContext {
   routineId: string;
   executionId: string;
   credentials?: Record<string, string>;
+  triggerData?: unknown;
 }
 
 /**
