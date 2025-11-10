@@ -13,7 +13,7 @@ import type {
 import { api } from "../../../server/convex/_generated/api";
 
 // Initialize Convex client
-const convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexUrl = process.env.CONVEX_URL;
 
 if (!convexUrl) {
   console.warn(
@@ -22,6 +22,8 @@ if (!convexUrl) {
   console.warn(
     "   Make sure .env.local exists in apps/workers/ with CONVEX_URL set.",
   );
+} else {
+  console.log(`✅ Convex client initialized: ${convexUrl}`);
 }
 
 const convex = new ConvexHttpClient(convexUrl || "");

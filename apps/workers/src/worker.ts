@@ -4,6 +4,11 @@
  * Creates and configures Temporal Workers that execute workflows and activities.
  */
 
+// IMPORTANT: Load environment variables BEFORE importing activities
+// Activities run in a separate context and need env vars available at module load time
+import dotenv from "dotenv";
+dotenv.config();
+
 import { NativeConnection, Worker } from "@temporalio/worker";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
