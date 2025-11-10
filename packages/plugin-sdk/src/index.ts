@@ -14,10 +14,10 @@ export type {
   PluginContext,
   CredentialSchema,
   PluginMetadata,
-} from "./types/index.js";
+} from "./types";
 
 // Export plugin builder
-export { definePlugin } from "./types/definePlugin.js";
+export { definePlugin } from "./types/definePlugin";
 
 // Export validation utilities
 export {
@@ -25,7 +25,7 @@ export {
   validateOutput,
   validateConfig,
   PluginValidationError,
-} from "./validation/index.js";
+} from "./validation";
 
 // Export testing utilities (separate entry point)
 // import from "@kianax/plugin-sdk/testing"

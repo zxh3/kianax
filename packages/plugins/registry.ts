@@ -4,16 +4,16 @@
  * Central registry for all available plugins in the platform.
  */
 
-import type { Plugin } from "@kianax/plugin-sdk";
+import type { Plugin, PluginMetadata } from "@kianax/plugin-sdk";
 
 // Import all plugins
-import { aiTransform } from "./transformers/ai/index.js";
-import { stockPrice } from "./data-sources/stock-price/index.js";
-import { mockWeather } from "./data-sources/mock-weather/index.js";
-import { staticData } from "./data-sources/static-data/index.js";
-import { httpRequest } from "./actions/http/index.js";
-import { email } from "./actions/email/index.js";
-import { ifElse } from "./conditions/if-else/index.js";
+import { aiTransform } from "./transformers/ai";
+import { stockPrice } from "./data-sources/stock-price";
+import { mockWeather } from "./data-sources/mock-weather";
+import { staticData } from "./data-sources/static-data";
+import { httpRequest } from "./actions/http";
+import { email } from "./actions/email";
+import { ifElse } from "./conditions/if-else";
 
 /**
  * Plugin registry - all available plugins
@@ -89,7 +89,7 @@ export function isValidPluginId(pluginId: string): boolean {
 /**
  * Get plugin metadata (without execute function)
  */
-export function getPluginMetadata(pluginId: string) {
+export function getPluginMetadata(pluginId: string): PluginMetadata | undefined {
   const plugin = getPlugin(pluginId);
 
   if (!plugin) {
@@ -113,6 +113,8 @@ export function getPluginMetadata(pluginId: string) {
 /**
  * Get all plugin metadata
  */
-export function getAllPluginMetadata() {
-  return getAllPlugins().map((plugin) => getPluginMetadata(plugin.id));
+export function getAllPluginMetadata(): PluginMetadata[] {
+  return getAllPlugins()
+    .map((plugin) => getPluginMetadata(plugin.id))
+    .filter((metadata): metadata is PluginMetadata => metadata !== undefined);
 }

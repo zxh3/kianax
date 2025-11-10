@@ -9,9 +9,9 @@
  * - plugin validate <file> - Validate plugin structure
  */
 
-import { createPlugin } from "./commands/create.js";
-import { testPlugin } from "./commands/test.js";
-import { validatePlugin } from "./commands/validate.js";
+import { createPlugin } from "./commands/create";
+import { testPlugin } from "./commands/test";
+import { validatePlugin } from "./commands/validate";
 
 const USAGE = `
 Kianax Plugin CLI

@@ -5,7 +5,7 @@
  */
 
 import { resolve } from "node:path";
-import { PluginTester } from "../../testing/PluginTester.js";
+import { PluginTester } from "../../testing/PluginTester";
 
 export async function testPlugin(args: string[]) {
   if (args.length === 0) {

@@ -20,4 +20,4 @@
  * ```
  */
 
-export { PluginTester, mockContext } from "./PluginTester.js";
+export { PluginTester, mockContext } from "./PluginTester";

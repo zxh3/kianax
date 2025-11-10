@@ -5,7 +5,7 @@
  */
 
 import type { z } from "zod";
-import type { Plugin } from "./index.js";
+import type { Plugin } from ".";
 
 /**
  * Define a plugin with full type safety

@@ -4,6 +4,9 @@
  * Core platform plugins for routine execution.
  */
 
+// Export types
+export type { PluginMetadata, PluginType, Plugin } from "@kianax/plugin-sdk";
+
 // Export plugin registry
 export {
   pluginRegistry,
@@ -15,11 +18,11 @@ export {
   isValidPluginId,
   getPluginMetadata,
   getAllPluginMetadata,
-} from "./registry.js";
+} from "./registry";
 
 // Export individual plugins
-export { aiTransform } from "./transformers/ai/index.js";
-export { stockPrice } from "./data-sources/stock-price/index.js";
-export { httpRequest } from "./actions/http/index.js";
-export { email } from "./actions/email/index.js";
-export { ifElse } from "./conditions/if-else/index.js";
+export { aiTransform } from "./transformers/ai";
+export { stockPrice } from "./data-sources/stock-price";
+export { httpRequest } from "./actions/http";
+export { email } from "./actions/email";
+export { ifElse } from "./conditions/if-else";
