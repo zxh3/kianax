@@ -24,9 +24,12 @@ import {
 } from "../lib/graph-executor";
 
 // Proxy activities with timeout and retry configuration
-const { executePlugin, createRoutineExecution, updateRoutineStatus, storeNodeResult } = proxyActivities<
-  typeof activities
->({
+const {
+  executePlugin,
+  createRoutineExecution,
+  updateRoutineStatus,
+  storeNodeResult,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
     initialInterval: "1s",

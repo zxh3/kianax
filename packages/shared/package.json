@@ -11,6 +11,7 @@
     "./temporal": "./src/temporal/index.ts"
   },
   "scripts": {
+    "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

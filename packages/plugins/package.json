@@ -6,6 +6,10 @@
   "exports": {
     ".": "./index.ts"
   },
+  "scripts": {
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@kianax/plugin-sdk": "*",
     "openai": "^4.73.1",

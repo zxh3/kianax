@@ -21,9 +21,7 @@ export const mockWeather = definePlugin({
   },
 
   inputSchema: z.object({
-    city: z
-      .string()
-      .describe("City name (e.g., San Francisco, New York)"),
+    city: z.string().describe("City name (e.g., San Francisco, New York)"),
     units: z
       .enum(["celsius", "fahrenheit"])
       .optional()
@@ -39,14 +37,17 @@ export const mockWeather = definePlugin({
     humidity: z.number().describe("Humidity percentage"),
     windSpeed: z.number().describe("Wind speed in mph"),
     timestamp: z.string().describe("ISO 8601 timestamp"),
-    forecast: z.array(
-      z.object({
-        day: z.string().describe("Day of week"),
-        high: z.number().describe("High temperature"),
-        low: z.number().describe("Low temperature"),
-        condition: z.string().describe("Weather condition"),
-      })
-    ).optional().describe("5-day forecast"),
+    forecast: z
+      .array(
+        z.object({
+          day: z.string().describe("Day of week"),
+          high: z.number().describe("High temperature"),
+          low: z.number().describe("Low temperature"),
+          condition: z.string().describe("Weather condition"),
+        }),
+      )
+      .optional()
+      .describe("5-day forecast"),
   }),
 
   configSchema: z.object({
@@ -63,18 +64,21 @@ export const mockWeather = definePlugin({
   tags: ["weather", "mock", "testing", "input"],
   icon: "☀️",
 
-  async execute(input, config, context) {
+  async execute(input, config, _context) {
     // Simulate a slight delay to mimic real API call
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Generate deterministic mock data based on city name
-    const cityHash = input.city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const cityHash = input.city
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const baseTemp = 60 + (cityHash % 40); // Temperature between 60-100°F
 
     // Convert to Celsius if needed
-    const temperature = input.units === "celsius"
-      ? Math.round((baseTemp - 32) * 5 / 9)
-      : baseTemp;
+    const temperature =
+      input.units === "celsius"
+        ? Math.round(((baseTemp - 32) * 5) / 9)
+        : baseTemp;
 
     // Array of weather conditions
     const conditions = ["Sunny", "Partly Cloudy", "Cloudy", "Rainy", "Windy"];
@@ -94,7 +98,7 @@ export const mockWeather = definePlugin({
     if (config.includeForecast) {
       const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
       result.forecast = days.map((day, index) => {
-        const variation = (cityHash + index * 7) % 20 - 10; // +/- 10 degrees
+        const variation = ((cityHash + index * 7) % 20) - 10; // +/- 10 degrees
         return {
           day,
           high: temperature + 10 + variation,
@@ -104,7 +108,9 @@ export const mockWeather = definePlugin({
       });
     }
 
-    console.log(`Mock weather data generated for ${input.city}: ${temperature}°${input.units === "celsius" ? "C" : "F"}, ${condition}`);
+    console.log(
+      `Mock weather data generated for ${input.city}: ${temperature}°${input.units === "celsius" ? "C" : "F"}, ${condition}`,
+    );
 
     return result;
   },

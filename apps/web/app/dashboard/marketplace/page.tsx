@@ -7,7 +7,9 @@ export default function MarketplacePage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border p-4">
           <h3 className="font-semibold">Stock Price</h3>
-          <p className="text-sm text-muted-foreground">Get real-time stock data</p>
+          <p className="text-sm text-muted-foreground">
+            Get real-time stock data
+          </p>
         </div>
         <div className="rounded-lg border p-4">
           <h3 className="font-semibold">Twitter Feed</h3>

@@ -22,7 +22,7 @@ export const create = mutation({
       v.literal("manual"),
       v.literal("scheduled"),
       v.literal("webhook"),
-      v.literal("event")
+      v.literal("event"),
     ),
     triggerData: v.optional(v.any()),
   },
@@ -56,7 +56,7 @@ export const updateStatus = mutation({
       v.literal("completed"),
       v.literal("failed"),
       v.literal("cancelled"),
-      v.literal("timeout")
+      v.literal("timeout"),
     ),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
@@ -64,7 +64,7 @@ export const updateStatus = mutation({
       v.object({
         message: v.string(),
         stack: v.optional(v.string()),
-      })
+      }),
     ),
     executionPath: v.optional(v.array(v.string())),
   },
@@ -77,7 +77,7 @@ export const updateStatus = mutation({
 
     if (!execution) {
       throw new Error(
-        `Execution not found for workflow ID: ${args.workflowId}`
+        `Execution not found for workflow ID: ${args.workflowId}`,
       );
     }
 
@@ -117,7 +117,7 @@ export const storeNodeResult = mutation({
       v.object({
         message: v.string(),
         stack: v.optional(v.string()),
-      })
+      }),
     ),
     completedAt: v.number(),
   },
@@ -130,13 +130,13 @@ export const storeNodeResult = mutation({
 
     if (!execution) {
       throw new Error(
-        `Execution not found for workflow ID: ${args.workflowId}`
+        `Execution not found for workflow ID: ${args.workflowId}`,
       );
     }
 
     // Add or update node state
     const existingNodeIndex = execution.nodeStates.findIndex(
-      (ns) => ns.nodeId === args.nodeId
+      (ns) => ns.nodeId === args.nodeId,
     );
 
     const nodeState = {
@@ -148,7 +148,7 @@ export const storeNodeResult = mutation({
       duration: args.completedAt - execution.startedAt,
     };
 
-    let updatedNodeStates;
+    let updatedNodeStates: typeof execution.nodeStates;
     if (existingNodeIndex >= 0) {
       // Update existing node state
       updatedNodeStates = [...execution.nodeStates];
@@ -192,7 +192,7 @@ export const getByRoutine = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    const query = ctx.db
       .query("routine_executions")
       .withIndex("by_routine", (q) => q.eq("routineId", args.routineId))
       .order("desc");
@@ -214,7 +214,7 @@ export const getRecentByUser = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    const query = ctx.db
       .query("routine_executions")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc");

@@ -1,4 +1,4 @@
-import { createAuth } from "@kianax/web/convex/auth";
+import { createAuth } from "@kianax/server/convex/auth";
 import { getToken as getTokenNextjs } from "@convex-dev/better-auth/nextjs";
 
 export const getToken = () => {

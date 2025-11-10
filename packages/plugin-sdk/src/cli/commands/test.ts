@@ -4,7 +4,6 @@
  * Runs a plugin with test data.
  */
 
-import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { PluginTester } from "../../testing/PluginTester.js";
 
@@ -29,7 +28,8 @@ export async function testPlugin(args: string[]) {
 
     // Find the plugin export (first export that looks like a plugin)
     const plugin = Object.values(module).find(
-      (exp: any) => exp?.id && exp?.execute && typeof exp.execute === "function",
+      (exp: any) =>
+        exp?.id && exp?.execute && typeof exp.execute === "function",
     );
 
     if (!plugin) {
@@ -51,7 +51,9 @@ export async function testPlugin(args: string[]) {
 
     // Get sample input from user or use defaults
     console.log("🧪 Running test execution...");
-    console.log("ℹ️  Using mock data. For custom data, provide test-data.json\n");
+    console.log(
+      "ℹ️  Using mock data. For custom data, provide test-data.json\n",
+    );
 
     // Default test data based on plugin type
     const testData = getDefaultTestData((plugin as any).type);

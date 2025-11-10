@@ -10,6 +10,7 @@
     "dev": "tsx watch src/dev-worker.ts",
     "start": "node dist/worker.js",
     "build": "tsc",
+    "lint": "biome check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

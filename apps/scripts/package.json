@@ -6,7 +6,9 @@
   "scripts": {
     "test:routine": "tsx src/test-routine.ts",
     "test:routine:simple": "tsx src/test-routine.ts simple",
-    "test:routine:conditional": "tsx src/test-routine.ts conditional"
+    "test:routine:conditional": "tsx src/test-routine.ts conditional",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@kianax/server": "*",

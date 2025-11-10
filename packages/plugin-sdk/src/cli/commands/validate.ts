@@ -31,7 +31,8 @@ export async function validatePlugin(args: string[]) {
 
     // Find the plugin export
     const plugin = Object.values(module).find(
-      (exp: any) => exp?.id && exp?.execute && typeof exp.execute === "function",
+      (exp: any) =>
+        exp?.id && exp?.execute && typeof exp.execute === "function",
     ) as Plugin | undefined;
 
     if (!plugin) {
@@ -47,7 +48,8 @@ export async function validatePlugin(args: string[]) {
     if (!plugin.name) errors.push("Missing required field: name");
     if (!plugin.version) errors.push("Missing required field: version");
     if (!plugin.type) errors.push("Missing required field: type");
-    if (!plugin.description) warnings.push("Missing recommended field: description");
+    if (!plugin.description)
+      warnings.push("Missing recommended field: description");
 
     // Validate ID format
     if (plugin.id && !/^[a-z0-9-]+$/.test(plugin.id)) {
@@ -73,7 +75,8 @@ export async function validatePlugin(args: string[]) {
 
     // Validate schemas exist
     if (!plugin.inputSchema) errors.push("Missing required field: inputSchema");
-    if (!plugin.outputSchema) errors.push("Missing required field: outputSchema");
+    if (!plugin.outputSchema)
+      errors.push("Missing required field: outputSchema");
 
     // Validate execute function
     if (!plugin.execute) {
@@ -92,13 +95,17 @@ export async function validatePlugin(args: string[]) {
     // Print results
     if (errors.length > 0) {
       console.log("❌ Validation failed:\n");
-      errors.forEach((err) => console.log(`  • ${err}`));
+      errors.forEach((err) => {
+        console.log(`  • ${err}`);
+      });
       console.log();
     }
 
     if (warnings.length > 0) {
       console.log("⚠️  Warnings:\n");
-      warnings.forEach((warn) => console.log(`  • ${warn}`));
+      warnings.forEach((warn) => {
+        console.log(`  • ${warn}`);
+      });
       console.log();
     }
 

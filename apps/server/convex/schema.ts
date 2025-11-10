@@ -21,14 +21,14 @@ export default defineSchema({
       v.literal("draft"),
       v.literal("active"),
       v.literal("paused"),
-      v.literal("archived")
+      v.literal("archived"),
     ),
     // Trigger configuration (routine-level, not a node in the DAG)
     triggerType: v.union(
       v.literal("manual"),
       v.literal("cron"),
       v.literal("webhook"),
-      v.literal("event")
+      v.literal("event"),
     ),
     triggerConfig: v.optional(v.any()), // Type depends on triggerType
     // Routine definition (DAG structure)
@@ -40,13 +40,13 @@ export default defineSchema({
           v.literal("input"),
           v.literal("processor"),
           v.literal("logic"),
-          v.literal("output")
+          v.literal("output"),
         ), // Type is for UI labeling only - all nodes behave identically
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()), // Plugin behavior settings (timeout, format, etc.)
         enabled: v.boolean(),
-      })
+      }),
     ),
     connections: v.array(
       v.object({
@@ -60,9 +60,9 @@ export default defineSchema({
           v.object({
             type: v.union(v.literal("branch"), v.literal("default")),
             value: v.optional(v.string()), // Branch value: "true", "false", etc.
-          })
+          }),
         ),
-      })
+      }),
     ),
     tags: v.optional(v.array(v.string())),
     version: v.number(),
@@ -88,14 +88,14 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("failed"),
       v.literal("cancelled"),
-      v.literal("timeout")
+      v.literal("timeout"),
     ),
     // Trigger information
     triggerType: v.union(
       v.literal("manual"),
       v.literal("scheduled"),
       v.literal("webhook"),
-      v.literal("event")
+      v.literal("event"),
     ),
     triggerData: v.optional(v.any()),
 
@@ -113,12 +113,12 @@ export default defineSchema({
           v.object({
             message: v.string(),
             stack: v.optional(v.string()),
-          })
+          }),
         ),
         startedAt: v.optional(v.number()),
         completedAt: v.optional(v.number()),
         duration: v.optional(v.number()),
-      })
+      }),
     ),
 
     // Error information (workflow-level)
@@ -126,7 +126,7 @@ export default defineSchema({
       v.object({
         message: v.string(),
         stack: v.optional(v.string()),
-      })
+      }),
     ),
 
     // Metrics

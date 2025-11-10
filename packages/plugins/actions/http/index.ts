@@ -70,7 +70,7 @@ export const httpRequest = definePlugin({
   tags: ["http", "api", "webhook", "output"],
   icon: "🌐",
 
-  async execute(input, config, context) {
+  async execute(input, config, _context) {
     try {
       // Build URL with query parameters
       const url = new URL(input.url);
@@ -148,7 +148,9 @@ export const httpRequest = definePlugin({
                 statusText: response.statusText,
                 data,
                 headers: responseHeaders,
-                error: response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
+                error: response.ok
+                  ? undefined
+                  : `HTTP ${response.status}: ${response.statusText}`,
               };
             }
 

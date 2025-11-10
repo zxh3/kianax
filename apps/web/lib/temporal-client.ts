@@ -13,7 +13,7 @@
  * - We start Temporal Workflows to execute user Routines
  */
 
-import { Client, Connection } from '@temporalio/client';
+import { Client, Connection } from "@temporalio/client";
 
 let client: Client | null = null;
 let connection: Connection | null = null;
@@ -27,7 +27,7 @@ export async function getTemporalClient(): Promise<Client> {
   }
 
   // Create connection
-  const address = process.env.TEMPORAL_ADDRESS || 'localhost:7233';
+  const address = process.env.TEMPORAL_ADDRESS || "localhost:7233";
 
   // For Temporal Cloud (production)
   if (process.env.TEMPORAL_CLIENT_CERT && process.env.TEMPORAL_CLIENT_KEY) {
@@ -35,8 +35,8 @@ export async function getTemporalClient(): Promise<Client> {
       address,
       tls: {
         clientCertPair: {
-          crt: Buffer.from(process.env.TEMPORAL_CLIENT_CERT, 'base64'),
-          key: Buffer.from(process.env.TEMPORAL_CLIENT_KEY, 'base64'),
+          crt: Buffer.from(process.env.TEMPORAL_CLIENT_CERT, "base64"),
+          key: Buffer.from(process.env.TEMPORAL_CLIENT_KEY, "base64"),
         },
       },
     });
@@ -48,12 +48,12 @@ export async function getTemporalClient(): Promise<Client> {
   // Create client
   client = new Client({
     connection,
-    namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+    namespace: process.env.TEMPORAL_NAMESPACE || "default",
   });
 
-  console.log('✅ Temporal client initialized');
+  console.log("✅ Temporal client initialized");
   console.log(`   Address: ${address}`);
-  console.log(`   Namespace: ${process.env.TEMPORAL_NAMESPACE || 'default'}`);
+  console.log(`   Namespace: ${process.env.TEMPORAL_NAMESPACE || "default"}`);
 
   return client;
 }
@@ -68,14 +68,14 @@ export async function getTemporalClient(): Promise<Client> {
  *   args: [routineDefinition],
  * });
  */
-export async function startRoutine<T = any>(
+export async function startRoutine<_T = any>(
   workflowType: string,
   options: {
     workflowId: string; // Still called workflowId for Temporal compatibility
     taskQueue: string;
     args: any[];
     cronSchedule?: string;
-  }
+  },
 ) {
   const client = await getTemporalClient();
 

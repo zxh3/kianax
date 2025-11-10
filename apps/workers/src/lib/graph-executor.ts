@@ -176,7 +176,11 @@ export function gatherNodeInputs(
 
     // Extract specific field from source using sourceHandle
     let value: unknown = sourceOutput;
-    if (edge.sourceHandle && typeof sourceOutput === "object" && sourceOutput !== null) {
+    if (
+      edge.sourceHandle &&
+      typeof sourceOutput === "object" &&
+      sourceOutput !== null
+    ) {
       const outputRecord = sourceOutput as Record<string, unknown>;
       value = outputRecord[edge.sourceHandle];
 

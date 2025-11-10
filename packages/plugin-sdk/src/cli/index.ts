@@ -9,7 +9,6 @@
  * - plugin validate <file> - Validate plugin structure
  */
 
-import { parseArgs } from "node:util";
 import { createPlugin } from "./commands/create.js";
 import { testPlugin } from "./commands/test.js";
 import { validatePlugin } from "./commands/validate.js";

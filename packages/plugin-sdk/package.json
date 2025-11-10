@@ -12,6 +12,7 @@
     "plugin": "./src/cli/index.ts"
   },
   "scripts": {
+    "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

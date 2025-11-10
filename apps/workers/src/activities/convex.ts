@@ -25,7 +25,7 @@ function getConvexClient(): ConvexHttpClient {
 
     if (!convexUrl) {
       throw new Error(
-        "CONVEX_URL environment variable is required. Make sure .env exists in apps/workers/ with CONVEX_URL set."
+        "CONVEX_URL environment variable is required. Make sure .env exists in apps/workers/ with CONVEX_URL set.",
       );
     }
 
@@ -51,7 +51,9 @@ export async function createRoutineExecution(
       workflowId: input.workflowId,
       runId: input.runId,
       triggerType: input.triggerType,
-      ...(input.triggerData !== undefined && { triggerData: input.triggerData }),
+      ...(input.triggerData !== undefined && {
+        triggerData: input.triggerData,
+      }),
     });
   } catch (error: any) {
     console.error("Failed to create routine execution:", error);

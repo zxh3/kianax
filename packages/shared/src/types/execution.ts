@@ -131,7 +131,13 @@ export interface ExecutionStatistics {
 export interface ExecutionEvent {
   executionId: string;
   routineId: string;
-  type: "started" | "node_started" | "node_completed" | "node_failed" | "completed" | "failed";
+  type:
+    | "started"
+    | "node_started"
+    | "node_completed"
+    | "node_failed"
+    | "completed"
+    | "failed";
   timestamp: number;
   nodeId?: string;
   data?: unknown;

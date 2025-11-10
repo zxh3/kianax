@@ -115,7 +115,7 @@ export const aiTransform = definePlugin({
       if (input.outputFormat === "json") {
         try {
           result = JSON.parse(content);
-        } catch (e) {
+        } catch (_e) {
           // If JSON parsing fails, return as text
           result = content;
         }
@@ -124,7 +124,7 @@ export const aiTransform = definePlugin({
         try {
           const parsed = JSON.parse(content);
           result = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (e) {
+        } catch (_e) {
           result = content.split("\n").filter((line) => line.trim());
         }
       } else {

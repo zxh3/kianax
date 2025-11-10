@@ -10,8 +10,8 @@
  * This ensures env vars are available when activities use lazy initialization
  */
 import dotenv from "dotenv";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +20,6 @@ const __dirname = dirname(__filename);
 const envPath = resolve(__dirname, "../../.env");
 dotenv.config({ path: envPath });
 
-export * from './plugins';
-export * from './convex';
-export * from './example';
+export * from "./plugins";
+export * from "./convex";
+export * from "./example";

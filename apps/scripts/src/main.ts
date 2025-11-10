@@ -12,7 +12,7 @@ async function run() {
   const handle = await client.workflow.start(example, {
     taskQueue: "default",
     args: [{ name: "Temporal" }],
-    workflowId: "workflow-" + nanoid(),
+    workflowId: `workflow-${nanoid()}`,
   });
 
   console.log(`Started workflow ${handle.workflowId}`);

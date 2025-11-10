@@ -10,7 +10,9 @@ import type { ExecutePluginInput } from "@kianax/shared/temporal";
 import { getPlugin } from "@kianax/plugins";
 import { validateInput, validateOutput } from "@kianax/plugin-sdk";
 
-export async function executePlugin(input: ExecutePluginInput): Promise<unknown> {
+export async function executePlugin(
+  input: ExecutePluginInput,
+): Promise<unknown> {
   const { pluginId, config, inputs, context } = input;
 
   // Send heartbeat to show activity is alive

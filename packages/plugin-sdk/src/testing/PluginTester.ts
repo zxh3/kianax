@@ -10,9 +10,7 @@ import type { Plugin, PluginContext } from "../types/index.js";
 /**
  * Mock context builder for testing
  */
-export function mockContext(
-  overrides?: Partial<PluginContext>,
-): PluginContext {
+export function mockContext(overrides?: Partial<PluginContext>): PluginContext {
   return {
     userId: overrides?.userId || "test-user-id",
     routineId: overrides?.routineId || "test-routine-id",

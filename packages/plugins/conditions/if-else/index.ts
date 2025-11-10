@@ -25,9 +25,24 @@ export const ifElse = definePlugin({
       .array(
         z.object({
           operator: z
-            .enum(["==", "!=", ">", "<", ">=", "<=", "contains", "startsWith", "endsWith", "exists", "empty"])
+            .enum([
+              "==",
+              "!=",
+              ">",
+              "<",
+              ">=",
+              "<=",
+              "contains",
+              "startsWith",
+              "endsWith",
+              "exists",
+              "empty",
+            ])
             .describe("Comparison operator"),
-          compareValue: z.unknown().optional().describe("Value to compare against (not needed for exists/empty)"),
+          compareValue: z
+            .unknown()
+            .optional()
+            .describe("Value to compare against (not needed for exists/empty)"),
         }),
       )
       .describe("List of conditions to evaluate"),
@@ -50,7 +65,7 @@ export const ifElse = definePlugin({
   tags: ["logic", "condition", "if-else", "branching"],
   icon: "🔀",
 
-  async execute(input, config, context) {
+  async execute(input, _config, _context) {
     const results: boolean[] = [];
     const explanations: string[] = [];
 
@@ -69,9 +84,7 @@ export const ifElse = definePlugin({
       const compareStr = stringifyValue(condition.compareValue);
       const operatorStr = condition.operator;
 
-      explanations.push(
-        `${valueStr} ${operatorStr} ${compareStr} = ${result}`,
-      );
+      explanations.push(`${valueStr} ${operatorStr} ${compareStr} = ${result}`);
     }
 
     // Combine results based on logical operator
@@ -161,7 +174,8 @@ function stringifyValue(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (typeof value === "string") return `"${value}"`;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
   if (Array.isArray(value)) return `[${value.length} items]`;
   if (typeof value === "object") return `{${Object.keys(value).length} keys}`;
   return String(value);

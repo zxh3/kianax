@@ -22,12 +22,22 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
-          { id: "n2", pluginId: "p2", type: "output", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
         ],
-        connections: [
-          { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
-        ],
+        connections: [{ id: "c1", sourceNodeId: "n1", targetNodeId: "n2" }],
       };
 
       const graph = buildExecutionGraph(routine);
@@ -57,9 +67,36 @@ describe("Graph Executor", () => {
   describe("findEntryNodes", () => {
     it("should find nodes with no incoming edges", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "processor", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -74,9 +111,36 @@ describe("Graph Executor", () => {
 
     it("should find multiple entry nodes for parallel flows", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "input", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "processor", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -93,8 +157,26 @@ describe("Graph Executor", () => {
 
     it("should return all nodes when no edges exist", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "input", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const entryNodes = findEntryNodes(nodes, []);
@@ -172,9 +254,36 @@ describe("Graph Executor", () => {
   describe("determineNextNodes", () => {
     it("should return all next nodes for non-logic nodes", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "processor", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -182,7 +291,12 @@ describe("Graph Executor", () => {
         { id: "c2", sourceNodeId: "n1", targetNodeId: "n3" },
       ];
 
-      const nextNodes = determineNextNodes("n1", { data: "test" }, nodes, edges);
+      const nextNodes = determineNextNodes(
+        "n1",
+        { data: "test" },
+        nodes,
+        edges,
+      );
 
       expect(nextNodes).toContain("n2");
       expect(nextNodes).toContain("n3");
@@ -191,9 +305,36 @@ describe("Graph Executor", () => {
 
     it("should filter edges by branch for logic nodes - true branch", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "if-else", type: "logic", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "output", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -220,9 +361,36 @@ describe("Graph Executor", () => {
 
     it("should filter edges by branch for logic nodes - false branch", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "if-else", type: "logic", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "output", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -249,9 +417,36 @@ describe("Graph Executor", () => {
 
     it("should include default edges for logic nodes", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "if-else", type: "logic", config: {}, enabled: true }],
-        ["n2", { id: "n2", pluginId: "p2", type: "output", config: {}, enabled: true }],
-        ["n3", { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n2",
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
+        [
+          "n3",
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [
@@ -279,7 +474,16 @@ describe("Graph Executor", () => {
 
     it("should throw error when logic node output is missing branch", () => {
       const nodes = new Map<string, Node>([
-        ["n1", { id: "n1", pluginId: "if-else", type: "logic", config: {}, enabled: true }],
+        [
+          "n1",
+          {
+            id: "n1",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
+        ],
       ]);
 
       const edges: Connection[] = [];
@@ -431,9 +635,27 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
-          { id: "n2", pluginId: "p2", type: "processor", config: {}, enabled: true },
-          { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
@@ -452,7 +674,13 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "nonexistent" },
@@ -471,9 +699,27 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
-          { id: "n2", pluginId: "p2", type: "processor", config: {}, enabled: true },
-          { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
@@ -493,9 +739,27 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
-          { id: "n2", pluginId: "p2", type: "processor", config: {}, enabled: true },
-          { id: "n3", pluginId: "p3", type: "output", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "processor",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n3",
+            pluginId: "p3",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
@@ -506,7 +770,9 @@ describe("Graph Executor", () => {
       const validation = validateGraph(routine);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors.some((e) => e.includes("disconnected"))).toBe(true);
+      expect(validation.errors.some((e) => e.includes("disconnected"))).toBe(
+        true,
+      );
     });
 
     it("should warn about logic nodes without conditional edges", () => {
@@ -514,8 +780,20 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "if-else", type: "logic", config: {}, enabled: true },
-          { id: "n2", pluginId: "p2", type: "output", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "p2",
+            type: "output",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
@@ -536,8 +814,20 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "input", type: "input", config: {}, enabled: true },
-          { id: "n2", pluginId: "if-else", type: "logic", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "input",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n2",
+            pluginId: "if-else",
+            type: "logic",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [
           { id: "c1", sourceNodeId: "n1", targetNodeId: "n2" },
@@ -558,7 +848,13 @@ describe("Graph Executor", () => {
         routineId: "r1",
         userId: "u1",
         nodes: [
-          { id: "n1", pluginId: "p1", type: "input", config: {}, enabled: true },
+          {
+            id: "n1",
+            pluginId: "p1",
+            type: "input",
+            config: {},
+            enabled: true,
+          },
         ],
         connections: [],
       };

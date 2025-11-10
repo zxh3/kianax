@@ -32,15 +32,14 @@ export const stockPrice = definePlugin({
     timeframe: z
       .enum(["minute", "hour", "day", "week", "month"])
       .optional()
-      .describe("Timeframe for aggregates (required when dataType is 'aggregates')"),
+      .describe(
+        "Timeframe for aggregates (required when dataType is 'aggregates')",
+      ),
     from: z
       .string()
       .optional()
       .describe("Start date for aggregates (YYYY-MM-DD)"),
-    to: z
-      .string()
-      .optional()
-      .describe("End date for aggregates (YYYY-MM-DD)"),
+    to: z.string().optional().describe("End date for aggregates (YYYY-MM-DD)"),
   }),
 
   outputSchema: z.object({

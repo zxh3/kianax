@@ -9,7 +9,8 @@ import { definePlugin, z } from "@kianax/plugin-sdk";
 export const email = definePlugin({
   id: "email-sendgrid",
   name: "Email (SendGrid)",
-  description: "Send emails using SendGrid API with support for HTML content, attachments, and templates",
+  description:
+    "Send emails using SendGrid API with support for HTML content, attachments, and templates",
   version: "1.0.0",
   type: "output",
 
@@ -48,10 +49,7 @@ export const email = definePlugin({
   }),
 
   configSchema: z.object({
-    fromName: z
-      .string()
-      .optional()
-      .describe("Default sender name"),
+    fromName: z.string().optional().describe("Default sender name"),
     defaultFrom: z
       .string()
       .email()

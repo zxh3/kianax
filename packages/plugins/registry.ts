@@ -62,9 +62,7 @@ export function getPluginsByType(
  * Get plugins by tag
  */
 export function getPluginsByTag(tag: string): Plugin<any, any, any>[] {
-  return getAllPlugins().filter(
-    (plugin) => plugin.tags && plugin.tags.includes(tag),
-  );
+  return getAllPlugins().filter((plugin) => plugin.tags?.includes(tag));
 }
 
 /**

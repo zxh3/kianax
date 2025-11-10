@@ -3,7 +3,7 @@
  * Shared type definitions for Temporal workflows and activities
  */
 
-import type { PluginContext as BasePluginContext } from '../types/plugin';
+import type { PluginContext as BasePluginContext } from "../types/plugin";
 
 export interface RoutineInput {
   routineId: string;
@@ -23,7 +23,7 @@ export interface Node {
    * - Process via plugin
    * - Output data to downstream nodes
    */
-  type: 'input' | 'processor' | 'logic' | 'output';
+  type: "input" | "processor" | "logic" | "output";
   /**
    * Plugin configuration (behavior settings)
    * Examples: timeout, format, retries, model, etc.
@@ -37,13 +37,13 @@ export interface Connection {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
-  sourceHandle?: string;  // Output port on source node
-  targetHandle?: string;  // Input port on target node
+  sourceHandle?: string; // Output port on source node
+  targetHandle?: string; // Input port on target node
 
   // Conditional execution (for logic nodes)
   condition?: {
-    type: 'branch' | 'default';
-    value?: string;  // Branch value: "true", "false", etc.
+    type: "branch" | "default";
+    value?: string; // Branch value: "true", "false", etc.
   };
 }
 
@@ -67,28 +67,28 @@ export interface CreateRoutineExecutionInput {
   userId: string;
   workflowId: string;
   runId: string;
-  triggerType: 'manual' | 'scheduled' | 'webhook' | 'event';
+  triggerType: "manual" | "scheduled" | "webhook" | "event";
   triggerData?: unknown;
 }
 
 export interface UpdateRoutineStatusInput {
-  workflowId: string;  // Temporal workflow ID for tracking
+  workflowId: string; // Temporal workflow ID for tracking
   routineId: string;
-  status: 'running' | 'completed' | 'failed';
+  status: "running" | "completed" | "failed";
   startedAt?: number;
   completedAt?: number;
   error?: {
     message: string;
     stack?: string;
   };
-  executionPath?: string[];  // Track which nodes executed (for conditional branching)
+  executionPath?: string[]; // Track which nodes executed (for conditional branching)
 }
 
 export interface StoreNodeResultInput {
-  workflowId: string;  // Temporal workflow ID for tracking
+  workflowId: string; // Temporal workflow ID for tracking
   routineId: string;
   nodeId: string;
-  status: 'completed' | 'failed';
+  status: "completed" | "failed";
   output?: unknown;
   error?: {
     message: string;

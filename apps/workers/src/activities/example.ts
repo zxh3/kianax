@@ -22,7 +22,10 @@ export async function logMessage(message: string): Promise<void> {
 /**
  * Simulate async work
  */
-export async function doWork(taskName: string, durationMs: number): Promise<string> {
+export async function doWork(
+  taskName: string,
+  durationMs: number,
+): Promise<string> {
   console.log(`[Activity] Starting task: ${taskName} (${durationMs}ms)`);
 
   await new Promise((resolve) => setTimeout(resolve, durationMs));

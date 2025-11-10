@@ -225,7 +225,6 @@ async function run() {
       console.log("📋 Creating conditional logic routine (WITH BRANCHING)");
       routineData = createConditionalRoutine(userId);
       break;
-    case "simple":
     default:
       console.log("📋 Creating simple weather routine (BASIC FLOW)");
       routineData = createSimpleWeatherRoutine(userId);

@@ -4,7 +4,7 @@
  * Generates a new plugin from template.
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 

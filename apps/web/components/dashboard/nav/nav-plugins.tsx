@@ -20,7 +20,10 @@ export function NavPlugins() {
       <SidebarGroupLabel>Plugins</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname === "/dashboard/plugins"}>
+          <SidebarMenuButton
+            asChild
+            isActive={pathname === "/dashboard/plugins"}
+          >
             <Link href="/dashboard/plugins">
               <IconPuzzle />
               <span>My Plugins</span>
@@ -28,7 +31,10 @@ export function NavPlugins() {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname === "/dashboard/marketplace"}>
+          <SidebarMenuButton
+            asChild
+            isActive={pathname === "/dashboard/marketplace"}
+          >
             <Link href="/dashboard/marketplace">
               <IconShoppingBag />
               <span>Marketplace</span>

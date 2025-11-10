@@ -191,7 +191,12 @@ export interface RoutineTemplate {
  * Routine validation error
  */
 export interface RoutineValidationError {
-  type: "missing_plugin" | "invalid_connection" | "missing_credentials" | "cycle_detected" | "invalid_config";
+  type:
+    | "missing_plugin"
+    | "invalid_connection"
+    | "missing_credentials"
+    | "cycle_detected"
+    | "invalid_config";
   message: string;
   nodeId?: string;
   connectionId?: string;

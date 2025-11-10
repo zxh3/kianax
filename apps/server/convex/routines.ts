@@ -13,13 +13,13 @@ export const create = mutation({
       v.literal("draft"),
       v.literal("active"),
       v.literal("paused"),
-      v.literal("archived")
+      v.literal("archived"),
     ),
     triggerType: v.union(
       v.literal("manual"),
       v.literal("cron"),
       v.literal("webhook"),
-      v.literal("event")
+      v.literal("event"),
     ),
     triggerConfig: v.optional(v.any()),
     nodes: v.array(
@@ -30,13 +30,13 @@ export const create = mutation({
           v.literal("input"),
           v.literal("processor"),
           v.literal("logic"),
-          v.literal("output")
+          v.literal("output"),
         ),
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()),
         enabled: v.boolean(),
-      })
+      }),
     ),
     connections: v.array(
       v.object({
@@ -49,9 +49,9 @@ export const create = mutation({
           v.object({
             type: v.union(v.literal("branch"), v.literal("default")),
             value: v.optional(v.string()),
-          })
+          }),
         ),
-      })
+      }),
     ),
     tags: v.optional(v.array(v.string())),
   },
@@ -96,16 +96,17 @@ export const listByUser = query({
         v.literal("draft"),
         v.literal("active"),
         v.literal("paused"),
-        v.literal("archived")
-      )
+        v.literal("archived"),
+      ),
     ),
   },
   handler: async (ctx, args) => {
     if (args.status) {
+      const status = args.status; // Narrow type for TypeScript
       return await ctx.db
         .query("routines")
         .withIndex("by_user_and_status", (q) =>
-          q.eq("userId", args.userId).eq("status", args.status)
+          q.eq("userId", args.userId).eq("status", status),
         )
         .collect();
     }
@@ -130,8 +131,8 @@ export const update = mutation({
         v.literal("draft"),
         v.literal("active"),
         v.literal("paused"),
-        v.literal("archived")
-      )
+        v.literal("archived"),
+      ),
     ),
     nodes: v.optional(
       v.array(
@@ -142,14 +143,14 @@ export const update = mutation({
             v.literal("input"),
             v.literal("processor"),
             v.literal("logic"),
-            v.literal("output")
+            v.literal("output"),
           ),
           label: v.string(),
           position: v.object({ x: v.number(), y: v.number() }),
           config: v.optional(v.any()),
           enabled: v.boolean(),
-        })
-      )
+        }),
+      ),
     ),
     connections: v.optional(
       v.array(
@@ -163,10 +164,10 @@ export const update = mutation({
             v.object({
               type: v.union(v.literal("branch"), v.literal("default")),
               value: v.optional(v.string()),
-            })
+            }),
           ),
-        })
-      )
+        }),
+      ),
     ),
     tags: v.optional(v.array(v.string())),
   },
@@ -179,7 +180,8 @@ export const update = mutation({
       throw new Error(`Routine ${id} not found`);
     }
 
-    const shouldIncrementVersion = updates.nodes !== undefined || updates.connections !== undefined;
+    const shouldIncrementVersion =
+      updates.nodes !== undefined || updates.connections !== undefined;
 
     await ctx.db.patch(id, {
       ...updates,

@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**/*.ts", "**/*.tsx", "!**/.next", "!**/.turbo", "!**/*.css"]
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.css",
+      "!**/.next",
+      "!**/.turbo",
+      "!**/_generated",
+      "!**/dist"
+    ]
   },
   "formatter": {
     "enabled": true,

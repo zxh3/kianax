@@ -1,7 +1,7 @@
 "use server";
 
 import { fetchMutation } from "convex/nextjs";
-import { api } from "../convex/_generated/api";
+import { api } from "@kianax/server/convex/_generated/api";
 import { getToken } from "../lib/auth-server";
 
 // Authenticated mutation via server function
