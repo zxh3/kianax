@@ -17,14 +17,6 @@ export interface Node {
   id: string;
   pluginId: string;
   /**
-   * Node type (for UI categorization/labeling only)
-   * All nodes behave identically regardless of type:
-   * - Receive inputs from upstream nodes
-   * - Process via plugin
-   * - Output data to downstream nodes
-   */
-  type: "input" | "processor" | "logic" | "output";
-  /**
    * Plugin configuration (behavior settings)
    * Examples: timeout, format, retries, model, etc.
    * Note: Use static-data plugin for constant input values
@@ -42,9 +34,23 @@ export interface Connection {
 
   // Conditional execution (for logic nodes)
   condition?: {
-    type: "branch" | "default";
+    type: "branch" | "default" | "loop";
     value?: string; // Branch value: "true", "false", etc.
+    loopConfig?: {
+      maxIterations: number;
+      accumulatorFields?: string[];
+    };
   };
+}
+
+/**
+ * Loop state tracking for iterative execution
+ */
+export interface LoopState {
+  iteration: number;
+  maxIterations: number;
+  accumulator: Record<string, unknown>;
+  startedAt: number;
 }
 
 /**
@@ -53,6 +59,8 @@ export interface Connection {
  */
 export interface TemporalPluginContext extends BasePluginContext {
   nodeId: string;
+  loopIteration?: number; // Current iteration if in a loop
+  loopAccumulator?: Record<string, unknown>; // Accumulated data from previous iterations
 }
 
 export interface ExecutePluginInput {
@@ -88,6 +96,7 @@ export interface StoreNodeResultInput {
   workflowId: string; // Temporal workflow ID for tracking
   routineId: string;
   nodeId: string;
+  iteration?: number; // Iteration number for nodes in loops (0-based)
   status: "completed" | "failed";
   output?: unknown;
   error?: {

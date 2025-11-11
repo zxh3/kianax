@@ -8,7 +8,18 @@
  * - Deterministic replay (for Temporal)
  */
 
-import type { RoutineInput, Node, Connection } from "@kianax/shared/temporal";
+import type {
+  RoutineInput,
+  Node,
+  Connection,
+  LoopState,
+} from "@kianax/shared/temporal";
+
+/**
+ * Constants for loop validation
+ */
+export const MIN_LOOP_ITERATIONS = 1;
+export const MAX_LOOP_ITERATIONS = 1000;
 
 /**
  * Execution state tracking
@@ -17,6 +28,10 @@ export class ExecutionState {
   nodeOutputs = new Map<string, unknown>();
   executed = new Set<string>();
   executionPath: string[] = [];
+
+  // Loop state tracking
+  loopStates = new Map<string, LoopState>(); // Key: loop edge ID
+  nodeIterations = new Map<string, number>(); // Key: nodeId, value: current iteration
 }
 
 /**
@@ -93,14 +108,17 @@ export interface LogicNodeOutput {
  * Determine next nodes based on current node's output
  *
  * For logic nodes: Filter edges by branch condition
+ * For loop control nodes: Handle continue/break branches
  * For other nodes: Follow all outgoing edges
+ *
+ * Returns object with next nodes and any loop edges to follow
  */
 export function determineNextNodes(
   nodeId: string,
   nodeOutput: unknown,
   nodes: Map<string, Node>,
   edges: Connection[],
-): string[] {
+): { nextNodes: string[]; loopEdges: Connection[] } {
   const node = nodes.get(nodeId);
 
   if (!node) {
@@ -109,40 +127,74 @@ export function determineNextNodes(
 
   const outgoingEdges = edges.filter((e) => e.sourceNodeId === nodeId);
 
-  // For logic nodes, filter edges by branch condition
-  if (node.type === "logic") {
-    // Type guard to check if nodeOutput is a LogicNodeOutput
-    if (
-      !nodeOutput ||
-      typeof nodeOutput !== "object" ||
-      !("branch" in nodeOutput) ||
-      typeof (nodeOutput as LogicNodeOutput).branch !== "string"
-    ) {
-      throw new Error(
-        `Logic node ${nodeId} did not return a valid branch value. Output: ${JSON.stringify(nodeOutput)}`,
-      );
-    }
-
+  // For nodes with conditional outputs (e.g., if-else), filter edges by branch condition
+  // Type guard to check if nodeOutput is a LogicNodeOutput
+  if (
+    nodeOutput &&
+    typeof nodeOutput === "object" &&
+    "branch" in nodeOutput &&
+    typeof (nodeOutput as LogicNodeOutput).branch === "string"
+  ) {
+    // This is a conditional node, filter edges by branch
     const branch = (nodeOutput as LogicNodeOutput).branch;
 
-    return outgoingEdges
-      .filter((edge) => {
-        // No condition = default edge (always follow)
-        if (!edge.condition) return true;
+    const matchingEdges = outgoingEdges.filter((edge) => {
+      // No condition = default edge (always follow)
+      if (!edge.condition) return true;
 
-        // Match branch condition
-        if (edge.condition.type === "branch") {
-          return edge.condition.value === branch;
-        }
+      // Loop edges are always included (handled separately)
+      if (edge.condition.type === "loop") return true;
 
-        // Default edge
-        return edge.condition.type === "default";
-      })
-      .map((edge) => edge.targetNodeId);
+      // Match branch condition
+      if (edge.condition.type === "branch") {
+        return edge.condition.value === branch;
+      }
+
+      // Default edge
+      return edge.condition.type === "default";
+    });
+
+    // Separate loop edges from regular edges
+    const loopEdges = matchingEdges.filter((e) => e.condition?.type === "loop");
+    const regularEdges = matchingEdges.filter(
+      (e) => e.condition?.type !== "loop",
+    );
+
+    // Validate that conditional nodes have at least one path forward
+    if (regularEdges.length === 0 && loopEdges.length === 0) {
+      const hasBranchEdges = outgoingEdges.some(
+        (e) => e.condition?.type === "branch",
+      );
+
+      if (hasBranchEdges) {
+        const availableBranches = outgoingEdges
+          .filter((e) => e.condition?.type === "branch")
+          .map((e) => e.condition?.value || "undefined")
+          .join(", ");
+
+        throw new Error(
+          `Node ${nodeId} output branch "${branch}" but no matching edge found. ` +
+            `Available branches: ${availableBranches}`,
+        );
+      }
+    }
+
+    return {
+      nextNodes: regularEdges.map((e) => e.targetNodeId),
+      loopEdges,
+    };
   }
 
-  // For non-logic nodes, follow all outgoing edges
-  return outgoingEdges.map((edge) => edge.targetNodeId);
+  // For non-conditional nodes, separate loop edges from regular edges
+  const loopEdges = outgoingEdges.filter((e) => e.condition?.type === "loop");
+  const regularEdges = outgoingEdges.filter(
+    (e) => e.condition?.type !== "loop",
+  );
+
+  return {
+    nextNodes: regularEdges.map((e) => e.targetNodeId),
+    loopEdges,
+  };
 }
 
 /**
@@ -193,14 +245,31 @@ export function gatherNodeInputs(
 
     // Map to target input field using targetHandle
     if (edge.targetHandle) {
+      if (edge.targetHandle in inputs) {
+        throw new Error(
+          `Input key conflict: "${edge.targetHandle}" from node ${edge.sourceNodeId} ` +
+            `would overwrite existing input to node ${nodeId}`,
+        );
+      }
       inputs[edge.targetHandle] = value;
     } else {
       // No target handle - merge entire value
       if (typeof value === "object" && !Array.isArray(value)) {
-        Object.assign(inputs, value);
+        const outputRecord = value as Record<string, unknown>;
+        for (const [key, val] of Object.entries(outputRecord)) {
+          if (key in inputs) {
+            throw new Error(
+              `Input key conflict: "${key}" from node ${edge.sourceNodeId} ` +
+                `would overwrite existing input to node ${nodeId}. ` +
+                `Use targetHandle to specify unique input names.`,
+            );
+          }
+          inputs[key] = val;
+        }
       } else {
-        // Primitive value or array - wrap in 'data' field
-        inputs.data = value;
+        // Primitive value or array - use source node ID as key
+        const key = `from_${edge.sourceNodeId}`;
+        inputs[key] = value;
       }
     }
   }
@@ -237,7 +306,7 @@ export function validateGraph(routine: RoutineInput): {
     }
   }
 
-  // Check for cycles using DFS
+  // Check for cycles using DFS (allow loop edges which are marked with condition.type === "loop")
   const visited = new Set<string>();
   const recursionStack = new Set<string>();
 
@@ -247,6 +316,8 @@ export function validateGraph(routine: RoutineInput): {
 
     const outgoing = routine.connections
       .filter((c) => c.sourceNodeId === nodeId)
+      // Exclude loop edges from cycle detection
+      .filter((c) => c.condition?.type !== "loop")
       .map((c) => c.targetNodeId);
 
     for (const nextNodeId of outgoing) {
@@ -271,6 +342,26 @@ export function validateGraph(routine: RoutineInput): {
     }
   }
 
+  // Validate loop edges have proper configuration
+  for (const conn of routine.connections) {
+    if (conn.condition?.type === "loop") {
+      if (!conn.condition.loopConfig?.maxIterations) {
+        errors.push(
+          `Loop edge ${conn.id} must have loopConfig.maxIterations defined`,
+        );
+      }
+      if (
+        conn.condition.loopConfig &&
+        (conn.condition.loopConfig.maxIterations < MIN_LOOP_ITERATIONS ||
+          conn.condition.loopConfig.maxIterations > MAX_LOOP_ITERATIONS)
+      ) {
+        errors.push(
+          `Loop edge ${conn.id} maxIterations must be between ${MIN_LOOP_ITERATIONS} and ${MAX_LOOP_ITERATIONS}`,
+        );
+      }
+    }
+  }
+
   // Check for orphan nodes (no incoming or outgoing edges)
   const hasConnection = new Set([
     ...routine.connections.map((c) => c.sourceNodeId),
@@ -283,30 +374,107 @@ export function validateGraph(routine: RoutineInput): {
     }
   }
 
-  // Check that logic nodes have conditional edges
-  for (const node of routine.nodes) {
-    if (node.type === "logic") {
-      const outgoing = routine.connections.filter(
-        (c) => c.sourceNodeId === node.id,
-      );
-
-      if (outgoing.length === 0) {
-        errors.push(
-          `Logic node ${node.id} has no outgoing connections - branches will not be executed`,
-        );
-      }
-
-      const hasConditionalEdges = outgoing.some((e) => e.condition);
-      if (!hasConditionalEdges) {
-        errors.push(
-          `Logic node ${node.id} has no conditional edges - all branches will execute`,
-        );
-      }
-    }
-  }
+  // Note: Additional validation for conditional branching could be added here
+  // by checking if nodes with conditional connections have appropriate branch outputs
 
   return {
     valid: errors.length === 0,
     errors,
+  };
+}
+
+/**
+ * Initialize or update loop state for a loop edge
+ */
+export function updateLoopState(
+  edgeId: string,
+  targetNodeId: string,
+  maxIterations: number,
+  accumulatorFields: string[] | undefined,
+  nodeOutput: unknown,
+  state: ExecutionState,
+): boolean {
+  let loopState = state.loopStates.get(edgeId);
+
+  if (!loopState) {
+    // Initialize new loop
+    loopState = {
+      iteration: 0,
+      maxIterations,
+      accumulator: {},
+      startedAt: Date.now(),
+    };
+    state.loopStates.set(edgeId, loopState);
+  }
+
+  // Increment iteration
+  loopState.iteration++;
+
+  // Update accumulator with specified fields from node output
+  if (
+    accumulatorFields &&
+    typeof nodeOutput === "object" &&
+    nodeOutput !== null
+  ) {
+    const outputRecord = nodeOutput as Record<string, unknown>;
+    for (const field of accumulatorFields) {
+      if (field in outputRecord) {
+        loopState.accumulator[field] = outputRecord[field];
+      }
+    }
+  }
+
+  // Update node iteration counter
+  state.nodeIterations.set(targetNodeId, loopState.iteration);
+
+  // Check if loop should continue
+  return loopState.iteration < loopState.maxIterations;
+}
+
+/**
+ * Get loop context for a node (iteration number and accumulator)
+ *
+ * Current implementation: Single loop support
+ * - Returns context for the first incoming loop edge found
+ * - Works correctly for nodes inside a single loop
+ *
+ * TODO: Nested loop support
+ * For nested loops, we should:
+ * 1. Find ALL incoming loop edges
+ * 2. Return the most recently activated loop (highest iteration)
+ * 3. Optionally return full loop stack for plugins that need parent loop context
+ *
+ * Example future API:
+ * {
+ *   iteration: 2,           // Current (innermost) loop iteration
+ *   accumulator: {...},     // Current loop accumulator
+ *   loopStack: [            // Full hierarchy (outer → inner)
+ *     { edgeId: "outer", iteration: 1, accumulator: {...} },
+ *     { edgeId: "inner", iteration: 2, accumulator: {...} }
+ *   ]
+ * }
+ */
+export function getLoopContext(
+  nodeId: string,
+  edges: Connection[],
+  state: ExecutionState,
+): { iteration?: number; accumulator?: Record<string, unknown> } {
+  // Find incoming loop edge
+  const incomingLoopEdge = edges.find(
+    (e) => e.targetNodeId === nodeId && e.condition?.type === "loop",
+  );
+
+  if (!incomingLoopEdge) {
+    return {}; // Not in a loop
+  }
+
+  const loopState = state.loopStates.get(incomingLoopEdge.id);
+  if (!loopState) {
+    return {}; // Loop not started yet
+  }
+
+  return {
+    iteration: loopState.iteration,
+    accumulator: loopState.accumulator,
   };
 }

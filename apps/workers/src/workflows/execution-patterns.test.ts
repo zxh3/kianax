@@ -107,7 +107,7 @@ async function simulateExecution(
     const nextNodes = new Set<string>();
     for (const nodeId of ready) {
       const nodeOutput = state.nodeOutputs.get(nodeId);
-      const next = determineNextNodes(
+      const { nextNodes: next } = determineNextNodes(
         nodeId,
         nodeOutput,
         graph.nodes,
@@ -137,21 +137,18 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "ai-transform",
-            type: "processor",
             config: {},
             enabled: true,
           },
           {
             id: "n3",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           },
@@ -180,21 +177,18 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "http-request",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n3",
             pluginId: "ai-transform",
-            type: "processor",
             config: {},
             enabled: true,
           },
@@ -248,28 +242,24 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "if-else",
-            type: "logic",
             config: {},
             enabled: true,
           },
           {
             id: "n3",
             pluginId: "http-request",
-            type: "output",
             config: {},
             enabled: true,
           }, // True branch
           {
             id: "n4",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           }, // False branch
@@ -316,28 +306,24 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "if-else",
-            type: "logic",
             config: {},
             enabled: true,
           },
           {
             id: "n3",
             pluginId: "http-request",
-            type: "output",
             config: {},
             enabled: true,
           },
           {
             id: "n4",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           },
@@ -397,7 +383,7 @@ describe("Workflow Execution Patterns", () => {
         const nextNodes = new Set<string>();
         for (const nodeId of ready) {
           const nodeOutput = state.nodeOutputs.get(nodeId);
-          const next = determineNextNodes(
+          const { nextNodes: next } = determineNextNodes(
             nodeId,
             nodeOutput,
             graph.nodes,
@@ -430,49 +416,42 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "if-else",
-            type: "logic",
             config: {},
             enabled: true,
           }, // First condition
           {
             id: "n3",
             pluginId: "http-request",
-            type: "input",
             config: {},
             enabled: true,
           }, // True branch
           {
             id: "n4",
             pluginId: "if-else",
-            type: "logic",
             config: {},
             enabled: true,
           }, // Second condition
           {
             id: "n5",
             pluginId: "http-request",
-            type: "output",
             config: {},
             enabled: true,
           }, // Nested true
           {
             id: "n6",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           }, // Nested false
           {
             id: "n7",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           }, // First false
@@ -533,42 +512,36 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "if-else",
-            type: "logic",
             config: {},
             enabled: true,
           },
           {
             id: "n3",
             pluginId: "ai-transform",
-            type: "processor",
             config: {},
             enabled: true,
           }, // True
           {
             id: "n4",
             pluginId: "ai-transform",
-            type: "processor",
             config: {},
             enabled: true,
           }, // False
           {
             id: "n5",
             pluginId: "email",
-            type: "output",
             config: {},
             enabled: true,
           }, // True output
           {
             id: "n6",
             pluginId: "http-request",
-            type: "output",
             config: {},
             enabled: true,
           }, // False output
@@ -623,14 +596,12 @@ describe("Workflow Execution Patterns", () => {
           {
             id: "n1",
             pluginId: "stock-price",
-            type: "input",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "ai-transform",
-            type: "processor",
             config: {},
             enabled: true,
           },
@@ -648,22 +619,26 @@ describe("Workflow Execution Patterns", () => {
       await expect(simulateExecution(routine)).rejects.toThrow();
     });
 
-    it("should handle logic nodes without valid branch output", async () => {
+    it("should treat nodes without branch output as non-conditional", async () => {
       const routine: RoutineInput = {
         routineId: "r8",
         userId: "u1",
         nodes: [
           {
             id: "n1",
-            pluginId: "broken-logic",
-            type: "logic",
+            pluginId: "data-source",
             config: {},
             enabled: true,
           },
           {
             id: "n2",
             pluginId: "email",
-            type: "output",
+            config: {},
+            enabled: true,
+          },
+          {
+            id: "n3",
+            pluginId: "http-request",
             config: {},
             enabled: true,
           },
@@ -673,26 +648,32 @@ describe("Workflow Execution Patterns", () => {
             id: "c1",
             sourceNodeId: "n1",
             targetNodeId: "n2",
-            condition: { type: "branch", value: "true" },
+          },
+          {
+            id: "c2",
+            sourceNodeId: "n1",
+            targetNodeId: "n3",
           },
         ],
       };
 
-      // Mock a broken logic plugin that doesn't return branch
+      // Node output without branch field - should follow all edges
       const graph = buildExecutionGraph(routine);
       const state = new ExecutionState();
 
-      state.nodeOutputs.set("n1", { result: true }); // Missing 'branch' field
+      state.nodeOutputs.set("n1", { result: true }); // No 'branch' field
       state.executed.add("n1");
 
-      expect(() => {
-        determineNextNodes(
-          "n1",
-          state.nodeOutputs.get("n1"),
-          graph.nodes,
-          graph.edges,
-        );
-      }).toThrow("did not return a valid branch value");
+      const { nextNodes } = determineNextNodes(
+        "n1",
+        state.nodeOutputs.get("n1"),
+        graph.nodes,
+        graph.edges,
+      );
+
+      // Should follow all outgoing edges (non-conditional behavior)
+      expect(nextNodes).toContain("n2");
+      expect(nextNodes).toContain("n3");
     });
   });
 });

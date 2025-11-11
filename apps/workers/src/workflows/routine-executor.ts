@@ -19,6 +19,8 @@ import {
   determineNextNodes,
   gatherNodeInputs,
   validateGraph,
+  updateLoopState,
+  getLoopContext,
   ExecutionState,
   type ExecutionGraph,
 } from "../lib/graph-executor";
@@ -151,23 +153,49 @@ async function executeBFS(
     // Remove executed nodes from queue
     queue = queue.filter((id) => !state.executed.has(id));
 
-    // Determine next nodes based on outputs (handles conditional branching)
+    // Determine next nodes based on outputs (handles conditional branching and loops)
     const nextNodes = new Set<string>();
 
     for (const nodeId of ready) {
       const nodeOutput = state.nodeOutputs.get(nodeId);
-      const next = determineNextNodes(
+      const { nextNodes: regularNext, loopEdges } = determineNextNodes(
         nodeId,
         nodeOutput,
         graph.nodes,
         graph.edges,
       );
 
-      // Add to queue if not already executed or queued
-      for (const nextId of next) {
+      // Handle regular edges
+      for (const nextId of regularNext) {
         if (!state.executed.has(nextId) && !queue.includes(nextId)) {
           nextNodes.add(nextId);
         }
+      }
+
+      // Handle loop edges
+      for (const loopEdge of loopEdges) {
+        if (!loopEdge.condition?.loopConfig) continue;
+
+        const shouldContinue = updateLoopState(
+          loopEdge.id,
+          loopEdge.targetNodeId,
+          loopEdge.condition.loopConfig.maxIterations,
+          loopEdge.condition.loopConfig.accumulatorFields,
+          nodeOutput,
+          state,
+        );
+
+        if (shouldContinue) {
+          // Re-queue the target node for another iteration
+          // Remove it from executed set so it can run again
+          state.executed.delete(loopEdge.targetNodeId);
+
+          // Add to queue if not already queued
+          if (!queue.includes(loopEdge.targetNodeId)) {
+            nextNodes.add(loopEdge.targetNodeId);
+          }
+        }
+        // If loop is done (shouldContinue = false), don't re-queue
       }
     }
 
@@ -196,6 +224,9 @@ async function executeNode(
   // For nodes with no upstream (entry nodes), inputs will be empty {}
   const inputs = gatherNodeInputs(nodeId, graph.edges, state);
 
+  // Get loop context if node is inside a loop
+  const loopContext = getLoopContext(nodeId, graph.edges, state);
+
   try {
     // Execute plugin as Temporal Activity
     const output = await executePlugin({
@@ -208,6 +239,8 @@ async function executeNode(
         executionId,
         nodeId,
         triggerData: graph.triggerData,
+        loopIteration: loopContext.iteration,
+        loopAccumulator: loopContext.accumulator,
       },
     });
 
@@ -221,6 +254,7 @@ async function executeNode(
       workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
+      iteration: loopContext.iteration, // Track iteration for loop nodes
       status: "completed",
       output,
       completedAt: Date.now(),
@@ -231,6 +265,7 @@ async function executeNode(
       workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
+      iteration: loopContext.iteration, // Track iteration for loop nodes
       status: "failed",
       error: {
         message: error.message,

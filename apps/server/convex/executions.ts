@@ -106,11 +106,15 @@ export const updateStatus = mutation({
 /**
  * Store a node execution result
  * Called by Temporal activities after each node executes
+ *
+ * For loop nodes, this creates a new entry for each iteration.
+ * Query by (nodeId + iteration) to get specific iteration results.
  */
 export const storeNodeResult = mutation({
   args: {
     workflowId: v.string(),
     nodeId: v.string(),
+    iteration: v.optional(v.number()),
     status: v.string(),
     output: v.optional(v.any()),
     error: v.optional(
@@ -134,13 +138,11 @@ export const storeNodeResult = mutation({
       );
     }
 
-    // Add or update node state
-    const existingNodeIndex = execution.nodeStates.findIndex(
-      (ns) => ns.nodeId === args.nodeId,
-    );
-
+    // Create node state entry
+    // For loop nodes, each iteration creates a new entry
     const nodeState = {
       nodeId: args.nodeId,
+      ...(args.iteration !== undefined && { iteration: args.iteration }),
       status: args.status,
       output: args.output,
       error: args.error,
@@ -148,15 +150,9 @@ export const storeNodeResult = mutation({
       duration: args.completedAt - execution.startedAt,
     };
 
-    let updatedNodeStates: typeof execution.nodeStates;
-    if (existingNodeIndex >= 0) {
-      // Update existing node state
-      updatedNodeStates = [...execution.nodeStates];
-      updatedNodeStates[existingNodeIndex] = nodeState;
-    } else {
-      // Add new node state
-      updatedNodeStates = [...execution.nodeStates, nodeState];
-    }
+    // Always append (don't update existing)
+    // This allows tracking all iterations of loop nodes
+    const updatedNodeStates = [...execution.nodeStates, nodeState];
 
     await ctx.db.patch(execution._id, {
       nodeStates: updatedNodeStates,

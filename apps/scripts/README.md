@@ -40,6 +40,11 @@ bun test:routine:linear       # Simple linear flow (GOOGL report)
 - `bun test:routine:parallel` - Test parallel node execution with merge
 - `bun test:routine:linear` - Test simple linear flow A→B→C
 
+### Database Management
+- `bun clear:db` - Show warning and confirmation for clearing database
+- `bun clear:db --force` - Clear all tables in Convex database (requires confirmation)
+- `bun clear:db --force --table=routines` - Clear specific table only
+
 ## Test Routines
 
 ### 1. Conditional Branching (Default)

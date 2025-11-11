@@ -26,12 +26,6 @@ export const create = mutation({
       v.object({
         id: v.string(),
         pluginId: v.string(),
-        type: v.union(
-          v.literal("input"),
-          v.literal("processor"),
-          v.literal("logic"),
-          v.literal("output"),
-        ),
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()),
@@ -139,12 +133,6 @@ export const update = mutation({
         v.object({
           id: v.string(),
           pluginId: v.string(),
-          type: v.union(
-            v.literal("input"),
-            v.literal("processor"),
-            v.literal("logic"),
-            v.literal("output"),
-          ),
           label: v.string(),
           position: v.object({ x: v.number(), y: v.number() }),
           config: v.optional(v.any()),

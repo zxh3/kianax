@@ -7,6 +7,7 @@
     "test:routine": "tsx src/test-routine.ts",
     "test:routine:simple": "tsx src/test-routine.ts simple",
     "test:routine:conditional": "tsx src/test-routine.ts conditional",
+    "clear:db": "tsx src/clear-database.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },

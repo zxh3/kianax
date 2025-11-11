@@ -7,8 +7,7 @@
 
 import { Context } from "@temporalio/activity";
 import type { ExecutePluginInput } from "@kianax/shared/temporal";
-import { getPlugin } from "@kianax/plugins";
-import { validateInput, validateOutput } from "@kianax/plugin-sdk";
+import { createPluginInstance, getPluginMetadata } from "@kianax/plugins";
 
 export async function executePlugin(
   input: ExecutePluginInput,
@@ -23,26 +22,50 @@ export async function executePlugin(
   console.log(`  Routine ID: ${context.routineId}`);
 
   try {
-    // 1. Load plugin from registry
-    const plugin = getPlugin(pluginId);
+    // 1. Create plugin instance
+    const plugin = createPluginInstance(pluginId);
 
     if (!plugin) {
       throw new Error(`Plugin not found: ${pluginId}`);
     }
 
-    console.log(`  Plugin found: ${plugin.name} v${plugin.version}`);
+    // Get plugin metadata
+    const metadata = getPluginMetadata(pluginId);
+    if (metadata) {
+      console.log(`  Plugin found: ${metadata.name} v${metadata.version}`);
+    }
 
-    // 2. Validate input against plugin's input schema
-    const validatedInput = validateInput(inputs, plugin.inputSchema);
+    // 2. Get plugin schemas
+    const schemas = plugin.defineSchemas();
 
-    // 3. Load user credentials if plugin requires them
+    // 3. Validate inputs against plugin's input schemas
+    const validatedInputs: Record<string, any> = {};
+    for (const [inputName, inputValue] of Object.entries(inputs)) {
+      const inputSchema = schemas.inputs[inputName];
+      if (!inputSchema) {
+        throw new Error(
+          `Unknown input: ${inputName}. Available inputs: ${Object.keys(schemas.inputs).join(", ")}`,
+        );
+      }
+
+      // Validate using zod schema
+      const result = inputSchema.schema.safeParse(inputValue);
+      if (!result.success) {
+        throw new Error(
+          `Invalid input for ${inputName}: ${result.error.message}`,
+        );
+      }
+      validatedInputs[inputName] = result.data;
+    }
+
+    // 4. Load user credentials if plugin requires them
     // TODO: In production, fetch credentials from Convex based on context.userId
     // For now, use credentials from context (passed from workflow)
     const credentials = context.credentials || {};
 
     // Check if plugin requires credentials that are missing
-    if (plugin.credentials && plugin.credentials.length > 0) {
-      for (const credentialSchema of plugin.credentials) {
+    if (metadata?.credentials && metadata.credentials.length > 0) {
+      for (const credentialSchema of metadata.credentials) {
         if (credentialSchema.required && !credentials[credentialSchema.key]) {
           throw new Error(
             `Missing required credential: ${credentialSchema.label} (${credentialSchema.key})`,
@@ -56,8 +79,8 @@ export async function executePlugin(
 
     console.log(`  Executing plugin...`);
 
-    // 4. Execute plugin
-    const output = await plugin.execute(validatedInput, config || {}, {
+    // 5. Execute plugin
+    const output = await plugin.execute(validatedInputs, config || {}, {
       userId: context.userId,
       routineId: context.routineId,
       executionId: context.executionId,
@@ -66,15 +89,32 @@ export async function executePlugin(
       triggerData: context.triggerData,
     });
 
-    // 5. Validate output against plugin's output schema
-    const validatedOutput = validateOutput(output, plugin.outputSchema);
+    // 6. Validate outputs against plugin's output schemas
+    const validatedOutputs: Record<string, any> = {};
+    for (const [outputName, outputValue] of Object.entries(output)) {
+      const outputSchema = schemas.outputs[outputName];
+      if (!outputSchema) {
+        throw new Error(
+          `Unknown output: ${outputName}. Available outputs: ${Object.keys(schemas.outputs).join(", ")}`,
+        );
+      }
+
+      // Validate using zod schema
+      const result = outputSchema.schema.safeParse(outputValue);
+      if (!result.success) {
+        throw new Error(
+          `Invalid output for ${outputName}: ${result.error.message}`,
+        );
+      }
+      validatedOutputs[outputName] = result.data;
+    }
 
     console.log(`  Plugin executed successfully`);
 
     // Heartbeat after execution
     Context.current().heartbeat();
 
-    return validatedOutput;
+    return validatedOutputs;
   } catch (error) {
     console.error(`  Plugin execution failed:`, error);
 

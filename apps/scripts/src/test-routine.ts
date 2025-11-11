@@ -40,7 +40,6 @@ function createSimpleWeatherRoutine(userId: string) {
       {
         id: "n1",
         pluginId: "static-data",
-        type: "input" as const,
         label: "Weather Parameters",
         position: { x: 100, y: 100 },
         config: {
@@ -54,7 +53,6 @@ function createSimpleWeatherRoutine(userId: string) {
       {
         id: "n2",
         pluginId: "mock-weather",
-        type: "processor" as const,
         label: "Get Mock Weather",
         position: { x: 100, y: 250 },
         config: {},
@@ -98,7 +96,6 @@ function createConditionalRoutine(userId: string) {
       {
         id: "n1",
         pluginId: "static-data",
-        type: "input" as const,
         label: "Condition Input",
         position: { x: 100, y: 100 },
         config: {
@@ -118,7 +115,6 @@ function createConditionalRoutine(userId: string) {
       {
         id: "n2",
         pluginId: "if-else",
-        type: "logic" as const,
         label: "Check if > 70",
         position: { x: 100, y: 250 },
         config: {},
@@ -127,7 +123,6 @@ function createConditionalRoutine(userId: string) {
       {
         id: "n3",
         pluginId: "static-data",
-        type: "output" as const,
         label: "True Branch Output",
         position: { x: 50, y: 400 },
         config: {
@@ -141,7 +136,6 @@ function createConditionalRoutine(userId: string) {
       {
         id: "n4",
         pluginId: "static-data",
-        type: "output" as const,
         label: "False Branch Output",
         position: { x: 250, y: 400 },
         config: {
@@ -257,7 +251,6 @@ async function run() {
     nodes: savedRoutine.nodes.map((node) => ({
       id: node.id,
       pluginId: node.pluginId,
-      type: node.type,
       config: node.config || {},
       enabled: node.enabled,
     })),
