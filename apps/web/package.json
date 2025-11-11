@@ -13,12 +13,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kianax/server": "*",
     "@kianax/shared": "*",
     "@kianax/ui": "*",
-    "@kianax/server": "*",
     "@tabler/icons-react": "^3.35.0",
     "@temporalio/client": "^1.13.0",
+    "@xyflow/react": "^12.9.2",
     "convex": "^1.28.2",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.553.0",
     "next": "^16.0.1",
     "react": "^19.2.0",

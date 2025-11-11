@@ -10,7 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@kianax/ui/components/card";
+import { Switch } from "@kianax/ui/components/switch";
+import { Label } from "@kianax/ui/components/label";
 import type { PluginMetadata } from "@kianax/plugins";
+import { categorizePlugin } from "@/lib/plugins";
 
 interface PluginCardProps {
   plugin: PluginMetadata;
@@ -23,18 +26,11 @@ interface PluginCardProps {
   loading?: boolean;
 }
 
-const pluginTypeColors = {
-  input: "outline",
-  processor: "secondary",
-  logic: "default",
-  output: "destructive",
-} as const;
-
-const pluginTypeLabels = {
-  input: "Input",
+const categoryLabels = {
+  input: "Data Source",
   processor: "Processor",
   logic: "Logic",
-  output: "Output",
+  action: "Action",
 } as const;
 
 export function PluginCard({
@@ -47,14 +43,16 @@ export function PluginCard({
   onConfigure,
   loading = false,
 }: PluginCardProps) {
+  const category = categorizePlugin(plugin);
+
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div className="text-3xl">{plugin.icon || "🔌"}</div>
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-2">
+          <div className="text-2xl">{plugin.icon || "🔌"}</div>
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg mb-2">{plugin.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
+            <CardTitle className="text-base mb-1">{plugin.name}</CardTitle>
+            <CardDescription className="text-xs line-clamp-2">
               {plugin.description}
             </CardDescription>
           </div>
@@ -77,39 +75,42 @@ export function PluginCard({
         </CardAction>
       </CardHeader>
 
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant={pluginTypeColors[plugin.type]}>
-            {pluginTypeLabels[plugin.type]}
+      <CardContent className="pt-0 space-y-2">
+        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+          <Badge variant="outline" className="font-normal">
+            {categoryLabels[category]}
           </Badge>
-          {plugin.tags?.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
+          {plugin.tags?.slice(0, 4).map((tag) => (
+            <Badge key={tag} variant="outline" className="font-normal">
               {tag}
             </Badge>
           ))}
         </div>
 
-        {plugin.author && (
-          <div className="text-xs text-muted-foreground">
-            by {plugin.author.name}
-          </div>
-        )}
-
-        <div className="text-xs text-muted-foreground">
-          Version {plugin.version}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          {plugin.author && <span>by {plugin.author.name}</span>}
+          <span>Version {plugin.version}</span>
         </div>
 
-        {isInstalled && (
-          <div className="flex items-center gap-2 pt-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggle?.(!isEnabled)}
-              disabled={loading}
-            >
-              {isEnabled ? "Disable" : "Enable"}
-            </Button>
-            {plugin.credentials && plugin.credentials.length > 0 && (
+        {isInstalled && (onToggle || onConfigure) && (
+          <div className="flex items-center justify-between pt-2 border-t">
+            {onToggle && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={isEnabled}
+                  onCheckedChange={onToggle}
+                  disabled={loading}
+                  id={`plugin-${plugin.id}-enabled`}
+                />
+                <Label
+                  htmlFor={`plugin-${plugin.id}-enabled`}
+                  className="text-xs font-normal cursor-pointer"
+                >
+                  Enabled
+                </Label>
+              </div>
+            )}
+            {plugin.credentials && plugin.credentials.length > 0 && onConfigure && (
               <Button
                 variant="ghost"
                 size="sm"

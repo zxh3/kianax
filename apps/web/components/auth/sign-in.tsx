@@ -1,13 +1,56 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@kianax/ui/components/button";
+import { Input } from "@kianax/ui/components/input";
+import { Label } from "@kianax/ui/components/label";
 import { authClient } from "@kianax/web/lib/auth-client";
+import { toast } from "sonner";
 
 export function SignIn() {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleGoogleSignIn = async () => {
     await authClient.signIn.social({
       provider: "google",
     });
+  };
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await authClient.signIn.email({
+        email,
+        password,
+      });
+      toast.success("Signed in successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign in");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await authClient.signUp.email({
+        email,
+        password,
+        name,
+      });
+      toast.success("Account created! Signing in...");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -24,10 +67,74 @@ export function SignIn() {
 
         <div className="space-y-4 rounded-lg border bg-card p-8 shadow-sm">
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-semibold">Sign in</h2>
+            <h2 className="text-2xl font-semibold">
+              {isSignUp ? "Create Account" : "Sign in"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Get started with your Google account
+              {isSignUp
+                ? "Create your account to get started"
+                : "Sign in to your account"}
             </p>
+          </div>
+
+          {/* Email/Password Form */}
+          <form
+            onSubmit={isSignUp ? handleSignUp : handleEmailSignIn}
+            className="space-y-4"
+          >
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading
+                ? "Loading..."
+                : isSignUp
+                  ? "Create Account"
+                  : "Sign In"}
+            </Button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
           </div>
 
           <Button
@@ -62,15 +169,16 @@ export function SignIn() {
             Continue with Google
           </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Secure authentication
-              </span>
-            </div>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-sm text-muted-foreground hover:text-primary"
+            >
+              {isSignUp
+                ? "Already have an account? Sign in"
+                : "Don't have an account? Sign up"}
+            </button>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">

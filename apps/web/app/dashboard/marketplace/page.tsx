@@ -5,7 +5,12 @@ import { useMutation, useQuery } from "convex/react";
 import { getAllPluginMetadata } from "@kianax/plugins";
 import { api } from "@kianax/server/convex/_generated/api";
 import { Input } from "@kianax/ui/components/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@kianax/ui/components/tabs";
 import { PluginCard } from "@/components/plugins/plugin-card";
 import type { PluginType } from "@kianax/plugin-sdk";
 
@@ -22,15 +27,15 @@ export default function MarketplacePage() {
 
   const installedPluginIds = useMemo(
     () => new Set(installedPlugins.map((p) => p.pluginId)),
-    [installedPlugins]
+    [installedPlugins],
   );
 
   const filteredPlugins = useMemo(() => {
     let filtered = allPlugins;
 
-    // Filter by type
+    // Filter by category (using tags)
     if (activeTab !== "all") {
-      filtered = filtered.filter((p) => p.type === activeTab);
+      filtered = filtered.filter((p) => p.tags?.includes(activeTab));
     }
 
     // Filter by search query
@@ -41,7 +46,7 @@ export default function MarketplacePage() {
           p.name.toLowerCase().includes(query) ||
           p.description.toLowerCase().includes(query) ||
           p.id.toLowerCase().includes(query) ||
-          p.tags?.some((tag) => tag.toLowerCase().includes(query))
+          p.tags?.some((tag) => tag.toLowerCase().includes(query)),
       );
     }
 
@@ -83,7 +88,7 @@ export default function MarketplacePage() {
       <div>
         <h1 className="text-2xl font-semibold mb-2">Plugin Marketplace</h1>
         <p className="text-muted-foreground">
-          Browse and install plugins to extend your workflows.
+          Browse and install plugins to extend your routines.
         </p>
       </div>
 
@@ -96,7 +101,10 @@ export default function MarketplacePage() {
           className="max-w-md"
         />
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+        >
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="input">Inputs</TabsTrigger>
@@ -111,7 +119,7 @@ export default function MarketplacePage() {
                 No plugins found matching your search.
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredPlugins.map((plugin) => {
                   const isInstalled = installedPluginIds.has(plugin.id);
                   const isLoading = loadingPlugins.has(plugin.id);

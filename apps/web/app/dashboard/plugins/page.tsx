@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useOptimistic, startTransition } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { getPluginMetadata } from "@kianax/plugins";
 import { api } from "@kianax/server/convex/_generated/api";
@@ -15,9 +15,19 @@ export default function PluginsPage() {
   const uninstallPlugin = useMutation(api.plugins.uninstallPlugin);
   const togglePlugin = useMutation(api.plugins.togglePlugin);
 
+  // Optimistic state for plugin toggles
+  const [optimisticPlugins, setOptimisticPlugins] = useOptimistic(
+    installedPlugins,
+    (state, { pluginId, enabled }: { pluginId: string; enabled: boolean }) => {
+      return state.map((plugin) =>
+        plugin.pluginId === pluginId ? { ...plugin, enabled } : plugin,
+      );
+    },
+  );
+
   // Enrich installed plugins with metadata from the plugin registry
   const pluginsWithMetadata = useMemo(() => {
-    return installedPlugins
+    return optimisticPlugins
       .map((installed) => {
         const metadata = getPluginMetadata(installed.pluginId);
         if (!metadata) {
@@ -30,7 +40,7 @@ export default function PluginsPage() {
         };
       })
       .filter((p) => p !== null);
-  }, [installedPlugins]);
+  }, [optimisticPlugins]);
 
   const handleUninstall = async (pluginId: string) => {
     setLoadingPlugins((prev) => new Set(prev).add(pluginId));
@@ -48,17 +58,16 @@ export default function PluginsPage() {
   };
 
   const handleToggle = async (pluginId: string, enabled: boolean) => {
-    setLoadingPlugins((prev) => new Set(prev).add(pluginId));
+    // Optimistically update the UI immediately within a transition
+    startTransition(() => {
+      setOptimisticPlugins({ pluginId, enabled });
+    });
+
     try {
       await togglePlugin({ pluginId, enabled });
     } catch (error) {
       console.error("Failed to toggle plugin:", error);
-    } finally {
-      setLoadingPlugins((prev) => {
-        const next = new Set(prev);
-        next.delete(pluginId);
-        return next;
-      });
+      // Note: optimistic state will revert on next data refresh
     }
   };
 
@@ -87,9 +96,11 @@ export default function PluginsPage() {
           <div className="flex flex-col items-center gap-4">
             <div className="text-4xl">🔌</div>
             <div>
-              <h3 className="font-semibold text-lg mb-2">No plugins installed yet</h3>
+              <h3 className="font-semibold text-lg mb-2">
+                No plugins installed yet
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Install plugins from the marketplace to extend your workflows
+                Install plugins from the marketplace to extend your routines
               </p>
               <Button asChild>
                 <Link href="/dashboard/marketplace">Browse Marketplace</Link>
@@ -110,7 +121,9 @@ export default function PluginsPage() {
                 isEnabled={plugin.enabled}
                 loading={isLoading}
                 onUninstall={() => handleUninstall(plugin.pluginId)}
-                onToggle={(enabled: boolean) => handleToggle(plugin.pluginId, enabled)}
+                onToggle={(enabled: boolean) =>
+                  handleToggle(plugin.pluginId, enabled)
+                }
                 onConfigure={() => handleConfigure(plugin.pluginId)}
               />
             );

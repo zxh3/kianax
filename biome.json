@@ -39,13 +39,15 @@
       },
       "correctness": {
         "useExhaustiveDependencies": "warn",
-        "noNestedComponentDefinitions": "off"
+        "noNestedComponentDefinitions": "off",
+        "noInvalidPositionAtImportRule": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",
         "noDoubleEquals": "off",
         "noExplicitAny": "off",
-        "noDocumentCookie": "off"
+        "noDocumentCookie": "off",
+        "noUnknownAtRules": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
