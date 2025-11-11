@@ -1,6 +1,8 @@
 # Plugin Development Guide
 
-Complete guide for building, testing, and contributing plugins to the Kianax platform.
+Complete guide for building, testing, and contributing plugins to Kianax routines.
+
+**Note:** This is the guide for Phase 2's builder pattern plugin architecture. Currently, all plugins are built into the monorepo.
 
 ## Table of Contents
 
@@ -18,19 +20,20 @@ Complete guide for building, testing, and contributing plugins to the Kianax pla
 
 ## Overview
 
-Kianax plugins are self-contained TypeScript modules that execute as Temporal Activities within routine workflows. Each plugin defines:
+Kianax plugins are self-contained TypeScript modules built with a **builder pattern API** that execute as Temporal Activities. Each plugin defines:
 
-- **Input/Output schemas** - Type-safe data contracts using Zod
-- **Configuration schema** - Optional plugin settings
-- **Credentials** - API keys, tokens, OAuth (encrypted per user)
-- **Execute function** - The plugin logic
+- **Metadata** - Name, description, version, icon, tags, author
+- **Input/Output ports** - Named ports with Zod schemas for type safety
+- **Configuration** - Optional UI-configurable settings with custom React components
+- **Execute function** - The plugin logic with full type inference
 
 **Key Benefits:**
-- ✅ Full TypeScript type safety with Zod inference
-- ✅ Automatic validation of inputs/outputs
-- ✅ CLI tools for rapid development
-- ✅ Built-in testing utilities
-- ✅ Secure credential management
+- ✅ Builder pattern API with full type inference
+- ✅ Multiple input/output ports (not just single in/out)
+- ✅ Custom config UI components (React)
+- ✅ Automatic validation of inputs/outputs with Zod
+- ✅ Secure credential management (coming in Phase 3)
+- ✅ Works with visual routine editor (ReactFlow)
 
 ## Plugin Architecture
 
@@ -149,50 +152,59 @@ plugin create weather-fetch --type input
 
 This creates `weather-fetch.ts` with a complete plugin template.
 
-### Step 2: Define Your Plugin
+### Step 2: Define Your Plugin (Builder Pattern)
 
 ```typescript
-import { definePlugin, z } from "@kianax/plugin-sdk";
+import { createPlugin, z } from "@kianax/plugin-sdk";
 
-export const weatherFetch = definePlugin({
-  id: "weather-fetch",
-  name: "Weather Fetch",
-  description: "Fetch current weather data for a city",
-  version: "1.0.0",
-  type: "input",
+// Define schemas
+const inputSchema = z.object({
+  city: z.string().describe("City name"),
+  units: z.enum(["metric", "imperial"]).optional().default("metric"),
+});
 
-  // Zod schemas for type-safe validation
-  inputSchema: z.object({
-    city: z.string().describe("City name"),
-    units: z.enum(["metric", "imperial"]).optional().default("metric"),
-  }),
+const outputSchema = z.object({
+  temperature: z.number(),
+  condition: z.string(),
+  humidity: z.number(),
+  city: z.string(),
+});
 
-  outputSchema: z.object({
-    temperature: z.number(),
-    condition: z.string(),
-    humidity: z.number(),
-    city: z.string(),
-  }),
+const configSchema = z.object({
+  refreshInterval: z.number().optional().default(300),
+});
 
-  configSchema: z.object({
-    refreshInterval: z.number().optional().default(300),
-  }),
-
-  credentials: [
-    {
-      key: "weatherApiKey",
-      label: "Weather API Key",
-      description: "Your OpenWeatherMap API key",
-      type: "password",
-      required: true,
+export const weatherFetchPlugin = createPlugin("weather-fetch")
+  .withMetadata({
+    name: "Weather Fetch",
+    description: "Fetch current weather data for a city",
+    version: "1.0.0",
+    icon: "🌤️",
+    tags: ["weather", "data-source", "api"],
+    author: {
+      name: "Your Name",
+      url: "https://yoursite.com",
     },
-  ],
+  })
+  .withInput("params", {
+    label: "Parameters",
+    description: "Weather fetch parameters",
+    schema: inputSchema,
+  })
+  .withOutput("weather", {
+    label: "Weather Data",
+    description: "Current weather information",
+    schema: outputSchema,
+  })
+  .withConfig(configSchema)
+  // Optional: Add custom config UI component
+  // .withConfigUI(WeatherConfigUI)
+  .execute(async ({ inputs, config }) => {
+    // Fully typed! inputs.params is typed from inputSchema
+    const { city, units } = inputs.params;
 
-  tags: ["weather", "data-source"],
-  icon: "🌤️",
-
-  async execute(input, config, context) {
-    const apiKey = context.credentials?.weatherApiKey;
+    // TODO: Add credential support in Phase 3
+    const apiKey = process.env.WEATHER_API_KEY;
 
     if (!apiKey) {
       throw new Error("Weather API key not configured");
@@ -200,7 +212,7 @@ export const weatherFetch = definePlugin({
 
     // Make API request
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${input.city}&units=${input.units}&appid=${apiKey}`
+      `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=${units}&appid=${apiKey}`
     );
 
     if (!response.ok) {
@@ -209,15 +221,17 @@ export const weatherFetch = definePlugin({
 
     const data = await response.json();
 
-    // Return typed output
+    // Return on the "weather" output port (fully typed!)
     return {
-      temperature: data.main.temp,
-      condition: data.weather[0].description,
-      humidity: data.main.humidity,
-      city: data.name,
+      weather: {
+        temperature: data.main.temp,
+        condition: data.weather[0].description,
+        humidity: data.main.humidity,
+        city: data.name,
+      },
     };
-  },
-});
+  })
+  .build();
 ```
 
 ### Step 3: Test Your Plugin
@@ -534,55 +548,90 @@ async execute(input, config, context) {
 
 See the official plugins for reference implementations:
 
-- **[AI Transform](../plugins/transformers/ai/index.ts)** - OpenAI-powered data transformation
-- **[Stock Price](../plugins/data-sources/stock-price/index.ts)** - Polygon.io stock data
-- **[HTTP Request](../plugins/actions/http/index.ts)** - Generic HTTP client
-- **[Email](../plugins/actions/email/index.ts)** - SendGrid email sender
-- **[If-Else](../plugins/conditions/if-else/index.ts)** - Conditional logic
+- **[If-Else](../../packages/plugins/if-else/index.ts)** - Conditional logic with custom config UI
+- **[AI Transform](../../packages/plugins/ai-transformer/index.ts)** - AI-powered data transformation
+- **[Stock Price](../../packages/plugins/stock-price/index.ts)** - Stock data source
+- **[HTTP Request](../../packages/plugins/http/index.ts)** - Generic HTTP client
+- **[Email](../../packages/plugins/email/index.ts)** - Email sender
+- **[Static Data](../../packages/plugins/static-data/index.ts)** - Simple data source
+- **[Mock Weather](../../packages/plugins/mock-weather/index.ts)** - Mock weather data
 
 ### Mini Examples
 
-#### Simple Input Plugin
+#### Simple Data Source Plugin
 
 ```typescript
-export const randomNumber = definePlugin({
-  id: "random-number",
-  name: "Random Number",
-  type: "input",
-  inputSchema: z.object({
-    min: z.number().default(0),
-    max: z.number().default(100),
-  }),
-  outputSchema: z.object({
-    value: z.number(),
-  }),
-  async execute(input) {
-    return {
-      value: Math.random() * (input.max - input.min) + input.min,
-    };
-  },
+import { createPlugin, z } from "@kianax/plugin-sdk";
+
+const configSchema = z.object({
+  min: z.number().default(0),
+  max: z.number().default(100),
 });
+
+const outputSchema = z.object({
+  value: z.number(),
+});
+
+export const randomNumberPlugin = createPlugin("random-number")
+  .withMetadata({
+    name: "Random Number",
+    description: "Generate a random number",
+    version: "1.0.0",
+    icon: "🎲",
+    tags: ["data-source", "utility"],
+  })
+  .withOutput("number", {
+    label: "Random Number",
+    schema: outputSchema,
+  })
+  .withConfig(configSchema)
+  .execute(async ({ config }) => {
+    return {
+      number: {
+        value: Math.random() * (config.max - config.min) + config.min,
+      },
+    };
+  })
+  .build();
 ```
 
 #### Simple Processor Plugin
 
 ```typescript
-export const uppercase = definePlugin({
-  id: "uppercase",
-  name: "Uppercase Text",
-  type: "processor",
-  inputSchema: z.object({
-    text: z.string(),
-  }),
-  outputSchema: z.object({
-    text: z.string(),
-  }),
-  async execute(input) {
-    return {
-      text: input.text.toUpperCase(),
-    };
-  },
+import { createPlugin, z } from "@kianax/plugin-sdk";
+
+const inputSchema = z.object({
+  text: z.string(),
 });
+
+const outputSchema = z.object({
+  text: z.string(),
+});
+
+export const uppercasePlugin = createPlugin("uppercase")
+  .withMetadata({
+    name: "Uppercase Text",
+    description: "Convert text to uppercase",
+    version: "1.0.0",
+    icon: "🔤",
+    tags: ["processor", "text"],
+  })
+  .withInput("text", {
+    label: "Input Text",
+    schema: inputSchema,
+  })
+  .withOutput("result", {
+    label: "Uppercase Text",
+    schema: outputSchema,
+  })
+  .execute(async ({ inputs }) => {
+    return {
+      result: {
+        text: inputs.text.text.toUpperCase(),
+      },
+    };
+  })
+  .build();
 ```
 
 ---

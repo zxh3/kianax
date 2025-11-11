@@ -1,7 +1,7 @@
 # TODO - Current Tasks
 
-**Last Updated:** 2025-01-09
-**Current Phase:** Phase 2 - Workflow System & Plugin Foundation (In Progress)
+**Last Updated:** 2025-01-11
+**Current Phase:** Phase 2 Complete, Phase 3 Next (Trigger System & Production)
 
 > For long-term vision, see [ROADMAP.md](./ROADMAP.md)
 
@@ -37,139 +37,115 @@
   - [x] Dynamic header titles based on route
   - [x] User menu with settings navigation
 
-### Phase 2: Workflow System & Plugin Foundation
+### Phase 2: Plugin System & Routine Foundation ✅ **Complete**
 
-- [x] **Routine Schema** (renamed from "workflows" to "routines")
-  - [x] Add `routines` table to `convex/schema.ts`
-  - [x] Add `routine_executions` table for execution tracking
-  - [x] Add `installed_plugins` and `plugin_credentials` tables
-  - [x] Define routine structure (nodes, connections, triggers, config)
-  - [x] Schema includes execution path tracking for conditional branching
+- [x] **Routine Schema**
+  - [x] `routines` table with nodes, connections, triggers
+  - [x] `routine_executions` table for tracking
+  - [x] `installed_plugins` and `plugin_credentials` tables
+  - [x] Execution path tracking for conditional branching
 
-- [x] **Routine CRUD Functions**
-  - [x] Create `convex/routines.ts`
-  - [x] Add `listByUser` query (get user's routines with filters)
-  - [x] Add `create` mutation (create routine)
-  - [x] Add `update` mutation (update routine with versioning)
-  - [x] Add `deleteRoutine` mutation (delete routine)
-  - [x] Add `get` query (get single routine by ID)
-  - [x] Add `updateLastExecuted` mutation
+- [x] **Routine CRUD**
+  - [x] Complete CRUD operations (create, read, update, delete, list)
+  - [x] Real-time updates with Convex subscriptions
+  - [x] User isolation and row-level security
 
-- [x] **Execution Tracking Functions**
-  - [x] Create `convex/executions.ts`
-  - [x] Add `create` mutation (create execution record)
-  - [x] Add `updateStatus` mutation (track execution lifecycle)
-  - [x] Add `storeNodeResult` mutation (track individual node results)
-  - [x] Add queries for execution history and details
+- [x] **Plugin System**
+  - [x] Builder pattern plugin SDK with type safety
+  - [x] 7 working plugins (data sources, processors, logic, actions)
+  - [x] Plugin registry and installation system
+  - [x] Plugin marketplace UI with install/uninstall/enable/disable
 
-- [x] **Workflow Execution Architecture**
-  - [x] Fixed execution record creation in workflows
-  - [x] All nodes now work identically (no special-casing by type)
-  - [x] Node `type` field is purely for UI labeling
-  - [x] Implemented proper data flow (inputs from upstream, config for behavior)
+- [x] **Visual Routine Editor**
+  - [x] ReactFlow-based DAG editor
+  - [x] Drag-and-drop plugin nodes
+  - [x] Visual connection system
+  - [x] Node configuration UI
+  - [x] Save/test functionality
 
-- [x] **Core Mock Plugins** (for local testing)
-  - [x] Created `static-data` plugin (outputs constant values)
-  - [x] Created `mock-weather` plugin (deterministic mock data, no API calls)
-  - [x] Registered plugins in plugin registry
-  - [x] Both plugins work with zero external dependencies
+- [x] **Execution Engine**
+  - [x] Temporal workflow executor with BFS traversal
+  - [x] Conditional branching (if-else) support
+  - [x] Loop support
+  - [x] Dead branch handling
+  - [x] Parallel execution
+  - [x] Result tracking and observability
 
-- [x] **E2E Testing Infrastructure**
-  - [x] Created test script for routine execution
-  - [x] Simple weather routine (2 nodes: static-data → mock-weather)
-  - [x] Conditional branching routine (if-else with dead branch handling)
-  - [x] Full flow: Convex write → fetch → Temporal execution → result tracking
-  - [x] Test commands: `bun test:routine:simple` and `bun test:routine:conditional`
+- [x] **Frontend UI**
+  - [x] Routines page with table view
+  - [x] Plugin marketplace with grid view
+  - [x] My Plugins management page
+  - [x] Routine editor at `/dashboard/routines/[id]/edit`
+  - [x] Real-time updates across all pages
+
+- [x] **E2E Testing**
+  - [x] Test scripts for simple and conditional routines
+  - [x] Full Convex + Temporal integration tests
 
 ---
 
-## 🎯 Current Sprint - Frontend Integration
+## 🎯 Current Sprint - Trigger System & Production
 
-**Goal:** Connect the Workflows UI to real Convex data
+**Goal:** Add cron/webhook triggers and prepare for production deployment
 
-### Tasks
+### Phase 3 Tasks
 
-- [ ] **Routines Page Implementation**
-  - [ ] Update `app/dashboard/workflows/page.tsx` with real functionality
-  - [ ] Use `useQuery(api.routines.listByUser)` to fetch routines
-  - [ ] Use `useMutation(api.routines.create)` for creating
-  - [ ] Add routine list UI (card grid or table)
-  - [ ] Add "Create Routine" button/modal
-  - [ ] Show execution history for each routine
-  - [ ] Verify real-time updates (open 2 tabs)
+- [ ] **Trigger System**
+  - [ ] Add cron trigger support (schedule routines)
+  - [ ] Add webhook trigger support (HTTP endpoints)
+  - [ ] Add event-based triggers (platform events)
+  - [ ] UI for trigger configuration in routine editor
+  - [ ] Temporal cron workflow integration
 
-- [ ] **Route Protection**
-  - [ ] Ensure all queries filter by authenticated user ID
-  - [ ] Test user isolation (two users can't see each other's routines)
-  - [ ] Add loading states for auth checks
+- [ ] **Credential Management UI**
+  - [ ] Plugin credential configuration page
+  - [ ] Secure credential storage (encrypted in Convex)
+  - [ ] Credential validation before routine execution
+  - [ ] UI for adding API keys, tokens, secrets
+
+- [ ] **Production Readiness**
+  - [ ] Error handling and retry logic
+  - [ ] Rate limiting per user
+  - [ ] Execution timeout configuration
+  - [ ] Cost estimation for plugin executions
+  - [ ] Monitoring and alerting setup
 
 **Done when:**
-- Users can create, view, update, and delete routines via UI
-- Changes sync in real-time across tabs
-- Each user only sees their own routines
-- Execution history is visible
-
----
-
-## 📋 Next Up - Plugin System
-
-**Goal:** Define plugin architecture and build first plugins
-
-### Tasks
-
-- [ ] **Plugin Schema & Types**
-  - [ ] Define plugin interface in `packages/plugin-sdk`
-  - [ ] Add plugin marketplace schema to Convex
-  - [ ] Define input/output type system
-  - [ ] Add plugin versioning support
-
-- [ ] **Marketplace Page**
-  - [ ] Update `app/dashboard/marketplace/page.tsx` with real data
-  - [ ] Browse available plugins
-  - [ ] Install/uninstall plugins
-  - [ ] View plugin details
-
-- [ ] **My Plugins Page**
-  - [ ] Update `app/dashboard/plugins/page.tsx`
-  - [ ] List installed plugins
-  - [ ] Configure plugin credentials
-  - [ ] Manage plugin settings
+- Users can schedule routines with cron expressions
+- Routines can be triggered via webhooks
+- Plugins can securely use API credentials
+- System is ready for alpha users
 
 ---
 
 ## 🔮 Coming Soon
 
-### Phase 3: Workflow Builder UI
-- Visual workflow editor (React Flow)
-- Drag-and-drop plugin nodes
-- Connect plugins with type-safe edges
-- Save workflow as JSON
+### Phase 4: Core Plugins (Real APIs)
+- Stock Price data source (Polygon.io)
+- Weather data source (OpenWeatherMap)
+- Email action (SendGrid)
+- SMS action (Twilio)
+- Trading action (Alpaca)
+- AI processor (OpenAI GPT-4)
 
-### Phase 4: Workflow Execution (Temporal)
-- Set up Temporal Cloud connection
-- Build TypeScript Workers
-- Implement generic workflow executor
-- Execute first end-to-end workflow
+### Phase 5: AI Routine Creation
+- Natural language → routine DAG parsing
+- AI-powered node configuration
+- Interactive clarification for ambiguous requests
+- Preview and edit before saving
 
-### Phase 5: Core Plugins
-- **Triggers:** Cron, Webhook, Manual
-- **Data Sources:** Stock Price, Twitter, Reddit
-- **Processors:** AI (GPT-4), Data Transform
-- **Actions:** Email, HTTP, Trading (Alpaca)
-- **Logic:** If/Else, Switch
-
-### Phase 6: AI Workflow Generation
-- Enhance chat interface for workflow creation
-- GPT-4 integration for parsing natural language
-- Generate workflow JSON from description
-- Preview and edit AI-generated workflows
+### Phase 6: Plugin Marketplace V2
+- Community plugin submission
+- Plugin versioning and updates
+- Plugin reviews and ratings
+- Routine templates marketplace
 
 ---
 
 ## 🐛 Known Issues
 
-- Chat demo uses placeholder messages schema (not integrated with workflow system yet)
-- Workflow, Plugin, and Marketplace pages are placeholders (no real data/functionality)
+- Node handles in routine editor have alignment issues (not critical, deferred)
+- Chat page is placeholder (not integrated with routine system yet)
 
 ---
 
@@ -212,13 +188,19 @@ npx convex deploy && vercel --prod
 
 ## 🎉 Recent Accomplishments
 
+**2025-01-11:**
+- ✅ Rebranded "workflows" → "routines" throughout UI and docs
+- ✅ Completed Phase 2 (Plugin System & Routine Foundation)
+- ✅ Visual routine editor with ReactFlow fully functional
+- ✅ Plugin marketplace with 7 working plugins
+- ✅ Temporal execution engine with conditional branching + loops
+- ✅ Updated all documentation to reflect current status
+
 **2025-01-08:**
-- ✅ Built complete dashboard UI with sidebar navigation
-- ✅ Implemented route highlighting and dynamic headers
-- ✅ Added Google OAuth authentication with better-auth
-- ✅ Set up Convex backend with real-time data
-- ✅ Created Chat demo with shadcn/ui components
+- ✅ Dashboard UI with sidebar navigation
+- ✅ Google OAuth authentication
+- ✅ Convex backend with real-time updates
 
 ---
 
-**Focus:** Build workflow CRUD next, then move to plugin system and visual builder.
+**Focus:** Phase 3 - Trigger system (cron, webhook) and production readiness.

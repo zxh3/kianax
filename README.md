@@ -1,50 +1,44 @@
 # Kianax
 
-**"Talk to Create Routines"** - An AI-native automation platform (in development) where users will build workflows by describing them in natural language.
+**"Talk to Create Routines"** - An AI-native automation platform where users build routines by describing them in natural language.
 
-> **⚠️ Early Development:** This project is in Phase 2 (Workflow System & Plugin Foundation). The backend workflow execution engine is complete and tested. See [Current Status](#status) for what's implemented.
+> **⚠️ Early Development:** Phase 2 complete (Plugin System & Routine Foundation). Frontend UI with visual routine editor now functional. See [Current Status](#status).
 
 ## Vision
 
-Connect any data source to any action through an extensible plugin marketplace. Users describe workflows in plain English, AI builds them, and plugins provide the capabilities.
+Connect any data source to any action through an extensible plugin marketplace. Users describe routines in plain English, AI builds them, and plugins provide the capabilities.
 
-**Example Future Workflow:**
+**Example Future Routine:**
 ```
 "When AAPL drops 5%, analyze news sentiment. If positive, buy $1000."
 ```
-This would create: Stock Price Monitor → AI Analysis → Conditional Logic → Trading Action
+This creates: Stock Price Monitor → AI Analysis → Conditional Logic → Trading Action
 
 ## Current Status
 
 **Phase 0-1: Foundation & Auth** ✅ **Complete**
-**Phase 2: Workflow System & Plugin Foundation** ✅ **Backend Complete**
+**Phase 2: Plugin System & Routine Foundation** ✅ **Complete**
 
 **What's Working:**
-- ✅ Next.js 16 + React 19 frontend with shadcn/ui
-- ✅ Convex backend (serverless functions + real-time database)
-- ✅ Better Auth with Google OAuth and email/password
-- ✅ Protected dashboard with route-based navigation
-- ✅ Database schema for routines, executions, plugins, credentials
-- ✅ Complete routine CRUD operations (create, read, update, delete, list)
-- ✅ Workflow execution engine with conditional branching support
-- ✅ Execution tracking and observability (node results, status updates)
-- ✅ Mock plugins for local testing (static-data, mock-weather, if-else)
-- ✅ E2E test infrastructure (simple & conditional routines)
-- ✅ Temporal Workers with dynamic workflow executor
-- ✅ Single-command dev environment (`bun dev`)
+- ✅ Next.js 16 + React 19 with shadcn/ui + Tailwind CSS v4
+- ✅ Convex backend (serverless functions + real-time DB)
+- ✅ Better Auth with Google OAuth + email/password
+- ✅ Dashboard with `/dashboard/routines`, `/dashboard/plugins`, `/dashboard/marketplace`
+- ✅ Visual routine editor with ReactFlow (node-based DAG builder)
+- ✅ Plugin system with builder pattern (7 plugins: data sources, processors, logic, actions)
+- ✅ Plugin marketplace UI with install/uninstall/enable/disable
+- ✅ Routine CRUD (create, read, update, delete, list) with real-time updates
+- ✅ Temporal workflow execution engine with conditional branching + loops
+- ✅ Execution tracking (node results, status, observability)
+- ✅ E2E test infrastructure
+- ✅ Single-command dev (`bun dev`)
 - ✅ Bun monorepo with Turbo
 
-**What's Being Built (Current Sprint):**
-- 🚧 Frontend integration with Convex backend
-- 🚧 Routines list UI with real-time updates
-- 🚧 Routine creation and management interface
-
-**What's Planned:**
-- 📋 Plugin system architecture (Phase 2)
-- 📋 Workflow execution engine (Phase 3)
-- 📋 Visual workflow builder (Phase 6)
-- 📋 AI-powered workflow generation (Phase 5)
-- 📋 Plugin marketplace (Phase 7)
+**Next Up (Phase 3):**
+- 📋 Trigger system (manual, cron, webhook, event)
+- 📋 Plugin credential management UI
+- 📋 AI-powered routine creation (Phase 5)
+- 📋 Production deployment (Phase 4)
 
 See [docs/TODO.md](./docs/TODO.md) for detailed current tasks and [docs/ROADMAP.md](./docs/ROADMAP.md) for long-term vision.
 
@@ -52,19 +46,17 @@ See [docs/TODO.md](./docs/TODO.md) for detailed current tasks and [docs/ROADMAP.
 
 | Layer | Technology | Why? |
 |-------|-----------|------|
-| **Frontend** | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui | Modern DX, server components, built-in features |
+| **Frontend** | Next.js 16, React 19, Tailwind v4, shadcn/ui, ReactFlow | Modern DX, server components |
 | **Backend** | Convex | Zero DevOps, real-time subscriptions, TypeScript-native |
-| **Auth** | Better Auth | Simple setup, OAuth providers, Convex integration |
-| **Workflows** | Temporal | Dynamic execution, versioning, time-travel debugging |
-| **Workers** | TypeScript | Execute workflow logic as Temporal Activities |
-| **AI** | OpenAI (planned) | Workflow parsing and transformations |
+| **Auth** | Better Auth | OAuth + email/password, Convex integration |
+| **Execution** | Temporal | User-defined routine execution at runtime |
+| **Workers** | TypeScript | Execute routine logic as Temporal Activities |
+| **AI** | OpenAI (planned) | Routine generation from natural language |
 | **Infra** | Vercel + Convex + Temporal | Fully managed, auto-scaling |
 
-**Why Temporal?** Purpose-built for user-defined workflows at runtime. Battle-tested by Uber, Netflix, Stripe.
+**Why Temporal?** Purpose-built for user-defined execution graphs. Battle-tested by Uber, Netflix, Stripe. Handles retries, timeouts, versioning.
 
-**Why Convex?** No PostgreSQL, Redis, or Kubernetes. Built-in real-time, TypeScript schemas, perfect for rapid development.
-
-**Why Better Auth?** Simple OAuth setup with Convex integration. Email/password and social providers out of the box.
+**Why Convex?** No PostgreSQL/Redis/K8s. Built-in real-time, TypeScript schemas, instant API generation.
 
 ## Getting Started
 
@@ -244,25 +236,26 @@ kianax/
           └──────────┘   └──────────┘  └──────────┘
 ```
 
-## Planned Features
+## System Architecture
 
-### Workflow System (In Development)
+### Routine System
 
-**Triggers** (routine-level configuration):
-- **Cron** - Time-based schedules
-- **Webhook** - HTTP events
-- **Manual** - User-initiated
-- **Event** - Platform events
+**Triggers** (routine-level configuration - Phase 3):
+- **Manual** - User-initiated ✅ (implemented)
+- **Cron** - Time-based schedules (planned)
+- **Webhook** - HTTP events (planned)
+- **Event** - Platform events (planned)
 
 **Node Types** (plugin DAG):
-1. **Inputs** - Fetch data (APIs, databases, files)
-2. **Processors** - Transform data (AI, computation, parsing)
-3. **Logic** - Control flow (if/else, loops, error handling)
-4. **Outputs** - Perform actions (APIs, notifications, integrations)
+1. **Data Sources** - Fetch data (APIs, databases, files) - 2 plugins ✅
+2. **Processors** - Transform data (AI, computation, parsing) - 1 plugin ✅
+3. **Logic** - Control flow (if/else, loops, error handling) - 1 plugin ✅
+4. **Actions** - Perform actions (APIs, notifications, integrations) - 3 plugins ✅
 
-**Type-Safe Connections:**
-- Nodes auto-connect when schemas match
-- AI Processor acts as universal adapter for mismatched types
+**Type-Safe Connections:** ✅
+- ReactFlow visual editor with drag-and-drop connections
+- Zod schema validation for inputs/outputs
+- Runtime type checking during execution
 
 ### Future Plugin Examples
 
@@ -335,12 +328,27 @@ chore(deps): update dependencies
 ## Roadmap Highlights
 
 - **Phase 0-1:** Foundation & Auth ✅ (Complete)
-- **Phase 2:** Plugin SDK (Next, 2-3 weeks)
-- **Phase 3:** Workflow Engine (2-3 weeks)
+- **Phase 2:** Plugin SDK & Routine Foundation ✅ (Complete)
+  - Plugin system with builder pattern
+  - Visual routine editor (ReactFlow)
+  - Marketplace UI
+  - 7 working plugins
+- **Phase 3:** Trigger System & Production (Next, 2-3 weeks)
+  - Cron scheduling
+  - Webhook triggers
+  - Event-based triggers
+  - Credential management UI
 - **Phase 4:** Core Plugins (3-4 weeks)
-- **Phase 5:** AI Workflow Creation (3-4 weeks)
-- **Phase 6:** Visual Editor (3-4 weeks)
-- **Phase 7:** Marketplace (2-3 weeks)
+  - Real APIs (stock prices, weather, etc.)
+  - Trading integrations
+  - Communication plugins
+- **Phase 5:** AI Routine Creation (3-4 weeks)
+  - Natural language → routine DAG
+  - AI-powered node configuration
+- **Phase 6:** Plugin Marketplace V2 (2-3 weeks)
+  - Community plugins
+  - Plugin versioning
+  - Plugin reviews/ratings
 
 See [ROADMAP.md](./docs/ROADMAP.md) for full timeline and details.
 
@@ -350,6 +358,6 @@ See [ROADMAP.md](./docs/ROADMAP.md) for full timeline and details.
 
 ---
 
-**Status:** Phase 2 Backend Complete | **Next:** Frontend Integration
+**Status:** Phase 2 Complete | **Next:** Trigger System & Production Deployment
 
-Built with Next.js, Convex, Better Auth, and Temporal
+Built with Next.js, Convex, Better Auth, Temporal, and ReactFlow
