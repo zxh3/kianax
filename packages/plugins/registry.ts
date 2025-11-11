@@ -2,76 +2,110 @@
  * Plugin Registry
  *
  * Central registry for all available plugins in the platform.
+ * Flat structure - all plugins in root level folders.
  */
 
-import type { Plugin, PluginMetadata } from "@kianax/plugin-sdk";
+import { Plugin, type PluginMetadata } from "@kianax/plugin-sdk";
 
-// Import all plugins
-import { aiTransform } from "./transformers/ai";
-import { stockPrice } from "./data-sources/stock-price";
-import { mockWeather } from "./data-sources/mock-weather";
-import { staticData } from "./data-sources/static-data";
-import { httpRequest } from "./actions/http";
-import { email } from "./actions/email";
-import { ifElse } from "./conditions/if-else";
+// Type for plugin class constructor OR plugin instance
+type PluginClass = new () => Plugin;
+type PluginEntry = PluginClass | Plugin;
+
+// Import all builder-based plugins
+import { mockWeatherPlugin } from "./mock-weather";
+import { staticDataPlugin } from "./static-data";
+import { ifElsePlugin } from "./if-else";
+import { stockPricePlugin } from "./stock-price";
+import { httpRequestPlugin } from "./http";
+import { emailPlugin } from "./email";
+import { aiTransformPlugin } from "./ai-transformer";
+import { loopControlPlugin } from "./loop-control";
+
+const PLUGINS = [
+  mockWeatherPlugin,
+  staticDataPlugin,
+  ifElsePlugin,
+  stockPricePlugin,
+  httpRequestPlugin,
+  emailPlugin,
+  aiTransformPlugin,
+  loopControlPlugin,
+];
 
 /**
- * Plugin registry - all available plugins
+ * Plugin registry - maps plugin IDs to plugin classes or instances
+ * Supports both class-based plugins and builder-created plugins
  */
-export const pluginRegistry = new Map<string, Plugin<any, any, any>>([
-  // Transformers / Processors
-  [aiTransform.id, aiTransform],
-
-  // Data Sources / Inputs
-  [stockPrice.id, stockPrice],
-  [mockWeather.id, mockWeather],
-  [staticData.id, staticData],
-
-  // Actions / Outputs
-  [httpRequest.id, httpRequest],
-  [email.id, email],
-
-  // Conditions / Logic
-  [ifElse.id, ifElse],
-]);
+export const pluginRegistry = new Map<string, PluginEntry>(
+  PLUGINS.map((plugin) => [plugin.getId(), plugin]),
+);
 
 /**
  * Get a plugin by ID
+ * Returns the plugin class or instance
  */
-export function getPlugin(pluginId: string): Plugin<any, any, any> | undefined {
+export function getPlugin(pluginId: string): PluginEntry | undefined {
   return pluginRegistry.get(pluginId);
+}
+
+/**
+ * Get plugin metadata
+ */
+export function getPluginMetadata(
+  pluginId: string,
+): PluginMetadata | undefined {
+  const plugin = getPlugin(pluginId);
+  if (!plugin) return undefined;
+
+  // Handle both class-based plugins and builder-created instances
+  if (typeof plugin === "function") {
+    // It's a class - access static metadata
+    return (plugin as any).metadata;
+  } else {
+    // It's an instance - call getMetadata()
+    return plugin.getMetadata();
+  }
 }
 
 /**
  * Get all plugins
  */
-export function getAllPlugins(): Plugin<any, any, any>[] {
+export function getAllPlugins(): PluginEntry[] {
   return Array.from(pluginRegistry.values());
 }
 
 /**
- * Get plugins by type
+ * Get all plugin metadata
  */
-export function getPluginsByType(
-  type: "input" | "processor" | "logic" | "output",
-): Plugin<any, any, any>[] {
-  return getAllPlugins().filter((plugin) => plugin.type === type);
+export function getAllPluginMetadata(): PluginMetadata[] {
+  return getAllPlugins()
+    .map((plugin) => {
+      // Handle both class-based plugins and builder-created instances
+      if (typeof plugin === "function") {
+        // It's a class - access static metadata
+        return (plugin as any).metadata;
+      } else {
+        // It's an instance - call getMetadata()
+        return plugin.getMetadata();
+      }
+    })
+    .filter((metadata): metadata is PluginMetadata => metadata !== undefined);
 }
 
 /**
  * Get plugins by tag
  */
-export function getPluginsByTag(tag: string): Plugin<any, any, any>[] {
-  return getAllPlugins().filter((plugin) => plugin.tags?.includes(tag));
+export function getPluginsByTag(tag: string): PluginMetadata[] {
+  return getAllPluginMetadata().filter((plugin) => plugin.tags?.includes(tag));
 }
 
 /**
  * Search plugins by name or description
  */
-export function searchPlugins(query: string): Plugin<any, any, any>[] {
+export function searchPlugins(query: string): PluginMetadata[] {
   const lowerQuery = query.toLowerCase();
 
-  return getAllPlugins().filter(
+  return getAllPluginMetadata().filter(
     (plugin) =>
       plugin.name.toLowerCase().includes(lowerQuery) ||
       plugin.description.toLowerCase().includes(lowerQuery) ||
@@ -87,34 +121,19 @@ export function isValidPluginId(pluginId: string): boolean {
 }
 
 /**
- * Get plugin metadata (without execute function)
+ * Create an instance of a plugin
+ * Handles both class-based plugins and builder-created instances
  */
-export function getPluginMetadata(pluginId: string): PluginMetadata | undefined {
-  const plugin = getPlugin(pluginId);
+export function createPluginInstance(pluginId: string): Plugin | undefined {
+  const entry = getPlugin(pluginId);
+  if (!entry) return undefined;
 
-  if (!plugin) {
-    return undefined;
+  // Check if it's a class (has constructor) or an instance
+  if (typeof entry === "function") {
+    // It's a class, instantiate it
+    return new entry();
+  } else {
+    // It's already an instance (from builder), return it
+    return entry;
   }
-
-  return {
-    id: plugin.id,
-    name: plugin.name,
-    description: plugin.description,
-    version: plugin.version,
-    type: plugin.type,
-    author: plugin.author,
-    tags: plugin.tags,
-    icon: plugin.icon,
-    credentials: plugin.credentials,
-    // Note: schemas are Zod objects, would need zodToJsonSchema to export
-  };
-}
-
-/**
- * Get all plugin metadata
- */
-export function getAllPluginMetadata(): PluginMetadata[] {
-  return getAllPlugins()
-    .map((plugin) => getPluginMetadata(plugin.id))
-    .filter((metadata): metadata is PluginMetadata => metadata !== undefined);
 }

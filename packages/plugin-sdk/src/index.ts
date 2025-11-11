@@ -7,17 +7,37 @@
 // Re-export Zod for plugin developers
 export { z } from "zod";
 
-// Export core types
+// Export core types (legacy)
 export type {
-  Plugin,
+  Plugin as PluginInterface,
   PluginType,
-  PluginContext,
+  PluginContext as LegacyPluginContext,
   CredentialSchema,
-  PluginMetadata,
+  PluginMetadata as LegacyPluginMetadata,
 } from "./types";
 
-// Export plugin builder
+// Export plugin builder (legacy - prefer Plugin class)
 export { definePlugin } from "./types/definePlugin";
+
+// Export Plugin base class (recommended approach)
+export {
+  Plugin,
+  type PluginMetadata,
+  type PluginContext,
+  type PluginConfigUIProps,
+  type PluginPort,
+  type PluginSchemas,
+  type PluginConfig,
+  isSchemasCompatible,
+} from "./types/plugin-base";
+
+// Export Plugin Builder (NEW - recommended for new plugins)
+export {
+  createPlugin,
+  PluginBuilder,
+  type BuilderPortDefinition,
+  type ExecuteFunction,
+} from "./builder";
 
 // Export validation utilities
 export {

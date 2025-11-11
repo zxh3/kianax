@@ -2,27 +2,40 @@
  * Kianax Plugins
  *
  * Core platform plugins for routine execution.
+ * Flat structure - all plugins in root level folders.
  */
 
 // Export types
-export type { PluginMetadata, PluginType, Plugin } from "@kianax/plugin-sdk";
+export type {
+  PluginMetadata,
+  Plugin as PluginInterface,
+} from "@kianax/plugin-sdk";
 
 // Export plugin registry
 export {
   pluginRegistry,
   getPlugin,
   getAllPlugins,
-  getPluginsByType,
   getPluginsByTag,
   searchPlugins,
   isValidPluginId,
   getPluginMetadata,
   getAllPluginMetadata,
+  createPluginInstance,
 } from "./registry";
 
-// Export individual plugins
-export { aiTransform } from "./transformers/ai";
-export { stockPrice } from "./data-sources/stock-price";
-export { httpRequest } from "./actions/http";
-export { email } from "./actions/email";
-export { ifElse } from "./conditions/if-else";
+// Export config registry
+export {
+  getPluginConfigComponent,
+  hasPluginConfigUI,
+} from "./config-registry";
+
+// Export all builder-based plugins
+export { mockWeatherPlugin } from "./mock-weather";
+export { staticDataPlugin } from "./static-data";
+export { ifElsePlugin } from "./if-else";
+export { stockPricePlugin } from "./stock-price";
+export { httpRequestPlugin } from "./http";
+export { emailPlugin } from "./email";
+export { aiTransformPlugin } from "./ai-transformer";
+export { loopControlPlugin } from "./loop-control";
