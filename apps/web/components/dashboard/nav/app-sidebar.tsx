@@ -21,8 +21,8 @@ import Link from "next/link";
 const data = {
   navMain: [
     {
-      title: "Workflows",
-      url: "/dashboard/workflows",
+      title: "Routines",
+      url: "/dashboard/routines",
       icon: IconFolder,
     },
   ],

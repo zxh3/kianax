@@ -1,0 +1,91 @@
+import { NextRequest, NextResponse } from "next/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@kianax/server/convex/_generated/api";
+import type { Id } from "@kianax/server/convex/_generated/dataModel";
+
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const routineId = id as Id<"routines">;
+
+    // Initialize Convex client
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+    if (!convexUrl) {
+      return NextResponse.json(
+        { error: "Convex URL not configured" },
+        { status: 500 },
+      );
+    }
+
+    const convex = new ConvexHttpClient(convexUrl);
+
+    // Fetch routine
+    const routine = await convex.query(api.routines.get, { id: routineId });
+    if (!routine) {
+      return NextResponse.json({ error: "Routine not found" }, { status: 404 });
+    }
+
+    // Import Temporal client
+    const { Client, Connection } = await import("@temporalio/client");
+
+    // Connect to Temporal
+    const connection = await Connection.connect({
+      address: process.env.TEMPORAL_ADDRESS || "localhost:7233",
+    });
+
+    const client = new Client({
+      connection,
+      namespace: process.env.TEMPORAL_NAMESPACE || "default",
+    });
+
+    // Convert routine to workflow input
+    const routineInput = {
+      routineId: routine._id,
+      userId: routine.userId,
+      nodes: routine.nodes.map((node: any) => ({
+        id: node.id,
+        pluginId: node.pluginId,
+        type: node.type,
+        config: node.config || {},
+        enabled: node.enabled,
+      })),
+      connections: routine.connections,
+      triggerData: {
+        timestamp: Date.now(),
+        source: "manual-trigger",
+        triggerType: routine.triggerType,
+      },
+    };
+
+    // Generate workflow ID
+    const workflowId = `manual-${routine._id}-${Date.now()}`;
+
+    // Start workflow
+    const handle = await client.workflow.start("routineExecutor", {
+      taskQueue: "default",
+      args: [routineInput],
+      workflowId,
+    });
+
+    // Update last executed timestamp
+    await convex.mutation(api.routines.updateLastExecuted, {
+      id: routineId,
+      timestamp: Date.now(),
+    });
+
+    return NextResponse.json({
+      success: true,
+      workflowId: handle.workflowId,
+      message: "Workflow started successfully",
+    });
+  } catch (error: any) {
+    console.error("Failed to execute workflow:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to execute workflow" },
+      { status: 500 },
+    );
+  }
+}
