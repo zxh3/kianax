@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Label } from "@kianax/ui/components/label";
 import { Textarea } from "@kianax/ui/components/textarea";
 import { Button } from "@kianax/ui/components/button";
@@ -34,42 +34,49 @@ export function StaticDataConfigUI({
   value,
   onChange,
 }: StaticDataConfigUIProps) {
-  const [dataType, setDataType] = useState<DataType>("json");
-  const [jsonString, setJsonString] = useState("");
-  const [stringValue, setStringValue] = useState("");
-  const [numberValue, setNumberValue] = useState<string>("");
-  const [booleanValue, setBooleanValue] = useState<string>("true");
-  const [error, setError] = useState<string | null>(null);
+  // Helper to determine initial type
+  const getInitialType = (data: any): DataType => {
+    if (data === null || data === undefined) return "json";
+    if (typeof data === "number") return "number";
+    if (typeof data === "boolean") return "boolean";
+    if (typeof data === "string") return "string";
+    return "json";
+  };
 
-  // Initialize local state from props
-  useEffect(() => {
+  const [dataType, setDataType] = useState<DataType>(() =>
+    getInitialType(value?.data),
+  );
+
+  const [jsonString, setJsonString] = useState(() => {
     const data = value?.data;
-    const type = typeof data;
-
-    if (data === null || data === undefined) {
-      setDataType("json");
-      setJsonString("{\n  \n}");
-    } else if (type === "number") {
-      setDataType("number");
-      setNumberValue(String(data));
-    } else if (type === "boolean") {
-      setDataType("boolean");
-      setBooleanValue(String(data));
-    } else if (type === "string") {
-      // If it looks like a JSON object/array, keep it as JSON string?
-      // No, if it's a string, it's a string.
-      setDataType("string");
-      setStringValue(data);
-    } else {
-      // Object or Array
-      setDataType("json");
+    if (
+      data === null ||
+      data === undefined ||
+      typeof data === "object" ||
+      Array.isArray(data)
+    ) {
       try {
-        setJsonString(JSON.stringify(data, null, 2));
+        return JSON.stringify(data || {}, null, 2);
       } catch (_e) {
-        setJsonString("{}");
+        return "{}";
       }
     }
-  }, [value]);
+    return "{\n  \n}";
+  });
+
+  const [stringValue, setStringValue] = useState(() =>
+    typeof value?.data === "string" ? value.data : "",
+  );
+
+  const [numberValue, setNumberValue] = useState<string>(() =>
+    typeof value?.data === "number" ? String(value.data) : "",
+  );
+
+  const [booleanValue, setBooleanValue] = useState<string>(() =>
+    typeof value?.data === "boolean" ? String(value.data) : "true",
+  );
+
+  const [error, setError] = useState<string | null>(null);
 
   const handleTypeChange = (newType: DataType) => {
     setDataType(newType);

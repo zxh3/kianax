@@ -36,11 +36,6 @@ export function NodeConfigDrawer({
     config || {},
   );
 
-  // Reset local config when the node changes or drawer opens
-  useEffect(() => {
-    setLocalConfig(config || {});
-  }, [config]);
-
   // Get the plugin's config component from the registry
   const ConfigComponent = getPluginConfigComponent(pluginId);
 

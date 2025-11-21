@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Label } from "@kianax/ui/components/label";
@@ -61,15 +61,6 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
     }
     return defaultConfig;
   });
-
-  // Sync state with props when node selection changes
-  useEffect(() => {
-    if (value?.conditions && Array.isArray(value.conditions)) {
-      setLocalConfig(value);
-    } else {
-      setLocalConfig(defaultConfig);
-    }
-  }, [value]);
 
   const handleChange = (newConfig: IfElseConfig) => {
     setLocalConfig(newConfig);

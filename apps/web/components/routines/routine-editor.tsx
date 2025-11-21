@@ -690,6 +690,7 @@ export function RoutineEditor({
             {/* Node Configuration Drawer */}
             {configuringNode && (
               <NodeConfigDrawer
+                key={configuringNode.id}
                 isOpen={configDrawerOpen}
                 onClose={() => {
                   setConfigDrawerOpen(false);
