@@ -100,58 +100,65 @@ function PluginNode({ data, selected, id }: NodeProps) {
             }).map((_, i) => (
               <div
                 key={i}
-                className="relative flex justify-between items-center h-8"
+                className="relative grid grid-cols-2 h-8 items-center"
               >
-                {inputPorts[i] && (
-                  <div className="relative flex items-center justify-start w-1/2">
-                    <Handle
-                      type="target"
-                      position={Position.Left}
-                      id={inputPorts[i].name}
-                      title={inputPorts[i].description}
-                      className="!w-3 !h-3 !bg-gray-400 hover:!bg-blue-500 transition-colors shadow-sm z-50"
-                    />
-                    <span className="text-xs font-medium text-gray-600 pl-2">
-                      {inputPorts[i].label}
-                    </span>
-                  </div>
-                )}
-                {outputPorts[i] && (
-                  <div className="relative flex items-center justify-end w-1/2">
-                    <span
-                      className={`text-xs font-medium text-right pr-2 ${
-                        outputPorts[i].name === "true" ||
-                        outputPorts[i].name === "success"
-                          ? "text-emerald-700"
-                          : (
-                                outputPorts[i].name === "false" ||
-                                  outputPorts[i].name === "error"
-                              )
-                            ? "text-rose-700"
-                            : "text-gray-700"
-                      }`}
-                    >
-                      {outputPorts[i].label}
-                    </span>
-                    <Handle
-                      type="source"
-                      position={Position.Right}
-                      id={outputPorts[i].name}
-                      title={outputPorts[i].description}
-                      className={`!w-3 !h-3 shadow-sm transition-transform hover:scale-110 z-50 ${
-                        outputPorts[i].name === "true" ||
-                        outputPorts[i].name === "success"
-                          ? "!bg-emerald-500"
-                          : (
-                                outputPorts[i].name === "false" ||
-                                  outputPorts[i].name === "error"
-                              )
-                            ? "!bg-rose-500"
-                            : "!bg-gray-800"
-                      }`}
-                    />
-                  </div>
-                )}
+                {/* Input Column */}
+                <div className="relative flex items-center justify-start">
+                  {inputPorts[i] && (
+                    <>
+                      <Handle
+                        type="target"
+                        position={Position.Left}
+                        id={inputPorts[i].name}
+                        title={inputPorts[i].description}
+                        className="!w-3 !h-3 !bg-gray-400 hover:!bg-blue-500 transition-colors shadow-sm z-50"
+                      />
+                      <span className="text-xs font-medium text-gray-600 pl-2">
+                        {inputPorts[i].label}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Output Column */}
+                <div className="relative flex items-center justify-end">
+                  {outputPorts[i] && (
+                    <>
+                      <span
+                        className={`text-xs font-medium text-right pr-2 ${
+                          outputPorts[i].name === "true" ||
+                          outputPorts[i].name === "success"
+                            ? "text-emerald-700"
+                            : (
+                                  outputPorts[i].name === "false" ||
+                                    outputPorts[i].name === "error"
+                                )
+                              ? "text-rose-700"
+                              : "text-gray-700"
+                        }`}
+                      >
+                        {outputPorts[i].label}
+                      </span>
+                      <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={outputPorts[i].name}
+                        title={outputPorts[i].description}
+                        className={`!w-3 !h-3 shadow-sm transition-transform hover:scale-110 z-50 ${
+                          outputPorts[i].name === "true" ||
+                          outputPorts[i].name === "success"
+                            ? "!bg-emerald-500"
+                            : (
+                                  outputPorts[i].name === "false" ||
+                                    outputPorts[i].name === "error"
+                                )
+                              ? "!bg-rose-500"
+                              : "!bg-gray-800"
+                        }`}
+                      />
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
