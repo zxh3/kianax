@@ -14,6 +14,7 @@ import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as plugins from "../plugins.js";
 import type * as routines from "../routines.js";
+import type * as settings from "../settings.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   plugins: typeof plugins;
   routines: typeof routines;
+  settings: typeof settings;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

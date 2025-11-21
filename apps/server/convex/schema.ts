@@ -167,4 +167,12 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_plugin", ["userId", "pluginId"]),
+
+  // User settings/preferences
+  user_settings: defineTable({
+    userId: v.string(),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
+    ),
+  }).index("by_user", ["userId"]),
 });
