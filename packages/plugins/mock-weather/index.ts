@@ -11,7 +11,11 @@
 import { createPlugin, z } from "@kianax/plugin-sdk";
 
 const inputDataSchema = z.object({
-  city: z.string().describe("City name (e.g., San Francisco, New York)"),
+  city: z
+    .string()
+    .optional()
+    .default("San Francisco")
+    .describe("City name (e.g., San Francisco, New York)"),
   units: z
     .enum(["celsius", "fahrenheit"])
     .optional()

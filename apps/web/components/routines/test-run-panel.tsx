@@ -176,8 +176,15 @@ export function TestRunPanel({
                   {expandedNode === `${nodeState.nodeId}-${idx}` && (
                     <div className="px-3 pb-3 border-t border-gray-100 mt-1 pt-2 bg-white rounded-b-lg mx-1 mb-1">
                       {nodeState.error && (
-                        <div className="mb-2 p-2 bg-red-50 text-red-700 rounded text-xs font-mono border border-red-100">
-                          {nodeState.error.message}
+                        <div className="mb-2 bg-red-50 text-red-700 rounded text-xs font-mono border border-red-100 overflow-hidden">
+                          <div className="p-2 font-semibold">
+                            {nodeState.error.message}
+                          </div>
+                          {nodeState.error.stack && (
+                            <div className="border-t border-red-100 p-2 bg-red-50/50 whitespace-pre-wrap text-[10px] leading-tight opacity-80 overflow-x-auto">
+                              {nodeState.error.stack}
+                            </div>
+                          )}
                         </div>
                       )}
                       <div className="grid grid-cols-1 gap-2">
