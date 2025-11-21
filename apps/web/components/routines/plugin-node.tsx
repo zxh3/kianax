@@ -51,19 +51,15 @@ function PluginNode({ data, selected, id }: NodeProps) {
   // Determine border/ring styles based on execution status or selection
   let statusClasses = "";
   if (nodeData.executionStatus === "running") {
-    statusClasses =
-      "ring-2 ring-blue-400 border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.5)] animate-pulse";
+    statusClasses = "ring-2 ring-gray-100 border-gray-400 animate-pulse";
   } else if (nodeData.executionStatus === "completed") {
-    statusClasses =
-      "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+    statusClasses = "border-gray-800 shadow-sm";
   } else if (nodeData.executionStatus === "failed") {
-    statusClasses =
-      "ring-2 ring-rose-500 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]";
+    statusClasses = "border-gray-800 ring-1 ring-gray-800";
   } else if (selected) {
-    statusClasses = "border-blue-500 shadow-lg ring-2 ring-blue-500/20";
+    statusClasses = "border-black shadow-md";
   } else {
-    statusClasses =
-      "border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md";
+    statusClasses = "border-gray-200 shadow-sm hover:border-gray-300";
   }
 
   return (
@@ -71,12 +67,12 @@ function PluginNode({ data, selected, id }: NodeProps) {
       className={`relative bg-white border rounded-xl min-w-[280px] transition-all duration-200 group ${statusClasses} ${!nodeData.enabled ? "opacity-60 grayscale" : ""}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gradient-to-b from-white to-gray-50 rounded-t-xl">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div
             className={`flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm ${
               selected
-                ? "bg-blue-50 border-blue-100 text-blue-600"
+                ? "bg-gray-50 border-gray-200 text-gray-900"
                 : "bg-white border-gray-100 text-gray-600"
             }`}
           >
@@ -127,7 +123,7 @@ function PluginNode({ data, selected, id }: NodeProps) {
                         position={Position.Left}
                         id={inputPorts[i].name}
                         title={inputPorts[i].description}
-                        className="!w-3 !h-3 !bg-gray-400 hover:!bg-blue-500 transition-colors shadow-sm z-50"
+                        className="!w-2.5 !h-2.5 !bg-white !border-[2px] !border-gray-700 transition-all hover:!bg-gray-900 hover:!border-gray-900 shadow-sm z-50"
                       />
                       <span className="text-xs font-medium text-gray-600 pl-2">
                         {inputPorts[i].label}
@@ -140,19 +136,7 @@ function PluginNode({ data, selected, id }: NodeProps) {
                 <div className="relative flex items-center justify-end">
                   {outputPorts[i] && (
                     <>
-                      <span
-                        className={`text-xs font-medium text-right pr-2 ${
-                          outputPorts[i].name === "true" ||
-                          outputPorts[i].name === "success"
-                            ? "text-emerald-700"
-                            : (
-                                  outputPorts[i].name === "false" ||
-                                    outputPorts[i].name === "error"
-                                )
-                              ? "text-rose-700"
-                              : "text-gray-700"
-                        }`}
-                      >
+                      <span className="text-xs font-medium text-right pr-2 text-gray-600">
                         {outputPorts[i].label}
                       </span>
                       <Handle
@@ -160,17 +144,7 @@ function PluginNode({ data, selected, id }: NodeProps) {
                         position={Position.Right}
                         id={outputPorts[i].name}
                         title={outputPorts[i].description}
-                        className={`!w-3 !h-3 shadow-sm transition-transform hover:scale-110 z-50 ${
-                          outputPorts[i].name === "true" ||
-                          outputPorts[i].name === "success"
-                            ? "!bg-emerald-500"
-                            : (
-                                  outputPorts[i].name === "false" ||
-                                    outputPorts[i].name === "error"
-                                )
-                              ? "!bg-rose-500"
-                              : "!bg-gray-800"
-                        }`}
+                        className="!w-2.5 !h-2.5 !bg-white !border-[2px] !border-gray-700 transition-all hover:!bg-gray-900 hover:!border-gray-900 shadow-sm z-50"
                       />
                     </>
                   )}
