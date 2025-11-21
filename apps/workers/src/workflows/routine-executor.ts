@@ -260,6 +260,12 @@ async function executeNode(
       completedAt: Date.now(),
     });
   } catch (error: any) {
+    // Unwrap Temporal ActivityFailure to get the real error message
+    // Temporal wraps activity errors in ActivityFailure, with the actual error in 'cause'
+    const rootCause = error.cause || error;
+    const errorMessage = rootCause.message || error.message || "Unknown error";
+    const errorStack = rootCause.stack || error.stack;
+
     // Node execution failed
     await storeNodeResult({
       workflowId: executionId,
@@ -268,15 +274,15 @@ async function executeNode(
       iteration: loopContext.iteration, // Track iteration for loop nodes
       status: "failed",
       error: {
-        message: error.message,
-        stack: error.stack,
+        message: errorMessage,
+        stack: errorStack,
       },
       completedAt: Date.now(),
     });
 
     // Re-throw to stop execution
     throw new Error(
-      `Node ${nodeId} (${node.pluginId}) failed: ${error.message}`,
+      `Node ${nodeId} (${node.pluginId}) failed: ${errorMessage}`,
     );
   }
 }
