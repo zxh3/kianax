@@ -12,6 +12,8 @@ export interface PluginNodeData extends Record<string, unknown> {
   label: string;
   pluginId: string;
   enabled: boolean;
+  config?: Record<string, unknown>;
+  executionStatus?: "running" | "completed" | "failed" | "pending";
   onConfigure?: (nodeId: string) => void;
 }
 
@@ -46,13 +48,27 @@ function PluginNode({ data, selected, id }: NodeProps) {
     }
   };
 
+  // Determine border/ring styles based on execution status or selection
+  let statusClasses = "";
+  if (nodeData.executionStatus === "running") {
+    statusClasses =
+      "ring-2 ring-blue-400 border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.5)] animate-pulse";
+  } else if (nodeData.executionStatus === "completed") {
+    statusClasses =
+      "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+  } else if (nodeData.executionStatus === "failed") {
+    statusClasses =
+      "ring-2 ring-rose-500 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]";
+  } else if (selected) {
+    statusClasses = "border-blue-500 shadow-lg ring-2 ring-blue-500/20";
+  } else {
+    statusClasses =
+      "border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md";
+  }
+
   return (
     <div
-      className={`relative bg-white border rounded-xl min-w-[280px] transition-all duration-200 group ${
-        selected
-          ? "border-blue-500 shadow-lg ring-2 ring-blue-500/20"
-          : "border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md"
-      } ${!nodeData.enabled ? "opacity-60 grayscale" : ""}`}
+      className={`relative bg-white border rounded-xl min-w-[280px] transition-all duration-200 group ${statusClasses} ${!nodeData.enabled ? "opacity-60 grayscale" : ""}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">

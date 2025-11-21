@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@kianax/server/convex/_generated/api";
 import {
   ReactFlow,
   Background,
@@ -22,6 +24,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import PluginNode, { type PluginNodeData } from "./plugin-node";
 import { NodeConfigDrawer } from "./node-config-drawer";
+import { TestRunPanel } from "./test-run-panel";
 import { Button } from "@kianax/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
 import { Textarea } from "@kianax/ui/components/textarea";
@@ -79,7 +82,7 @@ const nodeTypes = {
 } as const;
 
 export function RoutineEditor({
-  routineId: _routineId,
+  routineId,
   initialNodes,
   initialConnections,
   onSave,
@@ -95,10 +98,91 @@ export function RoutineEditor({
     null,
   );
 
+  // Test Execution State
+  const [testWorkflowId, setTestWorkflowId] = useState<string | null>(null);
+  const [testPanelOpen, setTestPanelOpen] = useState(false);
+  const [isStartingTest, setIsStartingTest] = useState(false);
+
+  // Fetch execution status if a test is running/open
+  const testExecution = useQuery(
+    api.executions.getByWorkflowId,
+    testWorkflowId ? { workflowId: testWorkflowId } : "skip",
+  );
+
   // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
+  // Update nodes with execution status
+  useEffect(() => {
+    if (!testExecution || !testExecution.nodeStates) return;
+
+    // Create a map of node status
+    // If multiple executions for a node (loop), take the latest or "running" one
+    const nodeStatusMap = new Map<
+      string,
+      "running" | "completed" | "failed" | "pending"
+    >();
+
+    testExecution.nodeStates.forEach((state: any) => {
+      nodeStatusMap.set(state.nodeId, state.status);
+    });
+
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const status = nodeStatusMap.get(node.id);
+        // Only update if status changed to avoid unnecessary renders?
+        // React state updates should be referentially stable if possible.
+        // Here we create new object only if executionStatus is different.
+        const currentStatus = (node.data as any).executionStatus;
+        if (status !== currentStatus) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              executionStatus: status,
+            },
+          };
+        }
+        return node;
+      }),
+    );
+  }, [testExecution]);
+
+  const handleRunTest = async () => {
+    setIsStartingTest(true);
+    try {
+      // 1. Save first (optional but recommended to sync backend)
+      // Assuming handleSave logic is reused or we trust current state is saved?
+      // Let's auto-save for safety.
+      const routineNodes = convertFromReactFlowNodes(nodes);
+      const routineConnections = convertFromReactFlowEdges(edges);
+      await onSave(routineNodes, routineConnections);
+
+      // 2. Trigger execution via API
+      const response = await fetch(`/api/workflows/${routineId}/execute`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start workflow");
+      }
+
+      const data = await response.json();
+      setTestWorkflowId(data.workflowId);
+      setTestPanelOpen(true);
+      toast.success("Test run started");
+
+      // Call prop onTest if provided (for parent callbacks)
+      if (onTest) onTest();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to start test run");
+      console.error(error);
+    } finally {
+      setIsStartingTest(false);
+    }
+  };
   // Handler for opening node configuration
   const handleConfigureNode = useCallback((nodeId: string) => {
     setConfiguringNodeId(nodeId);
@@ -447,12 +531,15 @@ export function RoutineEditor({
             <IconDeviceFloppy className="mr-2 size-4" />
             {isSaving ? "Saving..." : "Save"}
           </Button>
-          {onTest && (
-            <Button size="sm" variant="outline" onClick={onTest}>
-              <IconPlayerPlay className="mr-2 size-4" />
-              Test
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRunTest}
+            disabled={isStartingTest}
+          >
+            <IconPlayerPlay className="mr-2 size-4" />
+            {isStartingTest ? "Starting..." : "Test"}
+          </Button>
         </div>
       </div>
 
@@ -621,6 +708,13 @@ export function RoutineEditor({
                 onSave={handleSaveNodeConfig}
               />
             )}
+
+            {/* Test Run Panel */}
+            <TestRunPanel
+              workflowId={testWorkflowId}
+              isOpen={testPanelOpen}
+              onClose={() => setTestPanelOpen(false)}
+            />
           </>
         ) : (
           <div className="h-full p-4">
