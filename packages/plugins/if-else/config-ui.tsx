@@ -108,7 +108,7 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
     <div className="space-y-8">
       {/* Logical Operator */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium text-gray-900">
+        <Label className="text-sm font-medium text-foreground">
           When multiple conditions match
         </Label>
         <Select
@@ -134,7 +134,7 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
       {/* Conditions */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium text-gray-900">
+          <Label className="text-sm font-medium text-foreground">
             Conditions
           </Label>
           <Button
@@ -152,18 +152,18 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
           {localConfig.conditions.map((condition, index) => (
             <div
               key={index}
-              className="relative p-4 border rounded-xl bg-white shadow-sm transition-all hover:border-gray-300 group"
+              className="relative p-4 border border-border rounded-xl bg-card shadow-sm transition-all hover:border-ring group"
             >
               {/* Card Header */}
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Condition {index + 1}
                 </span>
                 {localConfig.conditions.length > 1 && (
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50 -mr-1"
+                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
                     onClick={() => handleRemoveCondition(index)}
                     title="Remove condition"
                   >
@@ -175,7 +175,7 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
               {/* Card Content */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-gray-600">
+                  <Label className="text-xs font-medium text-muted-foreground">
                     Operator
                   </Label>
                   <Select
@@ -199,7 +199,7 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
 
                 {!["exists", "empty"].includes(condition.operator) && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-gray-600">
+                    <Label className="text-xs font-medium text-muted-foreground">
                       Compare Value
                     </Label>
                     <Input
@@ -223,9 +223,9 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
       </div>
 
       {/* Help Text */}
-      <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-600">
-        <p className="font-medium text-slate-900 mb-1 flex items-center gap-2">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+      <div className="p-4 bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
+        <p className="font-medium text-foreground mb-1 flex items-center gap-2">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:text-blue-400">
             i
           </span>
           How logic works
@@ -233,9 +233,11 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
         <p className="text-xs leading-relaxed">
           The incoming data will be evaluated against these conditions. If the
           result is true, the execution flows to the{" "}
-          <span className="font-medium text-emerald-600">True</span> output.
-          Otherwise, it flows to the{" "}
-          <span className="font-medium text-rose-600">False</span> output.
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            True
+          </span>{" "}
+          output. Otherwise, it flows to the{" "}
+          <span className="font-medium text-destructive">False</span> output.
         </p>
       </div>
     </div>

@@ -152,7 +152,7 @@ export function StaticDataConfigUI({
     <div className="space-y-6">
       {/* Type Selector */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium text-gray-900">Data Type</Label>
+        <Label className="text-sm font-medium text-foreground">Data Type</Label>
         <Select
           value={dataType}
           onValueChange={(v) => handleTypeChange(v as DataType)}
@@ -172,7 +172,7 @@ export function StaticDataConfigUI({
       {/* Value Input */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium text-gray-900">Value</Label>
+          <Label className="text-sm font-medium text-foreground">Value</Label>
           {dataType === "json" && (
             <Button
               variant="outline"
@@ -192,11 +192,11 @@ export function StaticDataConfigUI({
               onChange={(e) => handleJsonChange(e.target.value)}
               placeholder='{ "key": "value" }'
               className={`font-mono text-xs min-h-[300px] resize-y ${
-                error ? "border-red-500 focus-visible:ring-red-500" : ""
+                error ? "border-destructive focus-visible:ring-destructive" : ""
               }`}
             />
             {error && (
-              <div className="absolute bottom-2 right-2 text-xs text-red-500 bg-white/90 px-2 py-1 rounded border border-red-200 shadow-sm">
+              <div className="absolute bottom-2 right-2 text-xs text-destructive bg-background/90 px-2 py-1 rounded border border-destructive/30 shadow-sm">
                 {error}
               </div>
             )}
@@ -237,9 +237,9 @@ export function StaticDataConfigUI({
         </p>
       </div>
 
-      <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-600">
-        <p className="font-medium text-slate-900 mb-1 flex items-center gap-2">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+      <div className="p-4 bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
+        <p className="font-medium text-foreground mb-1 flex items-center gap-2">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:text-blue-400">
             i
           </span>
           Usage Tip

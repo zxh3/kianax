@@ -51,14 +51,14 @@ export function NodeConfigDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-2 right-2 bottom-2 w-96 bg-white border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden">
+    <div className="absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div>
-          <h3 className="font-semibold text-sm text-gray-900">
+          <h3 className="font-semibold text-sm text-foreground">
             Configure {pluginName}
           </h3>
-          <p className="text-xs text-gray-500">Node Settings</p>
+          <p className="text-xs text-muted-foreground">Node Settings</p>
         </div>
         <Button
           variant="ghost"
@@ -79,7 +79,7 @@ export function NodeConfigDrawer({
               onChange={handleConfigChange}
             />
           ) : (
-            <div className="text-sm text-muted-foreground py-8 text-center italic bg-gray-50 rounded-lg border border-dashed">
+            <div className="text-sm text-muted-foreground py-8 text-center italic bg-muted/50 rounded-lg border border-dashed border-border">
               This plugin has no configuration options.
             </div>
           )}
@@ -87,7 +87,7 @@ export function NodeConfigDrawer({
       </ScrollArea>
 
       {/* Footer */}
-      <div className="p-4 border-t bg-gray-50/50 flex justify-end gap-2">
+      <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={onClose}>
           Cancel
         </Button>

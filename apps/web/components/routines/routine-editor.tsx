@@ -665,7 +665,7 @@ export function RoutineEditor({
               onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
               fitView
-              className="bg-gray-50/50"
+              className="bg-background"
               deleteKeyCode={["Delete", "Backspace"]}
               connectionLineStyle={{
                 stroke: "#6366f1",
@@ -677,13 +677,13 @@ export function RoutineEditor({
                 variant={BackgroundVariant.Dots}
                 gap={20}
                 size={1}
-                color="#cbd5e1"
+                color="var(--color-border)"
               />
-              <Controls className="!bg-white !border !border-gray-100 !shadow-md !rounded-lg !m-4" />
+              <Controls className="!bg-background !border !border-border !shadow-md !rounded-lg !m-4" />
               <MiniMap
                 nodeColor="#94a3b8"
-                className="!bg-white !border !border-gray-100 !shadow-lg !rounded-lg !m-4"
-                maskColor="rgba(248, 250, 252, 0.6)"
+                className="!bg-background !border !border-border !shadow-lg !rounded-lg !m-4"
+                maskColor="rgba(0, 0, 0, 0.1)"
               />
             </ReactFlow>
 
