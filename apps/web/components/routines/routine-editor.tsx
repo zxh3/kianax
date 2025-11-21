@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import PluginNode, { type PluginNodeData } from "./plugin-node";
-import { NodeConfigModal } from "./node-config-modal";
+import { NodeConfigDrawer } from "./node-config-drawer";
 import { Button } from "@kianax/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
 import { Textarea } from "@kianax/ui/components/textarea";
@@ -79,16 +79,36 @@ const nodeTypes = {
 } as const;
 
 export function RoutineEditor({
-  routineId,
+  routineId: _routineId,
   initialNodes,
   initialConnections,
   onSave,
   onTest,
 }: RoutineEditorProps) {
+  // State definitions
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPluginSelector, setShowPluginSelector] = useState(false);
+  const [editorMode, setEditorMode] = useState<"visual" | "json">("visual");
+  const [jsonValue, setJsonValue] = useState("");
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [configuringNodeId, setConfiguringNodeId] = useState<string | null>(
+    null,
+  );
+
+  // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+
   // Handler for opening node configuration
   const handleConfigureNode = useCallback((nodeId: string) => {
     setConfiguringNodeId(nodeId);
-    setConfigModalOpen(true);
+    setConfigDrawerOpen(true);
+  }, []);
+
+  // Handler for node click - opens the configuration drawer
+  const onNodeClick = useCallback((_: unknown, node: Node) => {
+    setConfiguringNodeId(node.id);
+    setConfigDrawerOpen(true);
   }, []);
 
   // Convert routine nodes to React Flow nodes
@@ -184,33 +204,19 @@ export function RoutineEditor({
     [],
   );
 
-  const [nodes, setNodes] = useState<Node[]>(() =>
-    convertToReactFlowNodes(initialNodes),
-  );
-  const [edges, setEdges] = useState<Edge[]>(() =>
-    convertToReactFlowEdges(initialConnections),
-  );
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPluginSelector, setShowPluginSelector] = useState(false);
-  const [editorMode, setEditorMode] = useState<"visual" | "json">("visual");
-  const [jsonValue, setJsonValue] = useState("");
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [configuringNodeId, setConfiguringNodeId] = useState<string | null>(
-    null,
-  );
+  // Initialize nodes and edges
+  useEffect(() => {
+    setNodes(convertToReactFlowNodes(initialNodes));
+    setEdges(convertToReactFlowEdges(initialConnections));
+  }, [
+    initialNodes,
+    initialConnections,
+    convertToReactFlowNodes,
+    convertToReactFlowEdges,
+  ]);
 
   // Get all available plugins
   const availablePlugins = useMemo(() => getAllPlugins(), []);
-
-  // Update nodes when initial nodes change
-  useEffect(() => {
-    setNodes(convertToReactFlowNodes(initialNodes));
-  }, [initialNodes, convertToReactFlowNodes]);
-
-  // Update edges when initial connections change
-  useEffect(() => {
-    setEdges(convertToReactFlowEdges(initialConnections));
-  }, [initialConnections, convertToReactFlowEdges]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) =>
@@ -287,7 +293,6 @@ export function RoutineEditor({
         node.id === nodeId ? { ...node, data: { ...node.data, config } } : node,
       ),
     );
-    toast.success("Node configuration updated");
   }, []);
 
   const handleAddNode = (pluginId: string, pluginName: string) => {
@@ -561,6 +566,7 @@ export function RoutineEditor({
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
               fitView
               className="bg-gray-50/50"
@@ -597,12 +603,12 @@ export function RoutineEditor({
         )}
       </div>
 
-      {/* Node Configuration Modal */}
+      {/* Node Configuration Drawer */}
       {configuringNode && (
-        <NodeConfigModal
-          isOpen={configModalOpen}
+        <NodeConfigDrawer
+          isOpen={configDrawerOpen}
           onClose={() => {
-            setConfigModalOpen(false);
+            setConfigDrawerOpen(false);
             setConfiguringNodeId(null);
           }}
           nodeId={configuringNode.id}
