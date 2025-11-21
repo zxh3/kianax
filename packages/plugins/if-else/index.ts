@@ -9,9 +9,7 @@ import { createPlugin, z } from "@kianax/plugin-sdk";
 import { IfElseConfigUI } from "./config-ui";
 
 // Schema for the data we're evaluating
-const dataSchema = z.object({
-  value: z.unknown().describe("The value to evaluate"),
-});
+const dataSchema = z.any().describe("The value to evaluate");
 
 // Schema for result data (passed to both branches)
 const resultSchema = z.object({
@@ -149,7 +147,7 @@ export const ifElsePlugin = createPlugin("if-else")
   .withConfigUI(IfElseConfigUI)
   .execute(async ({ inputs, config }) => {
     // Fully typed!
-    const value = inputs.data.value;
+    const value = inputs.data;
 
     // If no config, default to always true
     if (!config || !config.conditions || config.conditions.length === 0) {
