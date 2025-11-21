@@ -1,9 +1,9 @@
-import Chat from "@kianax/web/components/demo/Chat";
+import { ChatInterface } from "@kianax/web/components/ChatInterface";
 
 export default function ChatPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <Chat />
+      <ChatInterface />
     </div>
   );
 }

@@ -193,6 +193,100 @@ export const deleteRoutine = mutation({
 });
 
 /**
+ * Add a node to a routine
+ */
+export const addNode = mutation({
+  args: {
+    routineId: v.id("routines"),
+    node: v.object({
+      id: v.string(),
+      pluginId: v.string(),
+      label: v.string(),
+      position: v.object({ x: v.number(), y: v.number() }),
+      config: v.optional(v.any()),
+      enabled: v.boolean(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine) {
+      throw new Error(`Routine ${args.routineId} not found`);
+    }
+
+    const updatedNodes = [...routine.nodes, args.node];
+
+    await ctx.db.patch(args.routineId, {
+      nodes: updatedNodes,
+      version: routine.version + 1,
+    });
+
+    return args.node.id;
+  },
+});
+
+/**
+ * Add a connection to a routine
+ */
+export const addConnection = mutation({
+  args: {
+    routineId: v.id("routines"),
+    connection: v.object({
+      id: v.string(),
+      sourceNodeId: v.string(),
+      targetNodeId: v.string(),
+      sourceHandle: v.optional(v.string()),
+      targetHandle: v.optional(v.string()),
+      condition: v.optional(
+        v.object({
+          type: v.union(v.literal("branch"), v.literal("default")),
+          value: v.optional(v.string()),
+        }),
+      ),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine) {
+      throw new Error(`Routine ${args.routineId} not found`);
+    }
+
+    const updatedConnections = [...routine.connections, args.connection];
+
+    await ctx.db.patch(args.routineId, {
+      connections: updatedConnections,
+      version: routine.version + 1,
+    });
+
+    return args.connection.id;
+  },
+});
+
+/**
+ * Search routines by name or description
+ */
+export const search = query({
+  args: {
+    userId: v.string(),
+    query: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Fetch all user routines and filter in memory (efficient enough for <1000 items)
+    const routines = await ctx.db
+      .query("routines")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const lowerQuery = args.query.toLowerCase();
+
+    return routines.filter(
+      (r) =>
+        r.name.toLowerCase().includes(lowerQuery) ||
+        r.description?.toLowerCase().includes(lowerQuery),
+    );
+  },
+});
+
+/**
  * Update last executed timestamp
  */
 export const updateLastExecuted = mutation({
