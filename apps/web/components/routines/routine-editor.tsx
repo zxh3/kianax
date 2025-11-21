@@ -43,7 +43,7 @@ interface RoutineNode {
   pluginId: string;
   label: string;
   position: { x: number; y: number };
-  config?: any;
+  config?: Record<string, unknown>;
   enabled: boolean;
 }
 
@@ -164,13 +164,15 @@ export function RoutineEditor({
   const convertFromReactFlowNodes = useCallback(
     (reactFlowNodes: Node[]): RoutineNode[] => {
       return reactFlowNodes.map((node) => {
-        const data = node.data as PluginNodeData;
+        const data = node.data as PluginNodeData & {
+          config?: Record<string, unknown>;
+        };
         return {
           id: node.id,
           pluginId: data.pluginId,
           label: data.label,
           position: node.position,
-          config: (data as any).config,
+          config: data.config,
           enabled: data.enabled,
         };
       });
@@ -287,13 +289,18 @@ export function RoutineEditor({
     setEdges((eds) => eds.filter((edge) => !edge.selected));
   }, []);
 
-  const handleSaveNodeConfig = useCallback((nodeId: string, config: any) => {
-    setNodes((nds) =>
-      nds.map((node) =>
-        node.id === nodeId ? { ...node, data: { ...node.data, config } } : node,
-      ),
-    );
-  }, []);
+  const handleSaveNodeConfig = useCallback(
+    (nodeId: string, config: Record<string, unknown>) => {
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === nodeId
+            ? { ...node, data: { ...node.data, config } }
+            : node,
+        ),
+      );
+    },
+    [],
+  );
 
   const handleAddNode = (pluginId: string, pluginName: string) => {
     // Calculate better position (spread nodes horizontally)
@@ -360,8 +367,10 @@ export function RoutineEditor({
       setEdges(convertToReactFlowEdges(parsed.connections));
       setEditorMode("visual");
       toast.success("JSON applied successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Invalid JSON format");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid JSON format";
+      toast.error(message);
     }
   };
 
@@ -590,6 +599,28 @@ export function RoutineEditor({
                 maskColor="rgba(248, 250, 252, 0.6)"
               />
             </ReactFlow>
+
+            {/* Node Configuration Drawer */}
+            {configuringNode && (
+              <NodeConfigDrawer
+                isOpen={configDrawerOpen}
+                onClose={() => {
+                  setConfigDrawerOpen(false);
+                  setConfiguringNodeId(null);
+                }}
+                nodeId={configuringNode.id}
+                pluginId={(configuringNode.data as PluginNodeData).pluginId}
+                pluginName={(configuringNode.data as PluginNodeData).label}
+                config={
+                  (
+                    configuringNode.data as PluginNodeData & {
+                      config?: Record<string, unknown>;
+                    }
+                  ).config
+                }
+                onSave={handleSaveNodeConfig}
+              />
+            )}
           </>
         ) : (
           <div className="h-full p-4">
@@ -602,22 +633,6 @@ export function RoutineEditor({
           </div>
         )}
       </div>
-
-      {/* Node Configuration Drawer */}
-      {configuringNode && (
-        <NodeConfigDrawer
-          isOpen={configDrawerOpen}
-          onClose={() => {
-            setConfigDrawerOpen(false);
-            setConfiguringNodeId(null);
-          }}
-          nodeId={configuringNode.id}
-          pluginId={(configuringNode.data as PluginNodeData).pluginId}
-          pluginName={(configuringNode.data as PluginNodeData).label}
-          config={(configuringNode.data as any).config}
-          onSave={handleSaveNodeConfig}
-        />
-      )}
     </div>
   );
 }
