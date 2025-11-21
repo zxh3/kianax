@@ -7,10 +7,6 @@ export default defineSchema({
     user: v.string(),
     body: v.string(),
   }),
-  users: defineTable({
-    name: v.string(),
-    tokenIdentifier: v.string(),
-  }).index("by_token", ["tokenIdentifier"]),
 
   // Routine tables (user-created automation routines)
   routines: defineTable({

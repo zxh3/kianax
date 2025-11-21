@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAuthUser } from "./auth";
 
 /**
  * Create a new routine
  */
 export const create = mutation({
   args: {
-    userId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     status: v.union(
@@ -50,8 +50,9 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     const routineId = await ctx.db.insert("routines", {
-      userId: args.userId,
+      userId: user._id,
       name: args.name,
       description: args.description,
       status: args.status,
@@ -75,7 +76,12 @@ export const get = query({
     id: v.id("routines"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.id);
+    if (!routine || routine.userId !== user._id) {
+      return null; // Hide if not owner
+    }
+    return routine;
   },
 });
 
@@ -84,7 +90,6 @@ export const get = query({
  */
 export const listByUser = query({
   args: {
-    userId: v.string(),
     status: v.optional(
       v.union(
         v.literal("draft"),
@@ -95,19 +100,20 @@ export const listByUser = query({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     if (args.status) {
       const status = args.status; // Narrow type for TypeScript
       return await ctx.db
         .query("routines")
         .withIndex("by_user_and_status", (q) =>
-          q.eq("userId", args.userId).eq("status", status),
+          q.eq("userId", user._id).eq("status", status),
         )
         .collect();
     }
 
     return await ctx.db
       .query("routines")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
   },
 });
@@ -160,12 +166,13 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     const { id, ...updates } = args;
 
     // Get current routine to increment version if nodes/connections changed
     const current = await ctx.db.get(id);
-    if (!current) {
-      throw new Error(`Routine ${id} not found`);
+    if (!current || current.userId !== user._id) {
+      throw new Error(`Routine ${id} not found or unauthorized`);
     }
 
     const shouldIncrementVersion =
@@ -188,6 +195,11 @@ export const deleteRoutine = mutation({
     id: v.id("routines"),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.id);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.id} not found or unauthorized`);
+    }
     await ctx.db.delete(args.id);
   },
 });
@@ -208,9 +220,10 @@ export const addNode = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     const routine = await ctx.db.get(args.routineId);
-    if (!routine) {
-      throw new Error(`Routine ${args.routineId} not found`);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
     }
 
     const updatedNodes = [...routine.nodes, args.node];
@@ -245,9 +258,10 @@ export const addConnection = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     const routine = await ctx.db.get(args.routineId);
-    if (!routine) {
-      throw new Error(`Routine ${args.routineId} not found`);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
     }
 
     const updatedConnections = [...routine.connections, args.connection];
@@ -266,14 +280,14 @@ export const addConnection = mutation({
  */
 export const search = query({
   args: {
-    userId: v.string(),
     query: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     // Fetch all user routines and filter in memory (efficient enough for <1000 items)
     const routines = await ctx.db
       .query("routines")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
     const lowerQuery = args.query.toLowerCase();
@@ -295,6 +309,11 @@ export const updateLastExecuted = mutation({
     timestamp: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.id);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.id} not found or unauthorized`);
+    }
     await ctx.db.patch(args.id, {
       lastExecutedAt: args.timestamp,
     });

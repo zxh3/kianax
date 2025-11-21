@@ -19,7 +19,6 @@ type RoutineStatus = "draft" | "active" | "paused" | "archived";
 
 export default function RoutinesPage() {
   const { data: session } = authClient.useSession();
-  const userId = session?.user?.id;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<RoutineStatus | "all">(
@@ -33,10 +32,9 @@ export default function RoutinesPage() {
     useState<Id<"routines"> | null>(null);
 
   // Fetch routines
-  const allRoutines = useQuery(
-    api.routines.listByUser,
-    userId ? { userId } : "skip",
-  );
+  const allRoutines = useQuery(api.routines.listByUser, {
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
 
   // Mutations
   const deleteRoutine = useMutation(api.routines.deleteRoutine);
@@ -184,13 +182,10 @@ export default function RoutinesPage() {
       />
 
       {/* Create Routine Wizard */}
-      {userId && (
-        <CreateRoutineWizard
-          open={showCreateWizard}
-          onOpenChange={setShowCreateWizard}
-          userId={userId}
-        />
-      )}
+      <CreateRoutineWizard
+        open={showCreateWizard}
+        onOpenChange={setShowCreateWizard}
+      />
 
       {/* Edit Routine Modal */}
       <EditRoutineModal

@@ -110,16 +110,18 @@ export function PluginCard({
                 </Label>
               </div>
             )}
-            {plugin.credentials && plugin.credentials.length > 0 && onConfigure && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onConfigure}
-                disabled={loading}
-              >
-                Configure
-              </Button>
-            )}
+            {plugin.credentials &&
+              plugin.credentials.length > 0 &&
+              onConfigure && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onConfigure}
+                  disabled={loading}
+                >
+                  Configure
+                </Button>
+              )}
           </div>
         )}
       </CardContent>

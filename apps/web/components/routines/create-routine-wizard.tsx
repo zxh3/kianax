@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import {
@@ -27,7 +27,6 @@ import { toast } from "sonner";
 interface CreateRoutineWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
 }
 
 type TriggerType = "manual" | "cron" | "webhook" | "event";
@@ -53,10 +52,17 @@ const STEPS = [
 export function CreateRoutineWizard({
   open,
   onOpenChange,
-  userId,
 }: CreateRoutineWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Generate unique IDs for form fields
+  const nameId = useId();
+  const descriptionId = useId();
+  const tagsId = useId();
+  const statusId = useId();
+  const triggerId = useId();
+  const cronScheduleId = useId();
 
   const [formData, setFormData] = useState<RoutineFormData>({
     name: "",
@@ -109,7 +115,6 @@ export function CreateRoutineWizard({
     try {
       // Create minimal routine (nodes will be added later via visual editor)
       const _routineId = await createRoutine({
-        userId,
         name: formData.name,
         description: formData.description || undefined,
         status: formData.status,
@@ -203,11 +208,11 @@ export function CreateRoutineWizard({
           {currentStep === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">
+                <Label htmlFor={nameId}>
                   Routine Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="name"
+                  id={nameId}
                   placeholder="e.g., Daily Stock Monitor"
                   value={formData.name}
                   onChange={(e) => updateField("name", e.target.value)}
@@ -215,9 +220,9 @@ export function CreateRoutineWizard({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor={descriptionId}>Description</Label>
                 <Textarea
-                  id="description"
+                  id={descriptionId}
                   placeholder="What does this routine do?"
                   value={formData.description}
                   onChange={(e) => updateField("description", e.target.value)}
@@ -226,9 +231,9 @@ export function CreateRoutineWizard({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma separated)</Label>
+                <Label htmlFor={tagsId}>Tags (comma separated)</Label>
                 <Input
-                  id="tags"
+                  id={tagsId}
                   placeholder="stocks, monitoring, daily"
                   value={formData.tags.join(", ")}
                   onChange={(e) =>
@@ -244,14 +249,14 @@ export function CreateRoutineWizard({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Initial Status</Label>
+                <Label htmlFor={statusId}>Initial Status</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
                     updateField("status", value as RoutineStatus)
                   }
                 >
-                  <SelectTrigger id="status">
+                  <SelectTrigger id={statusId}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -270,14 +275,14 @@ export function CreateRoutineWizard({
           {currentStep === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="trigger">Trigger Type</Label>
+                <Label htmlFor={triggerId}>Trigger Type</Label>
                 <Select
                   value={formData.triggerType}
                   onValueChange={(value) =>
                     updateField("triggerType", value as TriggerType)
                   }
                 >
-                  <SelectTrigger id="trigger">
+                  <SelectTrigger id={triggerId}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -300,9 +305,9 @@ export function CreateRoutineWizard({
               {/* Trigger-specific configuration */}
               {formData.triggerType === "cron" && (
                 <div className="space-y-2">
-                  <Label htmlFor="cronSchedule">Cron Schedule</Label>
+                  <Label htmlFor={cronScheduleId}>Cron Schedule</Label>
                   <Input
-                    id="cronSchedule"
+                    id={cronScheduleId}
                     placeholder="0 9 * * * (every day at 9 AM)"
                     value={(formData.triggerConfig.schedule as string) || ""}
                     onChange={(e) =>

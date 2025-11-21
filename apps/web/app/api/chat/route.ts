@@ -4,6 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@kianax/server/convex/_generated/api";
+import { getToken } from "@kianax/web/lib/auth-server";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
 
 // Initialize Convex client
@@ -11,10 +12,14 @@ const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
 const convex = new ConvexHttpClient(convexUrl);
 const siteUrl = process.env.SITE_URL || "http://localhost:3000";
 
-// Mock user ID for now (TODO: Use auth session)
-const USER_ID = "test-user-id" as Id<"users">;
-
 export async function POST(req: Request) {
+  // 1. Authenticate user
+  const token = await getToken();
+  if (!token) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  convex.setAuth(token);
+
   const { messages } = await req.json();
 
   const result = await streamText({
@@ -29,7 +34,6 @@ export async function POST(req: Request) {
         execute: async ({ query }) => {
           try {
             const routines = await convex.query(api.routines.search, {
-              userId: USER_ID,
               query,
             });
             return {
@@ -54,7 +58,6 @@ export async function POST(req: Request) {
         execute: async ({ name, description }) => {
           try {
             const routineId = await convex.mutation(api.routines.create, {
-              userId: USER_ID,
               name,
               description,
               status: "draft",
@@ -178,5 +181,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

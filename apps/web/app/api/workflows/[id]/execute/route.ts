@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@kianax/server/convex/_generated/api";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
+import { getToken } from "@kianax/web/lib/auth-server";
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // Authenticate user
+    const token = await getToken();
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const routineId = id as Id<"routines">;
 
@@ -21,6 +28,7 @@ export async function POST(
     }
 
     const convex = new ConvexHttpClient(convexUrl);
+    convex.setAuth(token);
 
     // Fetch routine
     const routine = await convex.query(api.routines.get, { id: routineId });
