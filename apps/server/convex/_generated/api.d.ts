@@ -16,6 +16,7 @@ import type * as plugins from "../plugins.js";
 import type * as routines from "../routines.js";
 import type * as settings from "../settings.js";
 import type * as users from "../users.js";
+import type * as workflow_actions from "../workflow_actions.js";
 
 import type {
   ApiFromModules,
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   routines: typeof routines;
   settings: typeof settings;
   users: typeof users;
+  workflow_actions: typeof workflow_actions;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

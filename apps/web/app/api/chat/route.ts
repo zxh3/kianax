@@ -10,7 +10,6 @@ import type { Id } from "@kianax/server/convex/_generated/dataModel";
 // Initialize Convex client
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
 const convex = new ConvexHttpClient(convexUrl);
-const siteUrl = process.env.SITE_URL || "http://localhost:3000";
 
 export async function POST(req: Request) {
   // 1. Authenticate user
@@ -159,18 +158,14 @@ export async function POST(req: Request) {
         }),
         execute: async ({ routineId }) => {
           try {
-            // Call the Next.js API endpoint for execution
-            // Use internal fetch to localhost
-            const response = await fetch(
-              `${siteUrl}/api/workflows/${routineId}/execute`,
+            const result = await convex.action(
+              api.workflow_actions.startRoutine,
               {
-                method: "POST",
+                routineId: routineId as Id<"routines">,
               },
             );
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Execution failed");
             return {
-              executionId: data.workflowId,
+              executionId: result.workflowId,
               message: "Routine execution started.",
             };
           } catch (error: any) {

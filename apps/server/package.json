@@ -9,8 +9,9 @@
     "lint": "biome check ."
   },
   "dependencies": {
-    "convex": "^1.28.2",
-    "@convex-dev/better-auth": "^0.9.7"
+    "@convex-dev/better-auth": "^0.9.7",
+    "@temporalio/client": "^1.13.2",
+    "convex": "^1.28.2"
   },
   "devDependencies": {
     "typescript": "5.9.2"
