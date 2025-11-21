@@ -105,17 +105,19 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Logical Operator */}
-      <div className="space-y-2">
-        <Label>When multiple conditions</Label>
+      <div className="space-y-3">
+        <Label className="text-sm font-medium text-gray-900">
+          When multiple conditions match
+        </Label>
         <Select
           value={localConfig.logicalOperator}
           onValueChange={(value: "AND" | "OR") =>
             handleChange({ ...localConfig, logicalOperator: value })
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -130,34 +132,59 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
       </div>
 
       {/* Conditions */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label>Conditions</Label>
-          <Button size="sm" variant="outline" onClick={handleAddCondition}>
-            <IconPlus className="mr-2 size-4" />
+          <Label className="text-sm font-medium text-gray-900">
+            Conditions
+          </Label>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleAddCondition}
+            className="h-8"
+          >
+            <IconPlus className="mr-2 size-3.5" />
             Add Condition
           </Button>
         </div>
 
-        {localConfig.conditions.map((condition, index) => (
-          <div
-            key={index}
-            className="flex items-end gap-2 p-4 border rounded-lg bg-gray-50"
-          >
-            <div className="flex-1 space-y-2">
-              <Label className="text-xs text-gray-600">
-                Condition {index + 1}
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Operator</Label>
+        <div className="space-y-4">
+          {localConfig.conditions.map((condition, index) => (
+            <div
+              key={index}
+              className="relative p-4 border rounded-xl bg-white shadow-sm transition-all hover:border-gray-300 group"
+            >
+              {/* Card Header */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Condition {index + 1}
+                </span>
+                {localConfig.conditions.length > 1 && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50 -mr-1"
+                    onClick={() => handleRemoveCondition(index)}
+                    title="Remove condition"
+                  >
+                    <IconTrash className="size-3.5" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Card Content */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-600">
+                    Operator
+                  </Label>
                   <Select
                     value={condition.operator}
                     onValueChange={(value) =>
                       handleConditionChange(index, "operator", value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -171,8 +198,10 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
                 </div>
 
                 {!["exists", "empty"].includes(condition.operator) && (
-                  <div>
-                    <Label className="text-xs">Compare Value</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-600">
+                      Compare Value
+                    </Label>
                     <Input
                       value={condition.compareValue}
                       onChange={(e) =>
@@ -182,33 +211,31 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
                           (e.target as HTMLInputElement).value,
                         )
                       }
-                      placeholder="Enter value..."
+                      placeholder="Value to match..."
+                      className="h-9"
                     />
                   </div>
                 )}
               </div>
             </div>
-
-            {localConfig.conditions.length > 1 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleRemoveCondition(index)}
-              >
-                <IconTrash className="size-4 text-red-600" />
-              </Button>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Help Text */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
-        <p className="font-semibold mb-1">How it works:</p>
-        <p>
+      <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-600">
+        <p className="font-medium text-slate-900 mb-1 flex items-center gap-2">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+            i
+          </span>
+          How logic works
+        </p>
+        <p className="text-xs leading-relaxed">
           The incoming data will be evaluated against these conditions. If the
-          result is true, the workflow follows the TRUE branch; otherwise, it
-          follows the FALSE branch.
+          result is true, the execution flows to the{" "}
+          <span className="font-medium text-emerald-600">True</span> output.
+          Otherwise, it flows to the{" "}
+          <span className="font-medium text-rose-600">False</span> output.
         </p>
       </div>
     </div>

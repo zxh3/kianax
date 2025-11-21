@@ -11,6 +11,7 @@
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
+import { StaticDataConfigUI } from "./config-ui";
 
 export const staticDataPlugin = createPlugin("static-data")
   .withMetadata({
@@ -36,6 +37,7 @@ export const staticDataPlugin = createPlugin("static-data")
       data: z.any().describe("The static data to output"),
     }),
   )
+  .withConfigUI(StaticDataConfigUI)
   .execute(async ({ config }) => {
     // Simply return the configured static data
     // config.data is typed, though as z.any() it accepts anything

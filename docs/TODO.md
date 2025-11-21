@@ -118,6 +118,20 @@
 
 ---
 
+## 🎨 UX & Architecture Refinements
+
+**Goal:** Improve the visual programming experience based on initial feedback
+
+- [ ] **Iterator Node**
+  - Create a high-level "For Each" node to simplify loop visualization
+  - Replace low-level "Loop Control" (goto-style) with scope-based or iterator-based approach
+
+- [ ] **Data Flow Improvements**
+  - Investigate "variable picker" or global context to reduce "wiring hell"
+  - Visually differentiate "Control Flow" connections (sequencing) from "Data Flow" connections (variables)
+
+---
+
 ## 🔮 Coming Soon
 
 ### Phase 4: Core Plugins (Real APIs)
@@ -144,7 +158,6 @@
 
 ## 🐛 Known Issues
 
-- Node handles in routine editor have alignment issues (not critical, deferred)
 - Chat page is placeholder (not integrated with routine system yet)
 
 ---
