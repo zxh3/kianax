@@ -3,6 +3,7 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { components } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
+import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { betterAuth } from "better-auth";
 
 const siteUrl = process.env.SITE_URL!;
@@ -40,6 +41,27 @@ export const createAuth = (
     ],
   });
 };
+
+/**
+ * Helper to get authenticated user ID
+ * Returns userId if authenticated, undefined otherwise
+ */
+export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
+  return await authComponent.getAuthUser(ctx);
+}
+
+/**
+ * Helper to get authenticated user ID or throw
+ * Throws "Not authenticated" error if user is not authenticated
+ */
+export async function requireAuthUser(ctx: QueryCtx | MutationCtx) {
+  const user = await getAuthUser(ctx);
+
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+  return user;
+}
 
 // Example function for getting the current user
 // Feel free to edit, omit, etc.

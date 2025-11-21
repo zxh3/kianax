@@ -1,17 +1,17 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAuthUser } from "./auth";
 
 /**
  * Get user settings
  */
 export const get = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAuthUser(ctx);
     return await ctx.db
       .query("user_settings")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
   },
 });
@@ -22,13 +22,13 @@ export const get = query({
  */
 export const updateTheme = mutation({
   args: {
-    userId: v.string(),
     theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
     const existing = await ctx.db
       .query("user_settings")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
 
     if (existing) {
@@ -37,7 +37,7 @@ export const updateTheme = mutation({
       });
     } else {
       await ctx.db.insert("user_settings", {
-        userId: args.userId,
+        userId: user._id,
         theme: args.theme,
       });
     }

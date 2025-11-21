@@ -19,10 +19,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { data: session } = authClient.useSession();
 
-  const userSettings = useQuery(
-    api.settings.get,
-    session?.user?.id ? { userId: session.user.id } : "skip",
-  );
+  const userSettings = useQuery(api.settings.get, session ? {} : "skip");
 
   const updateTheme = useMutation(api.settings.updateTheme);
 
@@ -37,9 +34,8 @@ export default function SettingsPage() {
     const newTheme = value as "light" | "dark" | "system";
     setTheme(newTheme);
 
-    if (session?.user?.id) {
+    if (session) {
       await updateTheme({
-        userId: session.user.id,
         theme: newTheme,
       });
     }
@@ -47,13 +43,6 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences.
-        </p>
-      </div>
-
       <div className="grid gap-6">
         {/* Appearance */}
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm">

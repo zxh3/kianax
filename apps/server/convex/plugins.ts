@@ -1,28 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { QueryCtx, MutationCtx } from "./_generated/server";
-import { authComponent } from "./auth";
-
-/**
- * Helper to get authenticated user ID
- * Returns userId if authenticated, undefined otherwise
- */
-async function getAuthUser(ctx: QueryCtx | MutationCtx) {
-  return await authComponent.getAuthUser(ctx);
-}
-
-/**
- * Helper to get authenticated user ID or throw
- * Throws "Not authenticated" error if user is not authenticated
- */
-async function requireAuthUser(ctx: QueryCtx | MutationCtx) {
-  const user = await getAuthUser(ctx);
-
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-  return user;
-}
+import { requireAuthUser } from "./auth";
 
 /**
  * Get all plugins installed by the current user
