@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   applyNodeChanges,
@@ -118,9 +119,10 @@ export function RoutineEditor({
         target: conn.targetNodeId,
         sourceHandle: conn.sourceHandle,
         targetHandle: conn.targetHandle,
-        animated: false,
+        animated: true,
         style: {
           strokeWidth: 2,
+          strokeDasharray: "5 5",
           stroke:
             conn.condition?.value === "true" || conn.sourceHandle === "true"
               ? "#10b981"
@@ -131,7 +133,7 @@ export function RoutineEditor({
                   ? "#10b981"
                   : conn.sourceHandle === "error"
                     ? "#ef4444"
-                    : "#9ca3af",
+                    : "#94a3b8",
         },
       }));
     },
@@ -229,7 +231,8 @@ export function RoutineEditor({
       id: `${connection.source}-${connection.target}-${Date.now()}`,
       animated: true,
       style: {
-        strokeWidth: 3,
+        strokeWidth: 2,
+        strokeDasharray: "5 5",
         stroke:
           connection.sourceHandle === "true" ||
           connection.sourceHandle === "success"
@@ -237,27 +240,22 @@ export function RoutineEditor({
             : connection.sourceHandle === "false" ||
                 connection.sourceHandle === "error"
               ? "#ef4444"
-              : "#6366f1",
+              : "#94a3b8",
       },
       label: connection.sourceHandle || undefined,
       labelStyle: {
-        fill: "#ffffff",
-        fontWeight: 700,
+        fill: "#64748b",
+        fontWeight: 600,
         fontSize: 11,
       },
       labelBgStyle: {
-        fill:
-          connection.sourceHandle === "true" ||
-          connection.sourceHandle === "success"
-            ? "#10b981"
-            : connection.sourceHandle === "false" ||
-                connection.sourceHandle === "error"
-              ? "#ef4444"
-              : "#6366f1",
-        fillOpacity: 1,
+        fill: "#ffffff",
+        fillOpacity: 0.9,
+        stroke: "#e2e8f0",
+        strokeWidth: 1,
       },
-      labelBgPadding: [8, 6] as [number, number],
-      labelBgBorderRadius: 6,
+      labelBgPadding: [8, 4] as [number, number],
+      labelBgBorderRadius: 8,
     };
 
     setEdges((eds) => addEdge(newEdge, eds));
@@ -565,15 +563,25 @@ export function RoutineEditor({
               onConnect={onConnect}
               nodeTypes={nodeTypes}
               fitView
-              className="bg-gray-50"
-              deleteKeyCode="Delete"
+              className="bg-gray-50/50"
+              deleteKeyCode={["Delete", "Backspace"]}
+              connectionLineStyle={{
+                stroke: "#6366f1",
+                strokeWidth: 2,
+                strokeDasharray: "5 5",
+              }}
             >
-              <Background gap={12} size={1} />
-              <Controls />
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={20}
+                size={1}
+                color="#cbd5e1"
+              />
+              <Controls className="!bg-white !border !border-gray-100 !shadow-md !rounded-lg !m-4" />
               <MiniMap
-                nodeColor="#9ca3af"
-                className="!bg-white !border !border-gray-200"
-                maskColor="rgba(0, 0, 0, 0.05)"
+                nodeColor="#94a3b8"
+                className="!bg-white !border !border-gray-100 !shadow-lg !rounded-lg !m-4"
+                maskColor="rgba(248, 250, 252, 0.6)"
               />
             </ReactFlow>
           </>

@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useLayoutEffect, useState } from "react";
+import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { IconSettings } from "@tabler/icons-react";
 import {
@@ -17,12 +17,6 @@ export interface PluginNodeData extends Record<string, unknown> {
 
 function PluginNode({ data, selected, id }: NodeProps) {
   const nodeData = data as PluginNodeData;
-  const inputRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const outputRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [positions, setPositions] = useState<{
-    inputs: number[];
-    outputs: number[];
-  }>({ inputs: [], outputs: [] });
 
   // Get plugin metadata and ports
   const metadata = useMemo(
@@ -45,29 +39,6 @@ function PluginNode({ data, selected, id }: NodeProps) {
   const inputPorts = Object.values(inputs);
   const outputPorts = Object.values(outputs);
 
-  // Measure actual label positions
-  useLayoutEffect(() => {
-    const inputPositions = inputRefs.current.map((ref) => {
-      if (!ref) return 0;
-      return ref.offsetTop + ref.offsetHeight / 2;
-    });
-    const outputPositions = outputRefs.current.map((ref) => {
-      if (!ref) return 0;
-      return ref.offsetTop + ref.offsetHeight / 2;
-    });
-
-    // Only update if positions actually changed
-    setPositions((prev) => {
-      const hasChanged =
-        JSON.stringify(prev.inputs) !== JSON.stringify(inputPositions) ||
-        JSON.stringify(prev.outputs) !== JSON.stringify(outputPositions);
-
-      return hasChanged
-        ? { inputs: inputPositions, outputs: outputPositions }
-        : prev;
-    });
-  }, [inputPorts.length, outputPorts.length]);
-
   const handleConfigClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (nodeData.onConfigure && id) {
@@ -77,127 +48,118 @@ function PluginNode({ data, selected, id }: NodeProps) {
 
   return (
     <div
-      className={`relative bg-white border-2 rounded-lg w-[260px] transition-all ${
+      className={`relative bg-white border rounded-xl min-w-[280px] transition-all duration-200 group ${
         selected
-          ? "border-blue-500 shadow-lg ring-2 ring-blue-200"
-          : "border-gray-800 shadow-sm hover:shadow-md"
-      } ${!nodeData.enabled ? "opacity-40" : ""}`}
+          ? "border-blue-500 shadow-lg ring-2 ring-blue-500/20"
+          : "border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md"
+      } ${!nodeData.enabled ? "opacity-60 grayscale" : ""}`}
     >
-      {/* Header with Title and Icon */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-gray-200">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {metadata?.icon && (
-            <div className="text-xl flex-shrink-0">{metadata.icon}</div>
-          )}
-          <div className="font-semibold text-sm text-gray-900 truncate">
-            {nodeData.label}
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm ${
+              selected
+                ? "bg-blue-50 border-blue-100 text-blue-600"
+                : "bg-white border-gray-100 text-gray-600"
+            }`}
+          >
+            {metadata?.icon ? (
+              <div className="text-lg">{metadata.icon}</div>
+            ) : (
+              <div className="w-4 h-4 bg-gray-200 rounded-full" />
+            )}
+          </div>
+          <div className="flex flex-col overflow-hidden">
+            <span className="font-semibold text-sm text-gray-900 truncate leading-tight">
+              {nodeData.label}
+            </span>
+            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider truncate">
+              {metadata?.name || "Plugin"}
+            </span>
           </div>
         </div>
         {hasConfigUI && (
           <button
             type="button"
             onClick={handleConfigClick}
-            className="p-1 rounded hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700 flex-shrink-0"
+            className="p-1.5 rounded-md hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all text-gray-400 hover:text-gray-700 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
             title="Configure"
           >
-            <IconSettings className="w-3.5 h-3.5" />
+            <IconSettings className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Body - Port Labels and Handles */}
-      <div className="px-4 py-3 min-h-[80px] relative">
-        <div className="flex justify-between w-full text-xs font-medium">
-          {/* Input labels on left */}
-          <div className="space-y-3">
-            {inputPorts.map((input, index) => (
+      {/* Body */}
+      <div className="p-0">
+        {inputPorts.length > 0 || outputPorts.length > 0 ? (
+          <div className="flex flex-col py-3 gap-1">
+            {Array.from({
+              length: Math.max(inputPorts.length, outputPorts.length),
+            }).map((_, i) => (
               <div
-                key={input.name}
-                ref={(el) => {
-                  inputRefs.current[index] = el;
-                }}
-                className="text-gray-700 flex items-center h-5"
+                key={i}
+                className="relative flex justify-between items-center h-8"
               >
-                <span>{input.label}</span>
+                {inputPorts[i] && (
+                  <div className="relative flex items-center justify-start w-1/2">
+                    <Handle
+                      type="target"
+                      position={Position.Left}
+                      id={inputPorts[i].name}
+                      title={inputPorts[i].description}
+                      className="!w-3 !h-3 !bg-gray-400 hover:!bg-blue-500 transition-colors shadow-sm z-50"
+                    />
+                    <span className="text-xs font-medium text-gray-600 pl-2">
+                      {inputPorts[i].label}
+                    </span>
+                  </div>
+                )}
+                {outputPorts[i] && (
+                  <div className="relative flex items-center justify-end w-1/2">
+                    <span
+                      className={`text-xs font-medium text-right pr-2 ${
+                        outputPorts[i].name === "true" ||
+                        outputPorts[i].name === "success"
+                          ? "text-emerald-700"
+                          : (
+                                outputPorts[i].name === "false" ||
+                                  outputPorts[i].name === "error"
+                              )
+                            ? "text-rose-700"
+                            : "text-gray-700"
+                      }`}
+                    >
+                      {outputPorts[i].label}
+                    </span>
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={outputPorts[i].name}
+                      title={outputPorts[i].description}
+                      className={`!w-3 !h-3 shadow-sm transition-transform hover:scale-110 z-50 ${
+                        outputPorts[i].name === "true" ||
+                        outputPorts[i].name === "success"
+                          ? "!bg-emerald-500"
+                          : (
+                                outputPorts[i].name === "false" ||
+                                  outputPorts[i].name === "error"
+                              )
+                            ? "!bg-rose-500"
+                            : "!bg-gray-800"
+                      }`}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
-
-          {/* Output labels on right */}
-          <div className="space-y-3 text-right">
-            {outputPorts.map((output, index) => {
-              const isSuccess =
-                output.name === "true" || output.name === "success";
-              const isError =
-                output.name === "false" || output.name === "error";
-              const textColor = isSuccess
-                ? "text-green-700"
-                : isError
-                  ? "text-red-700"
-                  : "text-gray-700";
-
-              return (
-                <div
-                  key={output.name}
-                  ref={(el) => {
-                    outputRefs.current[index] = el;
-                  }}
-                  className={`${textColor} flex items-center justify-end h-5`}
-                >
-                  <span>{output.label}</span>
-                </div>
-              );
-            })}
+        ) : (
+          <div className="px-4 py-3 text-center text-xs text-gray-400 italic">
+            No inputs or outputs
           </div>
-        </div>
-
-        {/* Input Handles - Positioned based on measured label positions */}
-        {inputPorts.map((input, index) => {
-          const topOffset = positions.inputs[index] || 10;
-
-          return (
-            <Handle
-              key={input.name}
-              type="target"
-              position={Position.Left}
-              id={input.name}
-              title={input.description}
-              className="!w-3 !h-3 !border-2 !border-gray-800 !bg-white hover:!border-blue-500 hover:!scale-125 !transition-all !rounded-full"
-              style={{
-                top: `${topOffset}px`,
-                left: "-6px",
-              }}
-            />
-          );
-        })}
-
-        {/* Output Handles - Positioned based on measured label positions */}
-        {outputPorts.map((output, index) => {
-          const topOffset = positions.outputs[index] || 10;
-          const isSuccess = output.name === "true" || output.name === "success";
-          const isError = output.name === "false" || output.name === "error";
-          const borderColor = isSuccess
-            ? "#10b981"
-            : isError
-              ? "#ef4444"
-              : "#1f2937";
-
-          return (
-            <Handle
-              key={output.name}
-              type="source"
-              position={Position.Right}
-              id={output.name}
-              title={output.description}
-              className="!w-3 !h-3 !border-2 !bg-white hover:!scale-125 !transition-all !rounded-full"
-              style={{
-                top: `${topOffset}px`,
-                right: "-6px",
-                borderColor,
-              }}
-            />
-          );
-        })}
+        )}
       </div>
     </div>
   );

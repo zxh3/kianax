@@ -36,6 +36,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+.gemini-clipboard
 
 # Convex
 convex/_generated/
