@@ -10,7 +10,6 @@ export { z } from "zod";
 // Export core types (legacy)
 export type {
   Plugin as PluginInterface,
-  PluginType,
   PluginContext as LegacyPluginContext,
   CredentialSchema,
   PluginMetadata as LegacyPluginMetadata,

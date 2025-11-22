@@ -42,7 +42,7 @@ export async function testPlugin(args: string[]) {
     console.log("📦 Plugin Metadata:");
     console.log(`  ID: ${(plugin as any).id}`);
     console.log(`  Name: ${(plugin as any).name}`);
-    console.log(`  Type: ${(plugin as any).type}`);
+    console.log(`  Tags: ${(plugin as any).tags?.join(", ")}`);
     console.log(`  Version: ${(plugin as any).version}`);
     console.log();
 
@@ -55,8 +55,8 @@ export async function testPlugin(args: string[]) {
       "ℹ️  Using mock data. For custom data, provide test-data.json\n",
     );
 
-    // Default test data based on plugin type
-    const testData = getDefaultTestData((plugin as any).type);
+    // Default test data based on plugin tags
+    const testData = getDefaultTestData((plugin as any).tags || []);
 
     // Execute plugin
     const result = await tester.execute(testData);
@@ -79,36 +79,37 @@ export async function testPlugin(args: string[]) {
   }
 }
 
-function getDefaultTestData(pluginType: string) {
-  switch (pluginType) {
-    case "input":
-      return {
-        input: {},
-        config: {},
-      };
-
-    case "processor":
-      return {
-        input: { data: { test: "value" } },
-        config: {},
-      };
-
-    case "logic":
-      return {
-        input: { data: true },
-        config: { condition: "test condition" },
-      };
-
-    case "output":
-      return {
-        input: { data: { test: "value" } },
-        config: {},
-      };
-
-    default:
-      return {
-        input: {},
-        config: {},
-      };
+function getDefaultTestData(tags: string[]) {
+  if (tags.includes("input")) {
+    return {
+      input: {},
+      config: {},
+    };
   }
+
+  if (tags.includes("transform") || tags.includes("processor")) {
+    return {
+      input: { data: { test: "value" } },
+      config: {},
+    };
+  }
+
+  if (tags.includes("logic") || tags.includes("condition")) {
+    return {
+      input: { data: true },
+      config: { condition: "test condition" },
+    };
+  }
+
+  if (tags.includes("output")) {
+    return {
+      input: { data: { test: "value" } },
+      config: {},
+    };
+  }
+
+  return {
+    input: {},
+    config: {},
+  };
 }

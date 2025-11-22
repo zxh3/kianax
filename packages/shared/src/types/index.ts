@@ -7,7 +7,6 @@
 // Plugin types
 export type {
   Plugin,
-  PluginType,
   PluginContext,
   PluginMetadata,
   InstalledPlugin,

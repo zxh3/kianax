@@ -8,12 +8,6 @@
 import type { JSONSchema7 } from "json-schema";
 
 /**
- * Plugin types determine their role in a routine
- * Note: Triggers are routine-level config, not plugin nodes
- */
-export type PluginType = "input" | "processor" | "logic" | "output";
-
-/**
  * Plugin execution context passed to the execute function
  */
 export interface PluginContext {
@@ -43,9 +37,6 @@ export interface Plugin<
 
   /** Semantic version */
   version: string;
-
-  /** Plugin category */
-  type: PluginType;
 
   /** Author/publisher information */
   author?: {
@@ -117,7 +108,6 @@ export interface PluginMetadata {
   name: string;
   description: string;
   version: string;
-  type: PluginType;
   author: {
     name: string;
     email?: string;

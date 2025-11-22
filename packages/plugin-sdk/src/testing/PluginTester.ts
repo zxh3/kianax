@@ -129,7 +129,6 @@ export class PluginTester<
       name: this.plugin.name,
       description: this.plugin.description,
       version: this.plugin.version,
-      type: this.plugin.type,
       author: this.plugin.author,
       tags: this.plugin.tags,
       icon: this.plugin.icon,

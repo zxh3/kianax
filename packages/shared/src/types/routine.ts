@@ -7,8 +7,6 @@
  * Note: "Routine" is the product concept. "Workflow" refers to Temporal's execution engine.
  */
 
-import type { PluginType } from "./plugin";
-
 /**
  * Position coordinates for visual routine editor
  */
@@ -26,9 +24,6 @@ export interface RoutineNode {
 
   /** Plugin ID this node uses */
   pluginId: string;
-
-  /** Plugin type */
-  type: PluginType;
 
   /** Display label for this node */
   label: string;

@@ -17,16 +17,16 @@ const USAGE = `
 Kianax Plugin CLI
 
 Usage:
-  plugin create <name> [--type <type>]     Create a new plugin from template
-  plugin test <file>                       Test a plugin locally
-  plugin validate <file>                   Validate plugin structure
-  plugin help                              Show this help message
+  plugin create <name> [--template <template>]   Create a new plugin from template
+  plugin test <file>                             Test a plugin locally
+  plugin validate <file>                         Validate plugin structure
+  plugin help                                    Show this help message
 
 Options:
-  --type <type>    Plugin type (input, processor, logic, output)
+  --template <template>    Plugin template (input, processor, logic, output)
 
 Examples:
-  plugin create my-plugin --type input
+  plugin create my-plugin --template input
   plugin test ./src/plugins/my-plugin.ts
   plugin validate ./src/plugins/my-plugin.ts
 `;

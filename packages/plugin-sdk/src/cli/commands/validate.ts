@@ -47,7 +47,6 @@ export async function validatePlugin(args: string[]) {
     if (!plugin.id) errors.push("Missing required field: id");
     if (!plugin.name) errors.push("Missing required field: name");
     if (!plugin.version) errors.push("Missing required field: version");
-    if (!plugin.type) errors.push("Missing required field: type");
     if (!plugin.description)
       warnings.push("Missing recommended field: description");
 
@@ -62,14 +61,6 @@ export async function validatePlugin(args: string[]) {
     if (plugin.version && !/^\d+\.\d+\.\d+$/.test(plugin.version)) {
       errors.push(
         `Invalid version format: "${plugin.version}". Must be semver (X.Y.Z).`,
-      );
-    }
-
-    // Validate type
-    const validTypes = ["input", "processor", "logic", "output"];
-    if (plugin.type && !validTypes.includes(plugin.type)) {
-      errors.push(
-        `Invalid type: "${plugin.type}". Must be one of: ${validTypes.join(", ")}`,
       );
     }
 
@@ -115,7 +106,6 @@ export async function validatePlugin(args: string[]) {
       console.log("📦 Plugin Summary:");
       console.log(`  ID: ${plugin.id}`);
       console.log(`  Name: ${plugin.name}`);
-      console.log(`  Type: ${plugin.type}`);
       console.log(`  Version: ${plugin.version}`);
       if (plugin.description) {
         console.log(`  Description: ${plugin.description}`);

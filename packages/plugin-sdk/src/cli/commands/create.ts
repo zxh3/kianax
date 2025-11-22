@@ -149,7 +149,7 @@ export async function createPlugin(args: string[]) {
   const { values, positionals } = parseArgs({
     args,
     options: {
-      type: {
+      template: {
         type: "string",
         short: "t",
         default: "input",
@@ -168,11 +168,11 @@ export async function createPlugin(args: string[]) {
     throw new Error("Plugin name is required. Usage: plugin create <name>");
   }
 
-  const pluginType = values.type as keyof typeof TEMPLATES;
+  const templateName = values.template as keyof typeof TEMPLATES;
 
-  if (!TEMPLATES[pluginType]) {
+  if (!TEMPLATES[templateName]) {
     throw new Error(
-      `Invalid plugin type: ${pluginType}. Must be one of: input, processor, logic, output`,
+      `Invalid plugin template: ${templateName}. Must be one of: input, processor, logic, output`,
     );
   }
 
@@ -187,7 +187,7 @@ export async function createPlugin(args: string[]) {
     .join(" ");
 
   // Generate plugin code from template
-  const code = TEMPLATES[pluginType]
+  const code = TEMPLATES[templateName]
     .replace(/\{\{name\}\}/g, camelCase)
     .replace(/\{\{id\}\}/g, id)
     .replace(/\{\{displayName\}\}/g, displayName);
@@ -198,7 +198,7 @@ export async function createPlugin(args: string[]) {
 
   await writeFile(filepath, code, "utf-8");
 
-  console.log(`✅ Created ${pluginType} plugin: ${filename}`);
+  console.log(`✅ Created ${templateName} plugin: ${filename}`);
   console.log(`\nNext steps:`);
   console.log(`1. Edit ${filename} to implement your plugin logic`);
   console.log(`2. Test your plugin: plugin test ${filename}`);

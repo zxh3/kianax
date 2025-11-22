@@ -7,11 +7,6 @@
 import type { z } from "zod";
 
 /**
- * Plugin types determine their role in a routine
- */
-export type PluginType = "input" | "processor" | "logic" | "output";
-
-/**
  * Plugin tags for categorization and filtering
  */
 export type PluginTag = "logic" | "data-source" | "action" | "transformer";
@@ -64,9 +59,6 @@ export interface Plugin<
   /** Semantic version */
   version: string;
 
-  /** Plugin category */
-  type: PluginType;
-
   /** Author/publisher information */
   author?: {
     name: string;
@@ -108,7 +100,6 @@ export interface PluginMetadata {
   name: string;
   description: string;
   version: string;
-  type: PluginType;
   author?: {
     name: string;
     email?: string;
