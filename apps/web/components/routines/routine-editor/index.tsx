@@ -523,7 +523,7 @@ export function RoutineEditor({
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
-              fitView
+              fitView={false}
               className="bg-background"
               deleteKeyCode={["Delete", "Backspace"]}
               panOnDrag={activeTool === "hand" ? true : [1, 2]}
