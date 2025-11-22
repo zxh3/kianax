@@ -13,6 +13,7 @@ export type {
   PluginContext as LegacyPluginContext,
   CredentialSchema,
   PluginMetadata as LegacyPluginMetadata,
+  PluginTag, // Re-export PluginTag
 } from "./types";
 
 // Export Plugin base class (recommended approach)

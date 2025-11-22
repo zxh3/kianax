@@ -7,6 +7,7 @@
 
 import type { z } from "zod";
 import type { ComponentType } from "react";
+import type { PluginTag } from "./index"; // Import PluginTag
 
 /**
  * Plugin execution context passed to the execute method
@@ -41,20 +42,8 @@ export interface PluginMetadata {
   /** Plugin icon (emoji or URL) */
   icon?: string;
 
-  /**
-   * Tags for discovery, search, and categorization
-   *
-   * Recommended tags:
-   * - Role: "input", "output", "transform", "logic", "condition"
-   * - Category: "api", "data", "notification", "ai", "file"
-   * - Service: "http", "email", "slack", "github", "openai"
-   *
-   * Examples:
-   * - ["logic", "condition", "branching"]
-   * - ["input", "api", "http", "rest"]
-   * - ["output", "notification", "email", "smtp"]
-   */
-  tags: string[];
+  /** Tags for discovery, search, and categorization */
+  tags: PluginTag[];
 
   /** Author/publisher information */
   author?: {

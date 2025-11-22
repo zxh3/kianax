@@ -5,7 +5,11 @@
  * Flat structure - all plugins in root level folders.
  */
 
-import { Plugin, type PluginMetadata } from "@kianax/plugin-sdk";
+import {
+  Plugin,
+  type PluginMetadata,
+  type PluginTag,
+} from "@kianax/plugin-sdk";
 
 // Type for plugin class constructor OR plugin instance
 type PluginClass = new () => Plugin;
@@ -95,7 +99,7 @@ export function getAllPluginMetadata(): PluginMetadata[] {
 /**
  * Get plugins by tag
  */
-export function getPluginsByTag(tag: string): PluginMetadata[] {
+export function getPluginsByTag(tag: PluginTag): PluginMetadata[] {
   return getAllPluginMetadata().filter((plugin) => plugin.tags?.includes(tag));
 }
 
