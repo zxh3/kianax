@@ -54,7 +54,7 @@ export const mockWeatherPlugin = createPlugin("mock-weather")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["input", "data", "weather", "mock", "testing"],
+    tags: ["data-source"],
     icon: "☀️",
   })
   .withInput("request", {

@@ -66,7 +66,7 @@ export const aiTransformPlugin = createPlugin("ai-transform")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["processor", "ai", "transform", "openai", "data"],
+    tags: ["transformer"],
     icon: "🤖",
   })
   .withCredentials([

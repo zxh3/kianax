@@ -148,7 +148,7 @@ export const stockPricePlugin = createPlugin("stock-price-polygon")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["input", "data", "stock", "market", "finance", "polygon"],
+    tags: ["data-source"],
     icon: "📈",
   })
   .withCredentials([

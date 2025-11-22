@@ -12,6 +12,11 @@ import type { z } from "zod";
 export type PluginType = "input" | "processor" | "logic" | "output";
 
 /**
+ * Plugin tags for categorization and filtering
+ */
+export type PluginTag = "logic" | "data-source" | "action" | "transformer";
+
+/**
  * Plugin execution context passed to the execute function
  */
 export interface PluginContext {
@@ -82,7 +87,7 @@ export interface Plugin<
   credentials?: CredentialSchema[];
 
   /** Plugin tags for discovery */
-  tags?: string[];
+  tags?: PluginTag[];
 
   /** Plugin icon (URL or emoji) */
   icon?: string;
@@ -109,7 +114,7 @@ export interface PluginMetadata {
     email?: string;
     url?: string;
   };
-  tags?: string[];
+  tags?: PluginTag[];
   icon?: string;
   credentials?: CredentialSchema[];
   // JSON Schema exports for UI/documentation

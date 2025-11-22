@@ -116,13 +116,7 @@ export const ifElsePlugin = createPlugin("if-else")
       "Conditional branching with support for comparisons (==, !=, >, <, >=, <=) and logical operators (AND, OR)",
     version: "1.0.0",
     icon: "🔀",
-    tags: [
-      "logic", // Role tag
-      "condition", // Category tag
-      "branching", // Feature tag
-      "if-else", // Specific tag
-      "comparison", // Feature tag
-    ],
+    tags: ["logic"],
     author: {
       name: "Kianax",
       url: "https://kianax.com",

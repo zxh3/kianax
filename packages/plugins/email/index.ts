@@ -57,7 +57,7 @@ export const emailPlugin = createPlugin("email-sendgrid")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["action", "email", "sendgrid", "notification", "communication"],
+    tags: ["action"],
     icon: "📧",
   })
   .withCredentials([

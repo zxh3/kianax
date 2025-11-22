@@ -52,7 +52,7 @@ export const httpRequestPlugin = createPlugin("http-request")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["action", "http", "api", "webhook", "integration"],
+    tags: ["action", "data-source"],
     icon: "🌐",
   })
   .withInput("request", {

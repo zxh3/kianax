@@ -23,7 +23,7 @@ export const staticDataPlugin = createPlugin("static-data")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["input", "data", "static", "constant", "testing"],
+    tags: ["data-source"],
     icon: "📊",
   })
   // No inputs needed - this is a pure data source

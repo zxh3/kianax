@@ -41,7 +41,7 @@ export const loopControlPlugin = createPlugin("loop-control")
       name: "Kianax",
       url: "https://kianax.com",
     },
-    tags: ["logic", "control-flow", "loops"],
+    tags: ["logic"],
     icon: "🔄",
   })
   .withInput("input", {
