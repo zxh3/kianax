@@ -11,22 +11,13 @@ import {
   CardTitle,
 } from "@kianax/ui/components/card";
 import type { PluginMetadata } from "@kianax/plugin-sdk";
-import { categorizePlugin } from "@/lib/plugins";
 
 interface PluginCardProps {
   plugin: PluginMetadata;
   onConfigure?: () => void;
 }
 
-const categoryLabels = {
-  input: "Data Source",
-  processor: "Processor",
-  logic: "Logic",
-  action: "Action",
-} as const;
-
 export function PluginCard({ plugin, onConfigure }: PluginCardProps) {
-  const category = categorizePlugin(plugin);
   const hasCredentials = plugin.credentials && plugin.credentials.length > 0;
 
   return (
@@ -52,9 +43,6 @@ export function PluginCard({ plugin, onConfigure }: PluginCardProps) {
 
       <CardContent className="pt-0 space-y-2 flex-1 flex flex-col justify-end">
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <Badge variant="outline" className="font-normal">
-            {categoryLabels[category]}
-          </Badge>
           {plugin.tags?.slice(0, 4).map((tag) => (
             <Badge key={tag} variant="outline" className="font-normal">
               {tag}

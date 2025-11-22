@@ -58,41 +58,6 @@ export function getPluginMetadata(
 }
 
 /**
- * Categorize plugin by its primary tag
- */
-export function categorizePlugin(
-  metadata: PluginMetadata,
-): "input" | "processor" | "logic" | "action" {
-  const tags = metadata.tags || [];
-
-  if (tags.includes("input") || tags.includes("data")) {
-    return "input";
-  }
-  if (tags.includes("logic") || tags.includes("condition")) {
-    return "logic";
-  }
-  if (tags.includes("action") || tags.includes("output")) {
-    return "action";
-  }
-  if (tags.includes("processor") || tags.includes("transform")) {
-    return "processor";
-  }
-
-  // Default based on I/O characteristics
-  const plugin = createPluginInstance(metadata.id);
-  if (!plugin) return "processor";
-
-  const schemas = plugin.defineSchemas();
-  const hasInputs = Object.keys(schemas.inputs).length > 0;
-  const hasOutputs = Object.keys(schemas.outputs).length > 0;
-
-  if (!hasInputs && hasOutputs) return "input";
-  if (hasInputs && !hasOutputs) return "action";
-
-  return "processor";
-}
-
-/**
  * Check if plugin has multiple outputs (e.g., conditional branches)
  */
 export function hasMultipleOutputs(pluginId: string): boolean {

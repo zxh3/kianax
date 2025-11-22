@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
-import { authClient } from "@kianax/web/lib/auth-client";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
@@ -18,8 +17,6 @@ import { toast } from "sonner";
 type RoutineStatus = "draft" | "active" | "paused" | "archived";
 
 export default function RoutinesPage() {
-  const { data: session } = authClient.useSession();
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<RoutineStatus | "all">(
     "all",

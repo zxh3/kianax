@@ -5,21 +5,15 @@
  *
  * Commands:
  * - plugin create <name> - Create a new plugin from template
- * - plugin test <file> - Test a plugin locally
- * - plugin validate <file> - Validate plugin structure
  */
 
 import { createPlugin } from "./commands/create";
-import { testPlugin } from "./commands/test";
-import { validatePlugin } from "./commands/validate";
 
 const USAGE = `
 Kianax Plugin CLI
 
 Usage:
   plugin create <name> [--template <template>]   Create a new plugin from template
-  plugin test <file>                             Test a plugin locally
-  plugin validate <file>                         Validate plugin structure
   plugin help                                    Show this help message
 
 Options:
@@ -27,8 +21,6 @@ Options:
 
 Examples:
   plugin create my-plugin --template input
-  plugin test ./src/plugins/my-plugin.ts
-  plugin validate ./src/plugins/my-plugin.ts
 `;
 
 async function main() {
@@ -46,14 +38,6 @@ async function main() {
     switch (command) {
       case "create":
         await createPlugin(commandArgs);
-        break;
-
-      case "test":
-        await testPlugin(commandArgs);
-        break;
-
-      case "validate":
-        await validatePlugin(commandArgs);
         break;
 
       default:

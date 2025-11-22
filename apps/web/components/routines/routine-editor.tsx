@@ -38,7 +38,7 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
-import { getAllPlugins, categorizePlugin } from "@/lib/plugins";
+import { getAllPlugins } from "@/lib/plugins";
 
 // Convert our routine node format to React Flow node format
 interface RoutineNode {
@@ -460,23 +460,6 @@ export function RoutineEditor({
 
   const configuringNode = nodes.find((n) => n.id === configuringNodeId);
 
-  // Group plugins by category
-  const pluginsByCategory = useMemo(() => {
-    const grouped = {
-      input: [] as typeof availablePlugins,
-      processor: [] as typeof availablePlugins,
-      logic: [] as typeof availablePlugins,
-      action: [] as typeof availablePlugins,
-    };
-
-    availablePlugins.forEach((plugin) => {
-      const category = categorizePlugin(plugin);
-      grouped[category].push(plugin);
-    });
-
-    return grouped;
-  }, [availablePlugins]);
-
   return (
     <div className="flex h-full w-full flex-col">
       {/* Toolbar */}
@@ -561,97 +544,20 @@ export function RoutineEditor({
                   </Button>
                 </div>
 
-                {/* Inputs */}
-                {pluginsByCategory.input.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-semibold text-blue-600 mb-2">
-                      DATA SOURCES
-                    </div>
-                    <div className="space-y-1.5">
-                      {pluginsByCategory.input.map((plugin) => (
-                        <Button
-                          key={plugin.id}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => handleAddNode(plugin.id, plugin.name)}
-                        >
-                          <span className="mr-2">{plugin.icon}</span>
-                          {plugin.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Processors */}
-                {pluginsByCategory.processor.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-semibold text-purple-600 mb-2">
-                      PROCESSORS
-                    </div>
-                    <div className="space-y-1.5">
-                      {pluginsByCategory.processor.map((plugin) => (
-                        <Button
-                          key={plugin.id}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => handleAddNode(plugin.id, plugin.name)}
-                        >
-                          <span className="mr-2">{plugin.icon}</span>
-                          {plugin.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Logic */}
-                {pluginsByCategory.logic.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-semibold text-yellow-600 mb-2">
-                      LOGIC
-                    </div>
-                    <div className="space-y-1.5">
-                      {pluginsByCategory.logic.map((plugin) => (
-                        <Button
-                          key={plugin.id}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => handleAddNode(plugin.id, plugin.name)}
-                        >
-                          <span className="mr-2">{plugin.icon}</span>
-                          {plugin.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                {pluginsByCategory.action.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-semibold text-green-600 mb-2">
-                      ACTIONS
-                    </div>
-                    <div className="space-y-1.5">
-                      {pluginsByCategory.action.map((plugin) => (
-                        <Button
-                          key={plugin.id}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => handleAddNode(plugin.id, plugin.name)}
-                        >
-                          <span className="mr-2">{plugin.icon}</span>
-                          {plugin.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  {availablePlugins.map((plugin) => (
+                    <Button
+                      key={plugin.id}
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => handleAddNode(plugin.id, plugin.name)}
+                    >
+                      <span className="mr-2">{plugin.icon}</span>
+                      {plugin.name}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
 
