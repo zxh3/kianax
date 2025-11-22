@@ -85,16 +85,17 @@ The project is a monorepo managed by Turbo:
 
 If you are an AI coding assistant (Claude Code, Gemini CLI, etc.) working on this repository:
 
-1.  **After making changes:** Run the formatter to ensure consistent style.
+1.  **Do not commit changes automatically.** Only commit when explicitly instructed by the user.
+2.  **After making changes:** Run the formatter to ensure consistent style.
     ```bash
     bun run format
     ```
-2.  **Before committing:** Run linting and type checking to catch errors.
+3.  **Before proposing a commit:** Run linting and type checking to catch errors.
     ```bash
     bun run lint
     bun run typecheck
     ```
-3.  **Fixing issues:** If linting fails, try running `bunx @biomejs/biome check --write .` to automatically fix supported issues.
+4.  **Fixing issues:** If linting fails, try running `bunx @biomejs/biome check --write .` to automatically fix supported issues.
 
 ## Contributing
 
