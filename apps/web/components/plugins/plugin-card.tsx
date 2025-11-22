@@ -10,20 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@kianax/ui/components/card";
-import { Switch } from "@kianax/ui/components/switch";
-import { Label } from "@kianax/ui/components/label";
 import type { PluginMetadata } from "@kianax/plugins";
 import { categorizePlugin } from "@/lib/plugins";
 
 interface PluginCardProps {
   plugin: PluginMetadata;
-  isInstalled?: boolean;
-  isEnabled?: boolean;
-  onInstall?: () => void;
-  onUninstall?: () => void;
-  onToggle?: (enabled: boolean) => void;
   onConfigure?: () => void;
-  loading?: boolean;
 }
 
 const categoryLabels = {
@@ -33,20 +25,12 @@ const categoryLabels = {
   action: "Action",
 } as const;
 
-export function PluginCard({
-  plugin,
-  isInstalled = false,
-  isEnabled = false,
-  onInstall,
-  onUninstall,
-  onToggle,
-  onConfigure,
-  loading = false,
-}: PluginCardProps) {
+export function PluginCard({ plugin, onConfigure }: PluginCardProps) {
   const category = categorizePlugin(plugin);
+  const hasCredentials = plugin.credentials && plugin.credentials.length > 0;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start gap-2">
           <div className="text-2xl">{plugin.icon || "🔌"}</div>
@@ -57,25 +41,16 @@ export function PluginCard({
             </CardDescription>
           </div>
         </div>
-        <CardAction>
-          {isInstalled ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onUninstall}
-              disabled={loading}
-            >
-              Uninstall
+        {hasCredentials && onConfigure && (
+          <CardAction>
+            <Button variant="outline" size="sm" onClick={onConfigure}>
+              Configure
             </Button>
-          ) : (
-            <Button size="sm" onClick={onInstall} disabled={loading}>
-              Install
-            </Button>
-          )}
-        </CardAction>
+          </CardAction>
+        )}
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-2">
+      <CardContent className="pt-0 space-y-2 flex-1 flex flex-col justify-end">
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <Badge variant="outline" className="font-normal">
             {categoryLabels[category]}
@@ -87,43 +62,10 @@ export function PluginCard({
           ))}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t mt-2">
           {plugin.author && <span>by {plugin.author.name}</span>}
-          <span>Version {plugin.version}</span>
+          <span>v{plugin.version}</span>
         </div>
-
-        {isInstalled && (onToggle || onConfigure) && (
-          <div className="flex items-center justify-between pt-2 border-t">
-            {onToggle && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={isEnabled}
-                  onCheckedChange={onToggle}
-                  disabled={loading}
-                  id={`plugin-${plugin.id}-enabled`}
-                />
-                <Label
-                  htmlFor={`plugin-${plugin.id}-enabled`}
-                  className="text-xs font-normal cursor-pointer"
-                >
-                  Enabled
-                </Label>
-              </div>
-            )}
-            {plugin.credentials &&
-              plugin.credentials.length > 0 &&
-              onConfigure && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onConfigure}
-                  disabled={loading}
-                >
-                  Configure
-                </Button>
-              )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

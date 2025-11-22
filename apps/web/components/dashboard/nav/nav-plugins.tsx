@@ -1,6 +1,6 @@
 "use client";
 
-import { IconPuzzle, IconShoppingBag } from "@tabler/icons-react";
+import { IconShoppingBag } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,17 +19,6 @@ export function NavPlugins() {
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Plugins</SidebarGroupLabel>
       <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            isActive={pathname === "/dashboard/plugins"}
-          >
-            <Link href="/dashboard/plugins">
-              <IconPuzzle />
-              <span>My Plugins</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild

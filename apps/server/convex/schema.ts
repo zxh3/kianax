@@ -140,20 +140,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_workflow_id", ["workflowId"]),
 
-  // Installed plugins (per user)
-  installed_plugins: defineTable({
-    userId: v.string(),
-    pluginId: v.string(),
-    version: v.string(),
-    enabled: v.boolean(),
-    config: v.optional(v.any()),
-    credentialsSet: v.boolean(),
-    installedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_plugin", ["pluginId"])
-    .index("by_user_and_plugin", ["userId", "pluginId"]),
-
   // Plugin credentials (encrypted)
   plugin_credentials: defineTable({
     userId: v.string(),
