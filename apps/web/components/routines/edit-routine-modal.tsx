@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
@@ -51,6 +51,11 @@ export function EditRoutineModal({
   >("draft");
   const [tags, setTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  const nameId = useId();
+  const descriptionId = useId();
+  const tagsId = useId();
+  const statusId = useId();
 
   const updateRoutine = useMutation(api.routines.update);
 
@@ -114,7 +119,7 @@ export function EditRoutineModal({
               Name <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="edit-name"
+              id={nameId}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Routine name"
@@ -124,7 +129,7 @@ export function EditRoutineModal({
           <div className="space-y-2">
             <Label htmlFor="edit-description">Description</Label>
             <Textarea
-              id="edit-description"
+              id={descriptionId}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What does this routine do?"
@@ -138,7 +143,7 @@ export function EditRoutineModal({
               value={status}
               onValueChange={(value: any) => setStatus(value)}
             >
-              <SelectTrigger id="edit-status">
+              <SelectTrigger id={statusId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -153,7 +158,7 @@ export function EditRoutineModal({
           <div className="space-y-2">
             <Label htmlFor="edit-tags">Tags (comma separated)</Label>
             <Input
-              id="edit-tags"
+              id={tagsId}
               value={tags.join(", ")}
               onChange={(e) =>
                 setTags(

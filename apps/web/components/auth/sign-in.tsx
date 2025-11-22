@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Label } from "@kianax/ui/components/label";
@@ -13,6 +13,10 @@ export function SignIn() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const nameId = useId();
+  const emailId = useId();
+  const passwordId = useId();
 
   const handleGoogleSignIn = async () => {
     await authClient.signIn.social({
@@ -86,7 +90,7 @@ export function SignIn() {
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
-                  id="name"
+                  id={nameId}
                   type="text"
                   placeholder="John Doe"
                   value={name}
@@ -98,7 +102,7 @@ export function SignIn() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
-                id="email"
+                id={emailId}
                 type="email"
                 placeholder="you@example.com"
                 value={email}
@@ -109,7 +113,7 @@ export function SignIn() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
+                id={passwordId}
                 type="password"
                 placeholder="••••••••"
                 value={password}

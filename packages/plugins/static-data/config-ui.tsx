@@ -127,7 +127,7 @@ export function StaticDataConfigUI({
   const handleNumberChange = (val: string) => {
     setNumberValue(val);
     const num = Number(val); // Consider handling NaN or empty string
-    if (!isNaN(num)) {
+    if (!Number.isNaN(num)) {
       onChange({ data: num });
     }
   };

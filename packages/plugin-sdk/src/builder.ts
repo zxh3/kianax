@@ -75,8 +75,14 @@ interface PortSchemaMap {
  * throughout the building process.
  */
 export class PluginBuilder<
-  TInputSchemas extends PortSchemaMap = {},
-  TOutputSchemas extends PortSchemaMap = {},
+  TInputSchemas extends PortSchemaMap = Record<
+    string,
+    z.ZodType<any, any, any>
+  >,
+  TOutputSchemas extends PortSchemaMap = Record<
+    string,
+    z.ZodType<any, any, any>
+  >,
   TConfig = unknown,
 > {
   private _id: string;
@@ -88,7 +94,6 @@ export class PluginBuilder<
   private _configSchema?: z.ZodType;
   private _execute?: ExecuteFunction<any, any, any>;
   private _configUI?: ComponentType<PluginConfigUIProps<any>>;
-  private _credentials?: PluginMetadata["credentials"];
 
   constructor(id: string) {
     this._id = id;
@@ -163,7 +168,6 @@ export class PluginBuilder<
   withCredentials(
     credentials: NonNullable<PluginMetadata["credentials"]>,
   ): PluginBuilder<TInputSchemas, TOutputSchemas, TConfig> {
-    this._credentials = credentials;
     this._metadata.credentials = credentials;
     return this;
   }

@@ -161,7 +161,7 @@ export async function POST(req: Request) {
           try {
             // Call the Next.js API endpoint for execution
             // Use internal fetch to localhost
-            const response = await fetch(
+            const _response = await fetch(
               `${siteUrl}/api/workflows/${routineId}/execute`,
               {
                 method: "POST",
@@ -179,11 +179,11 @@ export async function POST(req: Request) {
             );
             // Actually, let's just try without forwarding first. `getToken` on the *called* API route might fail if no cookies.
             // I must forward headers.
-            const headers = new Headers(req.headers);
+            const _headers = new Headers(req.headers);
             // Remove host/content-length to avoid issues? Or just copy `cookie`.
             const cookie = req.headers.get("cookie");
             const fetchHeaders: HeadersInit = {};
-            if (cookie) fetchHeaders["cookie"] = cookie;
+            if (cookie) fetchHeaders.cookie = cookie;
 
             const executeResponse = await fetch(
               `${siteUrl}/api/workflows/${routineId}/execute`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { getPluginConfigComponent } from "@kianax/plugins";
 import { ScrollArea } from "@kianax/ui/components/scroll-area";
