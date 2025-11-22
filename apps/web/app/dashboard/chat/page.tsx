@@ -1,4 +1,4 @@
-import { ChatInterface } from "@kianax/web/components/ChatInterface";
+import ChatInterface from "@kianax/web/components/chat/chat-interface";
 
 export default function ChatPage() {
   return (
