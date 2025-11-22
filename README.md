@@ -35,11 +35,20 @@
     bun install
     ```
 
-2.  **Start development server:**
+2.  **Start development servers:**
+    Open two separate terminal panes.
+
+    **Pane 1 (Temporal Services):**
     ```bash
-    bun dev
+    bun run dev:temporal
     ```
-    This launches Next.js (3000), Convex, Temporal Server (7233), and Workers in parallel.
+    (This starts the Temporal Server on 7233 and Temporal UI on 8233.)
+
+    **Pane 2 (Frontend & Backend Apps):**
+    ```bash
+    bun run dev:apps
+    ```
+    (This starts the Next.js app on 3000, Convex development server, and Temporal Workers.)
 
 3.  **Setup Environment:**
     - Create a Convex project: `cd apps/server && npx convex dev`
