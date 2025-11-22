@@ -1,8 +1,6 @@
 # Kianax
 
-**"Talk to Create Routines"** - An AI-native automation platform where users build workflows by describing them in natural language.
-
-> **Status:** Phase 2 Complete (Routine Editor, Plugins, Execution Engine). Phase 3 (Triggers & AI) In Progress.
+**Kianax: Your AI Automation Co-pilot.** Design, automate, and orchestrate custom routines for any task, all powered by natural language.
 
 ## Key Features
 
@@ -82,6 +80,21 @@ The project is a monorepo managed by Turbo:
 - **`apps/workers`**: Temporal workers that execute the routine logic.
 - **`packages/plugins`**: The core plugin registry and definitions.
 - **`packages/plugin-sdk`**: The builder SDK for creating new plugins.
+
+## For Coding Agents
+
+If you are an AI coding assistant (Claude Code, Gemini CLI, etc.) working on this repository:
+
+1.  **After making changes:** Run the formatter to ensure consistent style.
+    ```bash
+    bun run format
+    ```
+2.  **Before committing:** Run linting and type checking to catch errors.
+    ```bash
+    bun run lint
+    bun run typecheck
+    ```
+3.  **Fixing issues:** If linting fails, try running `bunx @biomejs/biome check --write .` to automatically fix supported issues.
 
 ## Contributing
 
