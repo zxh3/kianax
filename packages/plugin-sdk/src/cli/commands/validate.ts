@@ -5,7 +5,7 @@
  */
 
 import { resolve } from "node:path";
-import type { Plugin } from "../../types/legacy";
+import type { Plugin } from "../../index";
 
 export async function validatePlugin(args: string[]) {
   if (args.length === 0) {
@@ -32,7 +32,9 @@ export async function validatePlugin(args: string[]) {
     // Find the plugin export
     const plugin = Object.values(module).find(
       (exp: any) =>
-        exp?.id && exp?.execute && typeof exp.execute === "function",
+        exp &&
+        typeof exp.getId === "function" &&
+        typeof exp.execute === "function",
     ) as Plugin | undefined;
 
     if (!plugin) {
@@ -43,45 +45,41 @@ export async function validatePlugin(args: string[]) {
 
     console.log("📦 Validating plugin structure...\n");
 
+    const metadata = plugin.getMetadata();
+    const schemas = plugin.defineSchemas();
+
     // Validate required fields
-    if (!plugin.id) errors.push("Missing required field: id");
-    if (!plugin.name) errors.push("Missing required field: name");
-    if (!plugin.version) errors.push("Missing required field: version");
-    if (!plugin.description)
+    if (!metadata.id) errors.push("Missing required field: id");
+    if (!metadata.name) errors.push("Missing required field: name");
+    if (!metadata.version) errors.push("Missing required field: version");
+    if (!metadata.description)
       warnings.push("Missing recommended field: description");
 
     // Validate ID format
-    if (plugin.id && !/^[a-z0-9-]+$/.test(plugin.id)) {
+    if (metadata.id && !/^[a-z0-9-]+$/.test(metadata.id)) {
       errors.push(
-        `Invalid ID format: "${plugin.id}". Must be lowercase alphanumeric with hyphens.`,
+        `Invalid ID format: "${metadata.id}". Must be lowercase alphanumeric with hyphens.`,
       );
     }
 
     // Validate version format
-    if (plugin.version && !/^\d+\.\d+\.\d+$/.test(plugin.version)) {
+    if (metadata.version && !/^\d+\.\d+\.\d+$/.test(metadata.version)) {
       errors.push(
-        `Invalid version format: "${plugin.version}". Must be semver (X.Y.Z).`,
+        `Invalid version format: "${metadata.version}". Must be semver (X.Y.Z).`,
       );
     }
 
     // Validate schemas exist
-    if (!plugin.inputSchema) errors.push("Missing required field: inputSchema");
-    if (!plugin.outputSchema)
-      errors.push("Missing required field: outputSchema");
-
-    // Validate execute function
-    if (!plugin.execute) {
-      errors.push("Missing required field: execute");
-    } else if (typeof plugin.execute !== "function") {
-      errors.push("execute must be a function");
-    }
+    if (!schemas.inputs) errors.push("Missing required field: inputs (schema)");
+    if (!schemas.outputs)
+      errors.push("Missing required field: outputs (schema)");
 
     // Recommended fields
-    if (!plugin.author) warnings.push("Missing recommended field: author");
-    if (!plugin.tags || plugin.tags.length === 0) {
+    if (!metadata.author) warnings.push("Missing recommended field: author");
+    if (!metadata.tags || metadata.tags.length === 0) {
       warnings.push("Missing recommended field: tags");
     }
-    if (!plugin.icon) warnings.push("Missing recommended field: icon");
+    if (!metadata.icon) warnings.push("Missing recommended field: icon");
 
     // Print results
     if (errors.length > 0) {
@@ -104,17 +102,17 @@ export async function validatePlugin(args: string[]) {
       console.log("✅ Plugin validation passed!\n");
 
       console.log("📦 Plugin Summary:");
-      console.log(`  ID: ${plugin.id}`);
-      console.log(`  Name: ${plugin.name}`);
-      console.log(`  Version: ${plugin.version}`);
-      if (plugin.description) {
-        console.log(`  Description: ${plugin.description}`);
+      console.log(`  ID: ${metadata.id}`);
+      console.log(`  Name: ${metadata.name}`);
+      console.log(`  Version: ${metadata.version}`);
+      if (metadata.description) {
+        console.log(`  Description: ${metadata.description}`);
       }
-      if (plugin.author) {
-        console.log(`  Author: ${plugin.author.name}`);
+      if (metadata.author) {
+        console.log(`  Author: ${metadata.author.name}`);
       }
-      if (plugin.tags && plugin.tags.length > 0) {
-        console.log(`  Tags: ${plugin.tags.join(", ")}`);
+      if (metadata.tags && metadata.tags.length > 0) {
+        console.log(`  Tags: ${metadata.tags.join(", ")}`);
       }
       console.log();
 

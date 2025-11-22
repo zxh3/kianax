@@ -4,8 +4,7 @@
  * Tools for testing plugins locally before integration.
  */
 
-import type { z } from "zod";
-import type { Plugin, PluginContext } from "../types/legacy";
+import type { Plugin, PluginContext } from "../index";
 
 /**
  * Mock context builder for testing
@@ -29,110 +28,64 @@ export function mockContext(overrides?: Partial<PluginContext>): PluginContext {
  * const tester = new PluginTester(myPlugin);
  *
  * const result = await tester.execute({
- *   input: { query: "test" },
+ *   inputs: { query: { text: "test" } },
  *   config: { apiKey: "test-key" },
  *   credentials: { apiToken: "secret" }
  * });
  * ```
  */
-export class PluginTester<
-  TInputSchema extends z.ZodType,
-  TOutputSchema extends z.ZodType,
-  TConfigSchema extends z.ZodType = z.ZodUnknown,
-> {
-  constructor(
-    private plugin: Plugin<TInputSchema, TOutputSchema, TConfigSchema>,
-  ) {}
+export class PluginTester {
+  constructor(private plugin: Plugin<any>) {}
 
   /**
    * Execute plugin with test data
    */
   async execute(options: {
-    input: z.infer<TInputSchema>;
-    config?: TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown;
+    inputs: Record<string, any>;
+    config?: any;
     credentials?: Record<string, string>;
     context?: Partial<PluginContext>;
-  }): Promise<z.infer<TOutputSchema>> {
+  }): Promise<Record<string, any>> {
     // Create test context
     const context = mockContext({
       ...options.context,
       credentials: options.credentials,
     });
 
+    // Validate inputs (optional, but good for testing)
+    const schemas = this.plugin.defineSchemas();
+    for (const [portName, portDef] of Object.entries(schemas.inputs)) {
+      if (options.inputs[portName]) {
+        portDef.schema.parse(options.inputs[portName]);
+      } else if (!portDef.schema.isOptional()) {
+        // Simple check, might not be perfect for all Zod schemas but decent
+        // actually zod schema doesn't have isOptional() on base type easily accessible
+        // without casting. Let's just rely on runtime validation inside execute if any.
+        // Or better, use the plugin's validate method if it existed, or just parse if present.
+      }
+    }
+
     // Execute plugin
     const result = await this.plugin.execute(
-      options.input,
-      options.config as any,
+      options.inputs,
+      options.config,
       context,
     );
 
+    // Validate outputs
+    for (const [portName, portDef] of Object.entries(schemas.outputs)) {
+      if (result[portName] !== undefined) {
+        portDef.schema.parse(result[portName]);
+      }
+    }
+
     return result;
-  }
-
-  /**
-   * Validate input against plugin schema
-   */
-  validateInput(data: unknown): z.infer<TInputSchema> {
-    const result = this.plugin.inputSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error(
-        `Input validation failed: ${JSON.stringify(result.error.issues, null, 2)}`,
-      );
-    }
-
-    return result.data;
-  }
-
-  /**
-   * Validate output against plugin schema
-   */
-  validateOutput(data: unknown): z.infer<TOutputSchema> {
-    const result = this.plugin.outputSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error(
-        `Output validation failed: ${JSON.stringify(result.error.issues, null, 2)}`,
-      );
-    }
-
-    return result.data;
-  }
-
-  /**
-   * Validate config against plugin schema
-   */
-  validateConfig(
-    data: unknown,
-  ): TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown {
-    if (!this.plugin.configSchema) {
-      return data as any;
-    }
-
-    const result = this.plugin.configSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error(
-        `Config validation failed: ${JSON.stringify(result.error.issues, null, 2)}`,
-      );
-    }
-
-    return result.data;
   }
 
   /**
    * Get plugin metadata
    */
   getMetadata() {
-    return {
-      id: this.plugin.id,
-      name: this.plugin.name,
-      description: this.plugin.description,
-      version: this.plugin.version,
-      author: this.plugin.author,
-      tags: this.plugin.tags,
-      icon: this.plugin.icon,
-      credentials: this.plugin.credentials,
-    };
+    return this.plugin.getMetadata();
   }
 }

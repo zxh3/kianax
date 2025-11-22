@@ -26,10 +26,12 @@ export async function testPlugin(args: string[]) {
     // Import the plugin
     const module = await import(filepath);
 
-    // Find the plugin export (first export that looks like a plugin)
+    // Find the plugin export (instance of Plugin or something with getId/execute)
     const plugin = Object.values(module).find(
       (exp: any) =>
-        exp?.id && exp?.execute && typeof exp.execute === "function",
+        exp &&
+        typeof exp.getId === "function" &&
+        typeof exp.execute === "function",
     );
 
     if (!plugin) {
@@ -40,10 +42,12 @@ export async function testPlugin(args: string[]) {
 
     // Display plugin metadata
     console.log("📦 Plugin Metadata:");
-    console.log(`  ID: ${(plugin as any).id}`);
-    console.log(`  Name: ${(plugin as any).name}`);
-    console.log(`  Tags: ${(plugin as any).tags?.join(", ")}`);
-    console.log(`  Version: ${(plugin as any).version}`);
+    console.log(`  ID: ${(plugin as any).getId()}`);
+    console.log(`  Name: ${(plugin as any).getName()}`);
+    console.log(`  Tags: ${(plugin as any).getTags()?.join(", ")}`);
+    // Version isn't directly exposed as method on Plugin base unless added, but getMetadata() has it
+    const metadata = (plugin as any).getMetadata();
+    console.log(`  Version: ${metadata.version}`);
     console.log();
 
     // Create tester
@@ -56,7 +60,8 @@ export async function testPlugin(args: string[]) {
     );
 
     // Default test data based on plugin tags
-    const testData = getDefaultTestData((plugin as any).tags || []);
+    const tags = (plugin as any).getTags() || [];
+    const testData = getDefaultTestData(tags);
 
     // Execute plugin
     const result = await tester.execute(testData);
@@ -82,34 +87,38 @@ export async function testPlugin(args: string[]) {
 function getDefaultTestData(tags: string[]) {
   if (tags.includes("input")) {
     return {
-      input: {},
+      inputs: {
+        // Default request for input plugins (e.g. weather, stock) usually needs something
+        // Trying to be generic is hard here without schema inspection
+        request: {},
+      },
       config: {},
     };
   }
 
   if (tags.includes("transform") || tags.includes("processor")) {
     return {
-      input: { data: { test: "value" } },
+      inputs: { data: { test: "value" } },
       config: {},
     };
   }
 
   if (tags.includes("logic") || tags.includes("condition")) {
     return {
-      input: { data: true },
+      inputs: { data: true },
       config: { condition: "test condition" },
     };
   }
 
   if (tags.includes("output")) {
     return {
-      input: { data: { test: "value" } },
+      inputs: { data: { test: "value" } },
       config: {},
     };
   }
 
   return {
-    input: {},
+    inputs: {},
     config: {},
   };
 }
