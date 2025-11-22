@@ -16,9 +16,6 @@ export type {
   PluginMetadata as LegacyPluginMetadata,
 } from "./types";
 
-// Export plugin builder (legacy - prefer Plugin class)
-export { definePlugin } from "./types/definePlugin";
-
 // Export Plugin base class (recommended approach)
 export {
   Plugin,

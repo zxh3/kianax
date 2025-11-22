@@ -9,115 +9,93 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 const TEMPLATES = {
-  input: `import { definePlugin, z } from "@kianax/plugin-sdk";
+  input: `import { createPlugin, z } from "@kianax/plugin-sdk";
 
-export const {{name}} = definePlugin({
-  id: "{{id}}",
-  name: "{{displayName}}",
-  description: "TODO: Add description",
-  version: "1.0.0",
-  type: "input",
-
-  inputSchema: z.object({
-    // TODO: Define input schema
-  }),
-
-  outputSchema: z.object({
-    // TODO: Define output schema
-    data: z.unknown(),
-  }),
-
-  configSchema: z.object({
+export const {{name}} = createPlugin("{{id}}")
+  .withMetadata({
+    name: "{{displayName}}",
+    description: "TODO: Add description",
+    version: "1.0.0",
+    tags: ["input"],
+    icon: "📥",
+  })
+  .withOutput("data", {
+    label: "Output Data",
+    schema: z.unknown(),
+  })
+  .withConfig(z.object({
     // TODO: Define config schema (optional)
-  }),
-
-  credentials: [
-    // TODO: Define required credentials (optional)
-    // {
-    //   key: "apiKey",
-    //   label: "API Key",
-    //   type: "password",
-    //   required: true,
-    // }
-  ],
-
-  tags: ["TODO"],
-  icon: "📥",
-
-  async execute(input, config, context) {
+  }))
+  .execute(async ({ inputs, config, context }) => {
     // TODO: Implement plugin logic
-    console.log("Input:", input);
     console.log("Config:", config);
     console.log("Context:", context);
 
     return {
       data: "TODO: Return output matching outputSchema",
     };
-  },
-});
+  })
+  .build();
 `,
 
-  processor: `import { definePlugin, z } from "@kianax/plugin-sdk";
+  processor: `import { createPlugin, z } from "@kianax/plugin-sdk";
 
-export const {{name}} = definePlugin({
-  id: "{{id}}",
-  name: "{{displayName}}",
-  description: "TODO: Add description",
-  version: "1.0.0",
-  type: "processor",
-
-  inputSchema: z.object({
-    data: z.unknown(),
-  }),
-
-  outputSchema: z.object({
-    data: z.unknown(),
-  }),
-
-  configSchema: z.object({
+export const {{name}} = createPlugin("{{id}}")
+  .withMetadata({
+    name: "{{displayName}}",
+    description: "TODO: Add description",
+    version: "1.0.0",
+    tags: ["transform"],
+    icon: "⚙️",
+  })
+  .withInput("data", {
+    label: "Input Data",
+    schema: z.unknown(),
+  })
+  .withOutput("data", {
+    label: "Output Data",
+    schema: z.unknown(),
+  })
+  .withConfig(z.object({
     // TODO: Define config schema (optional)
-  }),
-
-  tags: ["TODO"],
-  icon: "⚙️",
-
-  async execute(input, config, context) {
+  }))
+  .execute(async ({ inputs, config, context }) => {
     // TODO: Transform/process input data
-    console.log("Processing:", input.data);
+    console.log("Processing:", inputs.data);
 
     return {
-      data: input.data, // TODO: Return transformed data
+      data: inputs.data, // TODO: Return transformed data
     };
-  },
-});
+  })
+  .build();
 `,
 
-  logic: `import { definePlugin, z } from "@kianax/plugin-sdk";
+  logic: `import { createPlugin, z } from "@kianax/plugin-sdk";
 
-export const {{name}} = definePlugin({
-  id: "{{id}}",
-  name: "{{displayName}}",
-  description: "TODO: Add description",
-  version: "1.0.0",
-  type: "logic",
-
-  inputSchema: z.object({
-    data: z.unknown(),
-  }),
-
-  outputSchema: z.object({
-    result: z.boolean(),
-    branch: z.enum(["true", "false"]),
-  }),
-
-  configSchema: z.object({
+export const {{name}} = createPlugin("{{id}}")
+  .withMetadata({
+    name: "{{displayName}}",
+    description: "TODO: Add description",
+    version: "1.0.0",
+    tags: ["logic", "condition"],
+    icon: "🔀",
+  })
+  .withInput("data", {
+    label: "Input Data",
+    schema: z.unknown(),
+  })
+  .withOutput("result", {
+    label: "Result",
+    schema: z.boolean(),
+  })
+  .withOutput("branch", {
+    label: "Branch",
+    schema: z.enum(["true", "false"]),
+  })
+  .withConfig(z.object({
     condition: z.string(),
-  }),
-
-  tags: ["TODO"],
-  icon: "🔀",
-
-  async execute(input, config, context) {
+  }))
+  .execute(async ({ inputs, config, context }) => {
     // TODO: Evaluate condition and return boolean
     const result = true; // TODO: Replace with actual logic
 
@@ -125,55 +103,45 @@ export const {{name}} = definePlugin({
       result,
       branch: result ? "true" : "false",
     };
-  },
-});
+  })
+  .build();
 `,
 
-  output: `import { definePlugin, z } from "@kianax/plugin-sdk";
+  output: `import { createPlugin, z } from "@kianax/plugin-sdk";
 
-export const {{name}} = definePlugin({
-  id: "{{id}}",
-  name: "{{displayName}}",
-  description: "TODO: Add description",
-  version: "1.0.0",
-  type: "output",
-
-  inputSchema: z.object({
-    data: z.unknown(),
-  }),
-
-  outputSchema: z.object({
-    success: z.boolean(),
-    message: z.string().optional(),
-  }),
-
-  configSchema: z.object({
+export const {{name}} = createPlugin("{{id}}")
+  .withMetadata({
+    name: "{{displayName}}",
+    description: "TODO: Add description",
+    version: "1.0.0",
+    tags: ["output"],
+    icon: "📤",
+  })
+  .withInput("data", {
+    label: "Data",
+    schema: z.unknown(),
+  })
+  .withOutput("success", {
+    label: "Success",
+    schema: z.boolean(),
+  })
+  .withOutput("message", {
+    label: "Message",
+    schema: z.string().optional(),
+  })
+  .withConfig(z.object({
     // TODO: Define config schema (optional)
-  }),
-
-  credentials: [
-    // TODO: Define required credentials (optional)
-    // {
-    //   key: "apiKey",
-    //   label: "API Key",
-    //   type: "password",
-    //   required: true,
-    // }
-  ],
-
-  tags: ["TODO"],
-  icon: "📤",
-
-  async execute(input, config, context) {
+  }))
+  .execute(async ({ inputs, config, context }) => {
     // TODO: Send data to external service
-    console.log("Sending:", input.data);
+    console.log("Sending:", inputs.data);
 
     return {
       success: true,
       message: "TODO: Return success status",
     };
-  },
-});
+  })
+  .build();
 `,
 };
 

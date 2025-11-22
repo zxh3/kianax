@@ -37,7 +37,7 @@ export async function validatePlugin(args: string[]) {
 
     if (!plugin) {
       throw new Error(
-        "No plugin found in file. Make sure to export a plugin defined with definePlugin().",
+        "No plugin found in file. Make sure to export a plugin defined with createPlugin().",
       );
     }
 
