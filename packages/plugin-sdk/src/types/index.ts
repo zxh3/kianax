@@ -21,6 +21,8 @@ export interface PluginContext {
   nodeId: string;
   credentials?: Record<string, string>;
   triggerData?: unknown;
+  loopIteration?: number; // Current iteration if in a loop
+  loopAccumulator?: Record<string, unknown>; // Accumulated data from previous iterations
 }
 
 /**
@@ -105,7 +107,7 @@ export interface PluginMetadata {
     email?: string;
     url?: string;
   };
-  tags?: PluginTag[];
+  tags: PluginTag[];
   icon?: string;
   credentials?: CredentialSchema[];
   // JSON Schema exports for UI/documentation

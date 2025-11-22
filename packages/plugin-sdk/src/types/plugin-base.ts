@@ -7,60 +7,9 @@
 
 import type { z } from "zod";
 import type { ComponentType } from "react";
-import type { PluginTag } from "./index"; // Import PluginTag
+import type { PluginContext, PluginMetadata } from "./index";
 
-/**
- * Plugin execution context passed to the execute method
- */
-export interface PluginContext {
-  userId: string;
-  routineId: string;
-  executionId: string;
-  nodeId: string;
-  credentials?: Record<string, string>;
-  triggerData?: unknown;
-  loopIteration?: number; // Current iteration if in a loop
-  loopAccumulator?: Record<string, unknown>; // Accumulated data from previous iterations
-}
-
-/**
- * Plugin metadata (static properties)
- */
-export interface PluginMetadata {
-  /** Unique plugin identifier (e.g., 'if-else', 'http-request') */
-  id: string;
-
-  /** Human-readable plugin name */
-  name: string;
-
-  /** Plugin description */
-  description: string;
-
-  /** Semantic version */
-  version: string;
-
-  /** Plugin icon (emoji or URL) */
-  icon?: string;
-
-  /** Tags for discovery, search, and categorization */
-  tags: PluginTag[];
-
-  /** Author/publisher information */
-  author?: {
-    name: string;
-    email?: string;
-    url?: string;
-  };
-
-  /** Credentials required by this plugin */
-  credentials?: Array<{
-    key: string;
-    label: string;
-    description?: string;
-    type: "password" | "text" | "oauth";
-    required: boolean;
-  }>;
-}
+export type { PluginContext, PluginMetadata };
 
 /**
  * Plugin configuration UI component props
@@ -276,6 +225,7 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    * Check if plugin has a specific tag
    */
   hasTag(tag: string): boolean {
+    // @ts-ignore - tags is PluginTag[], but we're checking against string which might be wider or just TS being strict
     return this.getTags().includes(tag);
   }
 
