@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import {
@@ -22,60 +22,21 @@ import {
   type OnEdgesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import PluginNode, { type PluginNodeData } from "./plugin-node";
-import { NodeConfigDrawer } from "./node-config-drawer";
-import { TestRunPanel } from "./test-run-panel";
-import { Button } from "@kianax/ui/components/button";
-import { Tabs, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
+import PluginNode, { type PluginNodeData } from "../plugin-node";
+import { NodeConfigDrawer } from "../node-config-drawer";
+import { TestRunPanel } from "../test-run-panel";
 import { Textarea } from "@kianax/ui/components/textarea";
-import {
-  IconPlus,
-  IconTrash,
-  IconDeviceFloppy,
-  IconPlayerPlay,
-  IconCode,
-  IconEye,
-} from "@tabler/icons-react";
 import { toast } from "sonner";
-import type { Id } from "@kianax/server/convex/_generated/dataModel";
-import { getAllPlugins } from "@/lib/plugins";
-
-// Convert our routine node format to React Flow node format
-interface RoutineNode {
-  id: string;
-  pluginId: string;
-  label: string;
-  position: { x: number; y: number };
-  config?: Record<string, unknown>;
-  enabled: boolean;
-}
-
-interface RoutineConnection {
-  id: string;
-  sourceNodeId: string;
-  targetNodeId: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  condition?: {
-    type: "branch" | "default" | "loop";
-    value?: string;
-    loopConfig?: {
-      maxIterations: number;
-      accumulatorFields?: string[];
-    };
-  };
-}
-
-interface RoutineEditorProps {
-  routineId: Id<"routines">;
-  initialNodes: RoutineNode[];
-  initialConnections: RoutineConnection[];
-  onSave: (
-    nodes: RoutineNode[],
-    connections: RoutineConnection[],
-  ) => Promise<void>;
-  onTest?: () => void;
-}
+import { Toolbar } from "./toolbar";
+import { NodeSelector } from "./sidebar";
+import { TopBar } from "./topbar";
+import { useTheme } from "next-themes";
+import type {
+  RoutineEditorProps,
+  RoutineNode,
+  RoutineConnection,
+  EditorMode,
+} from "./types";
 
 const nodeTypes = {
   pluginNode: PluginNode,
@@ -88,20 +49,30 @@ export function RoutineEditor({
   onSave,
   onTest,
 }: RoutineEditorProps) {
+  const { theme } = useTheme();
   // State definitions
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPluginSelector, setShowPluginSelector] = useState(false);
-  const [editorMode, setEditorMode] = useState<"visual" | "json">("visual");
+  const [nodeSelectorOpen, setNodeSelectorOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<"select" | "hand" | null>(
+    "hand",
+  );
+  const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [jsonValue, setJsonValue] = useState("");
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [configuringNodeId, setConfiguringNodeId] = useState<string | null>(
     null,
   );
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Test Execution State
   const [testWorkflowId, setTestWorkflowId] = useState<string | null>(null);
   const [testPanelOpen, setTestPanelOpen] = useState(false);
   const [isStartingTest, setIsStartingTest] = useState(false);
+
+  // Auto-save timer ref
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track if we've initialized to prevent re-initialization on prop changes
+  const isInitializedRef = useRef(false);
 
   // Fetch execution status if a test is running/open
   const testExecution = useQuery(
@@ -112,6 +83,19 @@ export function RoutineEditor({
   // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+
+  // Refs to track latest nodes and edges for auto-save
+  const nodesRef = useRef<Node[]>([]);
+  const edgesRef = useRef<Edge[]>([]);
+
+  // Update refs whenever nodes or edges change
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   // Update nodes with execution status
   useEffect(() => {
@@ -290,88 +274,124 @@ export function RoutineEditor({
     [],
   );
 
-  // Initialize nodes and edges
+  // Initialize nodes and edges only once on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We intentionally want this to run only once on mount to prevent position flipping
   useEffect(() => {
-    setNodes(convertToReactFlowNodes(initialNodes));
-    setEdges(convertToReactFlowEdges(initialConnections));
-  }, [
-    initialNodes,
-    initialConnections,
-    convertToReactFlowNodes,
-    convertToReactFlowEdges,
-  ]);
+    if (!isInitializedRef.current) {
+      setNodes(convertToReactFlowNodes(initialNodes));
+      setEdges(convertToReactFlowEdges(initialConnections));
+      isInitializedRef.current = true;
+    }
+  }, []);
 
-  // Get all available plugins
-  const availablePlugins = useMemo(() => getAllPlugins(), []);
+  // Auto-save function with debounce
+  const triggerAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    setHasUnsavedChanges(true);
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        // Use refs to get the latest values
+        const routineNodes = convertFromReactFlowNodes(nodesRef.current);
+        const routineConnections = convertFromReactFlowEdges(edgesRef.current);
+        await onSave(routineNodes, routineConnections);
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+        setHasUnsavedChanges(false);
+      }
+    }, 1000); // 1 second debounce
+  }, [convertFromReactFlowNodes, convertFromReactFlowEdges, onSave]);
+
+  // Cleanup auto-save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   const onNodesChange: OnNodesChange = useCallback(
-    (changes: NodeChange[]) =>
-      setNodes((nds) => applyNodeChanges(changes, nds)),
-    [],
+    (changes: NodeChange[]) => {
+      setNodes((nds) => applyNodeChanges(changes, nds));
+
+      // Only trigger auto-save for meaningful changes (not just selection or dimension changes)
+      const shouldSave = changes.some((change) => {
+        if (change.type === "remove") {
+          return true;
+        }
+        // Only save position changes when dragging is done
+        if (change.type === "position" && change.dragging === false) {
+          return true;
+        }
+        return false;
+      });
+
+      if (shouldSave) {
+        triggerAutoSave();
+      }
+    },
+    [triggerAutoSave],
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
-    (changes: EdgeChange[]) =>
-      setEdges((eds) => applyEdgeChanges(changes, eds)),
-    [],
+    (changes: EdgeChange[]) => {
+      setEdges((eds) => applyEdgeChanges(changes, eds));
+
+      // Only trigger auto-save for meaningful changes
+      const shouldSave = changes.some((change) => change.type === "remove");
+
+      if (shouldSave) {
+        triggerAutoSave();
+      }
+    },
+    [triggerAutoSave],
   );
 
-  const onConnect: OnConnect = useCallback((connection: Connection) => {
-    // Customize edge based on connection
-    const newEdge: Edge = {
-      ...connection,
-      id: `${connection.source}-${connection.target}-${Date.now()}`,
-      animated: true,
-      style: {
-        strokeWidth: 2,
-        strokeDasharray: "5 5",
-        stroke:
-          connection.sourceHandle === "true" ||
-          connection.sourceHandle === "success"
-            ? "#10b981"
-            : connection.sourceHandle === "false" ||
-                connection.sourceHandle === "error"
-              ? "#ef4444"
-              : "#94a3b8",
-      },
-      label: connection.sourceHandle || undefined,
-      labelStyle: {
-        fill: "#64748b",
-        fontWeight: 600,
-        fontSize: 11,
-      },
-      labelBgStyle: {
-        fill: "#ffffff",
-        fillOpacity: 0.9,
-        stroke: "#e2e8f0",
-        strokeWidth: 1,
-      },
-      labelBgPadding: [8, 4] as [number, number],
-      labelBgBorderRadius: 8,
-    };
+  const onConnect: OnConnect = useCallback(
+    (connection: Connection) => {
+      // Customize edge based on connection
+      const newEdge: Edge = {
+        ...connection,
+        id: `${connection.source}-${connection.target}-${Date.now()}`,
+        animated: true,
+        style: {
+          strokeWidth: 2,
+          strokeDasharray: "5 5",
+          stroke:
+            connection.sourceHandle === "true" ||
+            connection.sourceHandle === "success"
+              ? "#10b981"
+              : connection.sourceHandle === "false" ||
+                  connection.sourceHandle === "error"
+                ? "#ef4444"
+                : "#94a3b8",
+        },
+        label: connection.sourceHandle || undefined,
+        labelStyle: {
+          fill: "#64748b",
+          fontWeight: 600,
+          fontSize: 11,
+        },
+        labelBgStyle: {
+          fill: "#ffffff",
+          fillOpacity: 0.9,
+          stroke: "#e2e8f0",
+          strokeWidth: 1,
+        },
+        labelBgPadding: [8, 4] as [number, number],
+        labelBgBorderRadius: 8,
+      };
 
-    setEdges((eds) => addEdge(newEdge, eds));
-  }, []);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const routineNodes = convertFromReactFlowNodes(nodes);
-      const routineConnections = convertFromReactFlowEdges(edges);
-      await onSave(routineNodes, routineConnections);
-      toast.success("Workflow saved successfully");
-    } catch (error) {
-      toast.error("Failed to save workflow");
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteSelected = useCallback(() => {
-    setNodes((nds) => nds.filter((node) => !node.selected));
-    setEdges((eds) => eds.filter((edge) => !edge.selected));
-  }, []);
+      setEdges((eds) => addEdge(newEdge, eds));
+      triggerAutoSave();
+    },
+    [triggerAutoSave],
+  );
 
   const handleSaveNodeConfig = useCallback(
     (nodeId: string, config: Record<string, unknown>) => {
@@ -382,39 +402,43 @@ export function RoutineEditor({
             : node,
         ),
       );
+      triggerAutoSave();
     },
-    [],
+    [triggerAutoSave],
   );
 
-  const handleAddNode = (pluginId: string, pluginName: string) => {
-    // Calculate better position (spread nodes horizontally)
-    const existingNodes = nodes;
-    const columnWidth = 300;
-    const rowHeight = 150;
-    const maxNodesPerRow = 3;
+  const handleAddNode = useCallback(
+    (pluginId: string, pluginName: string) => {
+      // Calculate better position (spread nodes horizontally)
+      const existingNodes = nodes;
+      const columnWidth = 300;
+      const rowHeight = 150;
+      const maxNodesPerRow = 3;
 
-    const nodeIndex = existingNodes.length;
-    const row = Math.floor(nodeIndex / maxNodesPerRow);
-    const col = nodeIndex % maxNodesPerRow;
+      const nodeIndex = existingNodes.length;
+      const row = Math.floor(nodeIndex / maxNodesPerRow);
+      const col = nodeIndex % maxNodesPerRow;
 
-    const newNode: Node = {
-      id: `node-${Date.now()}`,
-      type: "pluginNode",
-      position: {
-        x: col * columnWidth + 100,
-        y: row * rowHeight + 100,
-      },
-      data: {
-        label: pluginName,
-        pluginId,
-        enabled: true,
-        onConfigure: handleConfigureNode,
-      },
-    };
+      const newNode: Node = {
+        id: `node-${Date.now()}`,
+        type: "pluginNode",
+        position: {
+          x: col * columnWidth + 100,
+          y: row * rowHeight + 100,
+        },
+        data: {
+          label: pluginName,
+          pluginId,
+          enabled: true,
+          onConfigure: handleConfigureNode,
+        },
+      };
 
-    setNodes((nds) => [...nds, newNode]);
-    setShowPluginSelector(false);
-  };
+      setNodes((nds) => [...nds, newNode]);
+      triggerAutoSave();
+    },
+    [nodes, handleConfigureNode, triggerAutoSave],
+  );
 
   // Sync JSON when switching to JSON mode
   useEffect(() => {
@@ -462,107 +486,36 @@ export function RoutineEditor({
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b bg-background p-3">
-        <Tabs
-          value={editorMode}
-          onValueChange={(v) => setEditorMode(v as "visual" | "json")}
-          className="flex-1"
-        >
-          <TabsList>
-            <TabsTrigger value="visual">
-              <IconEye className="mr-2 size-4" />
-              Visual Editor
-            </TabsTrigger>
-            <TabsTrigger value="json">
-              <IconCode className="mr-2 size-4" />
-              JSON Editor
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Top Toolbar */}
+      <TopBar
+        editorMode={editorMode}
+        onEditorModeChange={setEditorMode}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isStartingTest={isStartingTest}
+        onRunTest={handleRunTest}
+        onApplyJson={editorMode === "json" ? handleApplyJson : undefined}
+      />
 
-        <div className="flex gap-2">
-          {editorMode === "visual" && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowPluginSelector(!showPluginSelector)}
-              >
-                <IconPlus className="mr-2 size-4" />
-                Add Node
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDeleteSelected}
-                title="Delete selected nodes/edges (or press Delete key)"
-              >
-                <IconTrash className="mr-2 size-4" />
-                Delete
-              </Button>
-            </>
-          )}
-          {editorMode === "json" && (
-            <Button size="sm" variant="outline" onClick={handleApplyJson}>
-              <IconEye className="mr-2 size-4" />
-              Apply & View
-            </Button>
-          )}
-          <div className="w-px bg-border" />
-          <Button size="sm" onClick={handleSave} disabled={isSaving}>
-            <IconDeviceFloppy className="mr-2 size-4" />
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleRunTest}
-            disabled={isStartingTest}
-          >
-            <IconPlayerPlay className="mr-2 size-4" />
-            {isStartingTest ? "Starting..." : "Test"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Content Area */}
+      {/* Canvas / Editor Area */}
       <div className="relative flex-1">
         {editorMode === "visual" ? (
           <>
-            {/* Plugin Selector */}
-            {showPluginSelector && (
-              <div className="absolute left-4 top-4 z-10 w-80 rounded-lg border bg-background p-4 shadow-xl max-h-[80vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">Add Plugin Node</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPluginSelector(false)}
-                  >
-                    ✕
-                  </Button>
-                </div>
+            {/* Floating Toolbar */}
+            <Toolbar
+              activeTool={activeTool}
+              onToolChange={setActiveTool}
+              onAddNode={() => setNodeSelectorOpen(true)}
+            />
 
-                <div className="space-y-1.5">
-                  {availablePlugins.map((plugin) => (
-                    <Button
-                      key={plugin.id}
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => handleAddNode(plugin.id, plugin.name)}
-                    >
-                      <span className="mr-2">{plugin.icon}</span>
-                      {plugin.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Node Selector */}
+            <NodeSelector
+              isOpen={nodeSelectorOpen}
+              onClose={() => setNodeSelectorOpen(false)}
+              onAddNode={handleAddNode}
+            />
 
-            {/* React Flow Canvas */}
             <ReactFlow
+              colorMode={theme === "dark" ? "dark" : "light"}
               nodes={nodes}
               edges={edges}
               onNodesChange={onNodesChange}
@@ -573,23 +526,32 @@ export function RoutineEditor({
               fitView
               className="bg-background"
               deleteKeyCode={["Delete", "Backspace"]}
+              panOnDrag={activeTool === "hand" ? true : [1, 2]}
+              selectionOnDrag={activeTool === "select"}
+              panOnScroll={activeTool === "hand"}
+              selectionKeyCode={null}
+              multiSelectionKeyCode="Shift"
               connectionLineStyle={{
                 stroke: "#6366f1",
                 strokeWidth: 2,
                 strokeDasharray: "5 5",
               }}
             >
-              <Background
-                variant={BackgroundVariant.Dots}
-                gap={20}
-                size={1}
-                color="var(--color-border)"
+              <Background variant={BackgroundVariant.Dots} gap={30} size={1} />
+              <Controls
+                position="bottom-left"
+                showZoom={true}
+                showFitView={true}
+                showInteractive={false}
+                style={{ left: 16, bottom: 16 }}
               />
-              <Controls className="!bg-background !border !border-border !shadow-md !rounded-lg !m-4" />
               <MiniMap
-                nodeColor="#94a3b8"
-                className="!bg-background !border !border-border !shadow-lg !rounded-lg !m-4"
-                maskColor="rgba(0, 0, 0, 0.1)"
+                nodeColor="#64748b"
+                nodeStrokeColor="#94a3b8"
+                nodeBorderRadius={2}
+                maskColor="rgba(100, 116, 139, 0.2)"
+                position="bottom-right"
+                style={{ right: 16, bottom: 16 }}
               />
             </ReactFlow>
 

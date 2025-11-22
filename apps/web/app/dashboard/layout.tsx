@@ -1,5 +1,6 @@
 "use client";
 import { ConvexClientProvider } from "@kianax/web/components/providers/ConvexClientProvider";
+import { DashboardThemeProvider } from "@kianax/web/components/providers/dashboard-theme-provider";
 import withProvider from "@kianax/web/components/providers/with-provider";
 import { authClient } from "@kianax/web/lib/auth-client";
 import { Redirect } from "@kianax/web/components/redirect";
@@ -28,20 +29,22 @@ const DashboardLayout = ({
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
-      <SidebarInset>
-        <SiteHeader />
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <DashboardThemeProvider>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" />
+        <SidebarInset>
+          <SiteHeader />
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </DashboardThemeProvider>
   );
 };
 
