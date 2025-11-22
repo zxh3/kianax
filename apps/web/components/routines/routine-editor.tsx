@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect } from "react";
-import { useQuery, useAction } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import {
   ReactFlow,
@@ -109,8 +109,6 @@ export function RoutineEditor({
     testWorkflowId ? { workflowId: testWorkflowId } : "skip",
   );
 
-  const startRoutine = useAction(api.workflow_actions.startRoutine);
-
   // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -161,10 +159,18 @@ export function RoutineEditor({
       const routineConnections = convertFromReactFlowEdges(edges);
       await onSave(routineNodes, routineConnections);
 
-      // 2. Trigger execution via Action
-      const result = await startRoutine({ routineId });
+      // 2. Trigger execution via API
+      const response = await fetch(`/api/workflows/${routineId}/execute`, {
+        method: "POST",
+      });
 
-      setTestWorkflowId(result.workflowId);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start workflow");
+      }
+
+      const data = await response.json();
+      setTestWorkflowId(data.workflowId);
       setTestPanelOpen(true);
       toast.success("Test run started");
 

@@ -10,6 +10,7 @@ import type { Id } from "@kianax/server/convex/_generated/dataModel";
 // Initialize Convex client
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
 const convex = new ConvexHttpClient(convexUrl);
+const siteUrl = process.env.SITE_URL || "http://localhost:3000";
 
 export async function POST(req: Request) {
   // 1. Authenticate user
@@ -158,14 +159,45 @@ export async function POST(req: Request) {
         }),
         execute: async ({ routineId }) => {
           try {
-            const result = await convex.action(
-              api.workflow_actions.startRoutine,
+            // Call the Next.js API endpoint for execution
+            // Use internal fetch to localhost
+            const response = await fetch(
+              `${siteUrl}/api/workflows/${routineId}/execute`,
               {
-                routineId: routineId as Id<"routines">,
+                method: "POST",
+                headers: {
+                  // Forward the auth token if possible?
+                  // But I don't have the raw cookie here easily to forward.
+                  // Wait, `getToken` reads from cookies.
+                  // If `api/chat` is called from browser, it has cookies.
+                  // But `fetch` inside `api/chat` does NOT forward cookies automatically.
+                  // I need to manually forward the cookie header from `req` to the fetch.
+                  // `headers: req.headers`?
+                  // Yes, `headers: req.headers` is the best way to forward auth.
+                },
               },
             );
+            // Actually, let's just try without forwarding first. `getToken` on the *called* API route might fail if no cookies.
+            // I must forward headers.
+            const headers = new Headers(req.headers);
+            // Remove host/content-length to avoid issues? Or just copy `cookie`.
+            const cookie = req.headers.get("cookie");
+            const fetchHeaders: HeadersInit = {};
+            if (cookie) fetchHeaders["cookie"] = cookie;
+
+            const executeResponse = await fetch(
+              `${siteUrl}/api/workflows/${routineId}/execute`,
+              {
+                method: "POST",
+                headers: fetchHeaders,
+              },
+            );
+
+            const data = await executeResponse.json();
+            if (!executeResponse.ok)
+              throw new Error(data.error || "Execution failed");
             return {
-              executionId: result.workflowId,
+              executionId: data.workflowId,
               message: "Routine execution started.",
             };
           } catch (error: any) {
