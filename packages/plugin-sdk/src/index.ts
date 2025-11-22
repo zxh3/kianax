@@ -7,16 +7,13 @@
 // Re-export Zod for plugin developers
 export { z } from "zod";
 
-// Export core types (legacy)
+// Export types
 export type {
-  Plugin as PluginInterface,
-  PluginContext as LegacyPluginContext,
   CredentialSchema,
-  PluginMetadata as LegacyPluginMetadata,
-  PluginTag, // Re-export PluginTag
-} from "./types";
+  PluginTag,
+} from "./types/common";
 
-// Export Plugin base class (recommended approach)
+// Export Plugin base class and core types
 export {
   Plugin,
   type PluginMetadata,

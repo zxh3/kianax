@@ -5,7 +5,7 @@
  */
 
 import { resolve } from "node:path";
-import type { Plugin } from "../../types/index";
+import type { Plugin } from "../../types/legacy";
 
 export async function validatePlugin(args: string[]) {
   if (args.length === 0) {

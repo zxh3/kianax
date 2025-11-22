@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@kianax/ui/components/card";
-import type { PluginMetadata } from "@kianax/plugins";
+import type { PluginMetadata } from "@kianax/plugin-sdk";
 import { categorizePlugin } from "@/lib/plugins";
 
 interface PluginCardProps {

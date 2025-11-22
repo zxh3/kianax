@@ -5,7 +5,7 @@
  */
 
 import type { z } from "zod";
-import type { Plugin, PluginContext } from "../types/index";
+import type { Plugin, PluginContext } from "../types/legacy";
 
 /**
  * Mock context builder for testing

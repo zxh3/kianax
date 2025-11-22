@@ -7,7 +7,7 @@
 
 import type { z } from "zod";
 import type { ComponentType } from "react";
-import type { PluginContext, PluginMetadata } from "./index";
+import type { PluginContext, PluginMetadata } from "./common";
 
 export type { PluginContext, PluginMetadata };
 
@@ -225,8 +225,8 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    * Check if plugin has a specific tag
    */
   hasTag(tag: string): boolean {
-    // @ts-ignore - tags is PluginTag[], but we're checking against string which might be wider or just TS being strict
-    return this.getTags().includes(tag);
+    // We can cast tag to PluginTag for the check since includes checks value equality
+    return this.getTags().includes(tag as any);
   }
 
   /**

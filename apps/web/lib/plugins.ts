@@ -4,11 +4,8 @@
  * Provides helpers to interact with the plugin system
  */
 
-import {
-  getAllPluginMetadata,
-  createPluginInstance,
-  type PluginMetadata,
-} from "@kianax/plugins";
+import { getAllPluginMetadata, createPluginInstance } from "@kianax/plugins";
+import type { PluginMetadata, PluginTag } from "@kianax/plugin-sdk";
 
 /**
  * Get all available plugins
@@ -20,7 +17,7 @@ export function getAllPlugins(): PluginMetadata[] {
 /**
  * Get plugins by tag
  */
-export function getPluginsByTag(tag: string): PluginMetadata[] {
+export function getPluginsByTag(tag: PluginTag): PluginMetadata[] {
   return getAllPluginMetadata().filter((p) => p.tags?.includes(tag));
 }
 

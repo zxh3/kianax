@@ -5,12 +5,6 @@
  * Flat structure - all plugins in root level folders.
  */
 
-// Export types
-export type {
-  PluginMetadata,
-  Plugin as PluginInterface,
-} from "@kianax/plugin-sdk";
-
 // Export plugin registry
 export {
   pluginRegistry,
