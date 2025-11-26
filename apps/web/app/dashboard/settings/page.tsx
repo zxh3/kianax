@@ -13,7 +13,14 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { Label } from "@kianax/ui/components/label";
-import { IconMoon, IconSun, IconDeviceDesktop } from "@tabler/icons-react";
+import {
+  IconMoon,
+  IconSun,
+  IconDeviceDesktop,
+  IconKey,
+} from "@tabler/icons-react";
+import Link from "next/link";
+import { Button } from "@kianax/ui/components/button";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -85,6 +92,38 @@ export default function SettingsPage() {
               <p className="text-[0.8rem] text-muted-foreground">
                 Select your preferred theme. System will match your OS settings.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Credentials */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-col space-y-1.5 p-6">
+            <h3 className="font-semibold leading-none tracking-tight">
+              Credentials
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Manage API keys and connections for your integrations.
+            </p>
+          </div>
+          <div className="p-6 pt-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                  <IconKey className="size-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Service Connections</p>
+                  <p className="text-sm text-muted-foreground">
+                    Connect services like OpenAI, Google, etc.
+                  </p>
+                </div>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/dashboard/settings/credentials">
+                  Manage Credentials
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

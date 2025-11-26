@@ -9,9 +9,15 @@ export { z } from "zod";
 
 // Export types
 export type {
-  CredentialSchema,
   PluginTag,
+  CredentialSchemasRecord,
+  InferCredentialsData,
 } from "./types/common";
+
+export type {
+  CredentialType,
+  CredentialRequest,
+} from "./types/credentials";
 
 // Export enhanced port system
 export {

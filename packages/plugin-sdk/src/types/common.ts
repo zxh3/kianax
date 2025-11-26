@@ -4,6 +4,9 @@
  * Fundamental types shared across the plugin system.
  */
 
+import type { CredentialRequest } from "./credentials";
+import type { z } from "zod";
+
 /**
  * Plugin tags for categorization and filtering
  */
@@ -17,7 +20,23 @@ export type PluginTag =
   | "processor"
   | "data"
   | "condition"
-  | "transform";
+  | "transform"
+  | "llm"
+  | "ai"
+  | "text"
+  | "openai";
+
+/**
+ * A record mapping credential keys (alias or ID) to their Zod schemas.
+ */
+export type CredentialSchemasRecord = Record<string, z.ZodType>;
+
+/**
+ * Infers the data type for a given CredentialSchemasRecord.
+ */
+export type InferCredentialsData<TSchemas extends CredentialSchemasRecord> = {
+  [K in keyof TSchemas]: z.infer<TSchemas[K]>;
+};
 
 /**
  * Plugin execution context passed to the execute method
@@ -25,29 +44,19 @@ export type PluginTag =
  * Note: Loop state is managed by individual loop nodes via nodeState,
  * not by the execution engine. See loop-control plugin for example.
  */
-export interface PluginContext {
+export interface PluginContext<
+  TCredentialsData extends Record<string, unknown> = Record<string, unknown>,
+> {
   userId: string;
   routineId: string;
   executionId: string;
   nodeId: string;
-  credentials?: Record<string, string>;
+  /**
+   * Resolved credentials.
+   * Keys are the credential ID (or alias), values are the decrypted credential objects.
+   */
+  credentials?: TCredentialsData;
   triggerData?: unknown;
-}
-
-/**
- * Credential schema for plugins that require API keys, tokens, etc.
- */
-export interface CredentialSchema {
-  key: string;
-  label: string;
-  description?: string;
-  type: "password" | "text" | "oauth";
-  required: boolean;
-  pattern?: string;
-  oauth?: {
-    provider: string;
-    scopes: string[];
-  };
 }
 
 /**
@@ -79,8 +88,11 @@ export interface PluginMetadata {
     url?: string;
   };
 
-  /** Credentials required by this plugin */
-  credentials?: CredentialSchema[];
+  /**
+   * Credentials required by this plugin.
+   * Defines which Credential Types this plugin needs.
+   */
+  credentialRequirements?: CredentialRequest[];
 
   /** JSON Schema exports for UI/documentation (optional, usually generated) */
   inputSchemaJson?: Record<string, unknown>;

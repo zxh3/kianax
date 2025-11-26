@@ -54,7 +54,11 @@ export interface PluginContext {
   routineId: string;
   executionId: string;
   nodeId: string;
-  credentials?: Record<string, string>;
+  /**
+   * Resolved credentials.
+   * Keys are the credential ID (or alias), values are the decrypted credential objects.
+   */
+  credentials?: Record<string, unknown>;
   triggerData?: unknown;
 }
 
@@ -67,6 +71,7 @@ export interface PluginMetadata {
   description: string;
   version: string;
   tags: string[];
+  credentialRequirements?: { id: string; alias?: string; required?: boolean }[];
 }
 
 /**
@@ -77,16 +82,34 @@ export interface PluginRegistry {
   createPluginInstance(pluginId: string): Plugin | undefined;
 }
 
+/**
+ * Credential Loader Interface
+ * Responsible for fetching and decrypting credentials at runtime.
+ */
+export interface CredentialLoader {
+  /**
+   * Load and return the decrypted credential data.
+   * @param credentialId The ID of the user credential to load.
+   * @returns The credential data object.
+   */
+  load(credentialId: string): Promise<any>;
+}
+
 export class RoutineExecutor {
   private iterationStrategy: IterationStrategy;
+  private credentialLoader?: CredentialLoader;
 
   constructor(
     private readonly pluginRegistry: PluginRegistry,
-    private readonly options: ExecutorOptions = {},
+    options: ExecutorOptions & { credentialLoader?: CredentialLoader } = {},
     iterationStrategy?: IterationStrategy,
   ) {
+    this.options = options;
+    this.credentialLoader = options.credentialLoader;
     this.iterationStrategy = iterationStrategy || getDefaultIterationStrategy();
   }
+
+  private readonly options: ExecutorOptions;
 
   /**
    * Execute a routine
@@ -254,6 +277,44 @@ export class RoutineExecutor {
       throw new Error(`Plugin not found: ${node.pluginId}`);
     }
 
+    // Resolve credentials
+    const credentials: Record<string, unknown> = {};
+    const requirements = plugin.getMetadata().credentialRequirements || [];
+
+    if (requirements.length > 0) {
+      if (!this.credentialLoader) {
+        throw new Error(
+          "Plugin requires credentials but no CredentialLoader provided",
+        );
+      }
+
+      for (const req of requirements) {
+        const key = req.alias || req.id;
+        // Find mapping for this specific requirement key
+        // First check mapping by alias/id, then maybe ID directly if no alias used?
+        // Simpler: user maps "alias" -> "credId"
+
+        const mappedCredId =
+          node.credentialMappings?.[req.id] || node.credentialMappings?.[key];
+
+        if (!mappedCredId) {
+          if (req.required !== false) {
+            throw new Error(`Missing required credential mapping for '${key}'`);
+          }
+          continue;
+        }
+
+        try {
+          const credentialData = await this.credentialLoader.load(mappedCredId);
+          credentials[key] = credentialData;
+        } catch (e: any) {
+          throw new Error(
+            `Failed to load credential '${key}' (${mappedCredId}): ${e.message}`,
+          );
+        }
+      }
+    }
+
     // Transform inputs from PortData[] to Record<string, any>
     // For each port, we take the first item's data (plugins work with single items)
     const pluginInputs = this.transformInputsToPlugin(inputs);
@@ -265,6 +326,7 @@ export class RoutineExecutor {
       executionId: "exec-1", // TODO: Generate execution ID
       nodeId: node.id,
       triggerData: undefined, // TODO: Pass from graph
+      credentials,
     };
 
     // Execute plugin

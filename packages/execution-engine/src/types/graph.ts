@@ -29,6 +29,10 @@ export interface Node {
   parameters: Record<string, unknown>;
   /** Visual position (for UI) */
   position?: { x: number; y: number };
+  /**
+   * Mapping of Credential Request Alias (or ID) -> User Credential ID
+   */
+  credentialMappings?: Record<string, string>;
 }
 
 /**

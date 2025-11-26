@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { IconFolder, IconInnerShadowTop } from "@tabler/icons-react";
+import { IconFolder, IconInnerShadowTop, IconKey } from "@tabler/icons-react";
 
 import { NavPlugins } from "./nav-plugins";
 import { NavMain } from "./nav-main";
@@ -24,6 +24,11 @@ const data = {
       title: "Routines",
       url: "/dashboard/routines",
       icon: IconFolder,
+    },
+    {
+      title: "Credentials",
+      url: "/dashboard/settings/credentials",
+      icon: IconKey,
     },
   ],
 };

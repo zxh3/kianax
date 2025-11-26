@@ -56,8 +56,8 @@ export async function POST(
       nodes: routine.nodes.map((node: any) => ({
         id: node.id,
         pluginId: node.pluginId,
-        type: node.type,
         config: node.config || {},
+        credentialMappings: node.credentialMappings,
       })),
       connections: routine.connections,
       triggerData: {

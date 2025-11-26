@@ -1,22 +1,33 @@
-/**
- * Base Plugin Class
- *
- * All plugins extend this class and define their metadata, schemas, and execution logic.
- * Provides a clean, object-oriented API for plugin authors.
- */
-
 import type { z } from "zod";
 import type { ComponentType } from "react";
-import type { PluginContext, PluginMetadata } from "./common";
+import type {
+  PluginContext,
+  PluginMetadata,
+  CredentialSchemasRecord,
+  InferCredentialsData,
+} from "./common";
 
-export type { PluginContext, PluginMetadata };
+export type {
+  PluginContext,
+  PluginMetadata,
+  CredentialSchemasRecord,
+  InferCredentialsData,
+};
 
 /**
  * Plugin configuration UI component props
  */
-export interface PluginConfigUIProps<TConfig = any> {
+export interface PluginConfigUIProps<
+  TConfig = any,
+  TCredentialsData extends Record<string, unknown> = Record<string, unknown>,
+> {
   value?: TConfig;
   onChange: (value: TConfig) => void;
+  /**
+   * The resolved credentials, if any.
+   * Useful for showing connected status or relevant info in the config UI.
+   */
+  credentials?: TCredentialsData;
 }
 
 /**
@@ -47,64 +58,11 @@ export interface PluginSchemas {
 
 /**
  * Base Plugin Class
- *
- * @example
- * ```typescript
- * import { Plugin, z } from "@kianax/plugin-sdk";
- * import { MyConfigUI } from "./config-ui";
- *
- * export class MyPlugin extends Plugin {
- *   static metadata = {
- *     id: "my-plugin",
- *     name: "My Plugin",
- *     description: "Does something cool",
- *     version: "1.0.0",
- *     icon: "🚀",
- *     tags: ["api", "data", "input"],
- *   };
- *
- *   defineSchemas() {
- *     return {
- *       inputs: {
- *         query: {
- *           name: "query",
- *           label: "Search Query",
- *           description: "Text to search for",
- *           schema: z.object({ text: z.string() })
- *         }
- *       },
- *       outputs: {
- *         results: {
- *           name: "results",
- *           label: "Search Results",
- *           schema: z.object({ items: z.array(z.string()) })
- *         },
- *         count: {
- *           name: "count",
- *           label: "Result Count",
- *           schema: z.object({ total: z.number() })
- *         }
- *       },
- *       config: z.object({ apiKey: z.string() }),
- *     };
- *   }
- *
- *   getConfigUI() {
- *     return MyConfigUI;
- *   }
- *
- *   async execute(inputs, config, context) {
- *     // inputs: { query: { text: "..." } }
- *     // Return outputs: { results: { items: [...] }, count: { total: 5 } }
- *     return {
- *       results: { items: [] },
- *       count: { total: 0 }
- *     };
- *   }
- * }
- * ```
  */
-export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
+export abstract class Plugin<
+  TConfig = unknown, // Now accepts inferred type
+  TCredentialsData extends Record<string, unknown> = Record<string, unknown>,
+> {
   /**
    * Static metadata about the plugin
    * Must be defined by subclasses
@@ -122,9 +80,7 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    * Return null if no configuration is needed
    */
   getConfigUI(): ComponentType<
-    PluginConfigUIProps<
-      TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown
-    >
+    PluginConfigUIProps<TConfig, TCredentialsData>
   > | null {
     return null;
   }
@@ -141,8 +97,8 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    */
   abstract execute(
     inputs: Record<string, any>,
-    config: TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown,
-    context: PluginContext,
+    config: TConfig,
+    context: PluginContext<TCredentialsData>,
     nodeState: Record<string, unknown>,
   ): Promise<Record<string, any>>;
 
@@ -152,7 +108,7 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    */
   async validate(
     inputs: Record<string, any>,
-    config: TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown,
+    config: TConfig,
   ): Promise<{ valid: boolean; errors?: string[] }> {
     const schemas = this.defineSchemas();
     const errors: string[] = [];
@@ -193,6 +149,8 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
       };
     }
   }
+
+  // ... (getMetadata, getId, getName, getTags, hasTag, getInputs, getOutputs, getInput, getOutput, canConnectTo, isSchemasCompatible are unchanged)
 
   /**
    * Get plugin metadata
@@ -306,7 +264,5 @@ export function isSchemasCompatible(
 export type PluginConfig<T extends Plugin<any>> = T extends Plugin<
   infer TConfig
 >
-  ? TConfig extends z.ZodType
-    ? z.infer<TConfig>
-    : unknown
+  ? TConfig
   : never;

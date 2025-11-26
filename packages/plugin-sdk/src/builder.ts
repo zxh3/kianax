@@ -34,7 +34,10 @@ import type {
   PluginPort,
   PluginContext,
   PluginConfigUIProps,
-} from "./types/plugin-base";
+  CredentialSchemasRecord, // New: from common.ts
+  InferCredentialsData, // New: from common.ts
+} from "./types/plugin-base"; // Note: PluginContext, PluginConfigUIProps are from plugin-base.ts, which exports common.ts
+import type { CredentialType } from "./types/credentials"; // Import CredentialType
 
 /**
  * Extract inferred types from a record of Zod schemas
@@ -55,10 +58,15 @@ export interface BuilderPortDefinition {
 /**
  * Execute function signature with full type inference
  */
-export type ExecuteFunction<TInputs, TOutputs, TConfig> = (params: {
+export type ExecuteFunction<
+  TInputs,
+  TOutputs,
+  TConfig,
+  TCredentialsData extends Record<string, unknown>, // New: Credentials data
+> = (params: {
   inputs: TInputs;
   config: TConfig;
-  context: PluginContext;
+  context: PluginContext<TCredentialsData>;
   /** Persistent node state (for loop nodes, stateful operations, etc.) */
   nodeState: Record<string, unknown>;
 }) => Promise<Partial<TOutputs>>;
@@ -86,6 +94,11 @@ export class PluginBuilder<
     z.ZodType<any, any, any>
   >,
   TConfig = unknown,
+  TCredentialSchemas extends CredentialSchemasRecord = {}, // New: Accumulates credential schemas
+  TCredentialsData extends Record<
+    string,
+    unknown
+  > = InferCredentialsData<TCredentialSchemas>, // New: Inferred data type
 > {
   private _id: string;
   private _metadata: Partial<PluginMetadata> = {};
@@ -94,8 +107,10 @@ export class PluginBuilder<
   private _inputSchemas: Map<string, z.ZodType> = new Map();
   private _outputSchemas: Map<string, z.ZodType> = new Map();
   private _configSchema?: z.ZodType;
-  private _execute?: ExecuteFunction<any, any, any>;
-  private _configUI?: ComponentType<PluginConfigUIProps<any>>;
+  private _execute?: ExecuteFunction<any, any, any, any>; // Updated
+  private _configUI?: ComponentType<PluginConfigUIProps<any, any>>; // Updated
+
+  private _credentialSchemas: CredentialSchemasRecord = {}; // New: Store credential schemas for this plugin
 
   constructor(id: string) {
     this._id = id;
@@ -107,7 +122,13 @@ export class PluginBuilder<
    */
   withMetadata(
     metadata: Omit<PluginMetadata, "id">,
-  ): PluginBuilder<TInputSchemas, TOutputSchemas, TConfig> {
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
     this._metadata = { ...this._metadata, ...metadata, id: this._id };
     return this;
   }
@@ -121,7 +142,9 @@ export class PluginBuilder<
   ): PluginBuilder<
     TInputSchemas & Record<TName, TSchema>,
     TOutputSchemas,
-    TConfig
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
   > {
     this._inputs.set(name, {
       name,
@@ -142,7 +165,9 @@ export class PluginBuilder<
   ): PluginBuilder<
     TInputSchemas,
     TOutputSchemas & Record<TName, TSchema>,
-    TConfig
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
   > {
     this._outputs.set(name, {
       name,
@@ -159,27 +184,74 @@ export class PluginBuilder<
    */
   withConfig<TConfigSchema extends z.ZodType>(
     schema: TConfigSchema,
-  ): PluginBuilder<TInputSchemas, TOutputSchemas, z.infer<TConfigSchema>> {
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    z.infer<TConfigSchema>,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
     this._configSchema = schema;
     return this as any;
   }
 
   /**
-   * Set required credentials
+   * Require a specific credential type for this plugin.
+   *
+   * @param credentialType - The credential definition object (containing ID and schema)
+   * @param alias - Optional alias to refer to this credential in the execution context (e.g. "openai")
+   * @param required - Whether this credential is strictly required (default: true)
    */
-  withCredentials(
-    credentials: NonNullable<PluginMetadata["credentials"]>,
-  ): PluginBuilder<TInputSchemas, TOutputSchemas, TConfig> {
-    this._metadata.credentials = credentials;
-    return this;
+  requireCredential<
+    TCred extends CredentialType<any>,
+    TAlias extends string | undefined = undefined,
+  >(
+    credentialType: TCred,
+    alias?: TAlias,
+    required = true,
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    TConfig,
+    TCredentialSchemas & {
+      [_ in TAlias extends string ? TAlias : TCred["id"]]: TCred["schema"];
+    },
+    InferCredentialsData<
+      TCredentialSchemas & {
+        [_ in TAlias extends string ? TAlias : TCred["id"]]: TCred["schema"];
+      }
+    >
+  > {
+    const key = (alias || credentialType.id) as string;
+
+    this._credentialSchemas = {
+      ...this._credentialSchemas,
+      [key]: credentialType.schema,
+    };
+
+    if (!this._metadata.credentialRequirements) {
+      this._metadata.credentialRequirements = [];
+    }
+    this._metadata.credentialRequirements.push({
+      id: credentialType.id,
+      alias,
+      required,
+    });
+    return this as any;
   }
 
   /**
    * Set configuration UI component
    */
   withConfigUI(
-    component: ComponentType<PluginConfigUIProps<TConfig>>,
-  ): PluginBuilder<TInputSchemas, TOutputSchemas, TConfig> {
+    component: ComponentType<PluginConfigUIProps<TConfig, TCredentialsData>>, // Updated
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
     this._configUI = component;
     return this;
   }
@@ -194,9 +266,16 @@ export class PluginBuilder<
     fn: ExecuteFunction<
       InferSchemaRecord<TInputSchemas>,
       InferSchemaRecord<TOutputSchemas>,
-      TConfig
+      TConfig,
+      TCredentialsData // Pass the inferred credentials data type
     >,
-  ): PluginBuilder<TInputSchemas, TOutputSchemas, TConfig> {
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
     this._execute = fn;
     return this;
   }
@@ -207,7 +286,10 @@ export class PluginBuilder<
    * Validates that all required fields are set and returns a Plugin instance
    * that's compatible with the existing plugin system.
    */
-  build(): Plugin {
+  build(): Plugin<
+    TConfig extends z.ZodType ? z.infer<TConfig> : unknown, // TConfig (inferred)
+    TCredentialsData // TCredentialsData
+  > {
     // Validate required fields
     if (!this._id) {
       throw new Error("Plugin ID is required");
@@ -243,8 +325,9 @@ export class PluginBuilder<
       inputs: this._inputs,
       outputs: this._outputs,
       configSchema: this._configSchema,
-      execute: this._execute,
-      configUI: this._configUI,
+      execute: this._execute as any, // Cast due to complex generic type matching
+      configUI: this._configUI as any, // Cast
+      credentialSchemas: this._credentialSchemas, // Pass credential schemas for BuiltPlugin
     });
   }
 }
@@ -255,23 +338,27 @@ export class PluginBuilder<
  * This class wraps the builder's configuration and implements the Plugin abstract class,
  * allowing builder-created plugins to work seamlessly with the existing plugin system.
  */
-class BuiltPlugin extends Plugin {
-  static metadata: PluginMetadata;
+class BuiltPlugin<
+  TConfig = unknown,
+  TCredentialsData extends Record<string, unknown> = Record<string, unknown>,
+> extends Plugin<TConfig, TCredentialsData> {
+  static metadata: PluginMetadata; // Static metadata (not tied to generics)
 
   private _metadata: PluginMetadata;
   private _inputs: Map<string, PluginPort>;
   private _outputs: Map<string, PluginPort>;
   private _configSchema?: z.ZodType;
-  private _execute: ExecuteFunction<any, any, any>;
-  private _configUI?: ComponentType<PluginConfigUIProps<any>>;
+  private _execute: ExecuteFunction<any, any, any, TCredentialsData>; // Use TCredentialsData
+  private _configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>; // Use TCredentialsData
 
   constructor(config: {
     metadata: PluginMetadata;
     inputs: Map<string, PluginPort>;
     outputs: Map<string, PluginPort>;
     configSchema?: z.ZodType;
-    execute: ExecuteFunction<any, any, any>;
-    configUI?: ComponentType<PluginConfigUIProps<any>>;
+    execute: ExecuteFunction<any, any, any, TCredentialsData>;
+    configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>;
+    credentialSchemas: CredentialSchemasRecord; // Receive schemas
   }) {
     super();
 
@@ -307,6 +394,9 @@ class BuiltPlugin extends Plugin {
    * Implement getConfigUI() from Plugin base class
    */
   getConfigUI() {
+    // Pass resolved credentials to config UI if needed
+    // TODO: The UI needs a way to get actual resolved credentials to pass here.
+    // For now, configUI only receives TConfig and onChange.
     return this._configUI || null;
   }
 
@@ -315,8 +405,8 @@ class BuiltPlugin extends Plugin {
    */
   async execute(
     inputs: Record<string, any>,
-    config: any,
-    context: PluginContext,
+    config: TConfig,
+    context: PluginContext<TCredentialsData>, // Use TCredentialsData
     nodeState: Record<string, unknown>,
   ): Promise<Record<string, any>> {
     const result = await this._execute({ inputs, config, context, nodeState });

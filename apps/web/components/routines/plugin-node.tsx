@@ -13,6 +13,7 @@ export interface PluginNodeData extends Record<string, unknown> {
   pluginId: string;
   enabled: boolean;
   config?: Record<string, unknown>;
+  credentialMappings?: Record<string, string>;
   executionStatus?: "running" | "completed" | "failed" | "pending";
   onConfigure?: (nodeId: string) => void;
 }

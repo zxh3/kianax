@@ -207,6 +207,7 @@ async function executeNodeWithActivity(
         triggerData: graph.triggerData,
       },
       nodeState,
+      credentialMappings: node.credentialMappings,
     });
 
     // Store updated nodeState

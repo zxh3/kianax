@@ -25,6 +25,7 @@ export function adaptRoutineInput(input: RoutineInput): RoutineDefinition {
     pluginId: node.pluginId,
     label: node.pluginId, // Use pluginId as label (could be enhanced later)
     parameters: node.config, // config -> parameters
+    credentialMappings: node.credentialMappings,
   }));
 
   // Convert connections to edges

@@ -8,11 +8,28 @@
 import { Context } from "@temporalio/activity";
 import type { ExecutePluginInput } from "@kianax/shared/temporal";
 import { createPluginInstance, getPluginMetadata } from "@kianax/plugins";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@kianax/server/convex/_generated/api";
+import dotenv from "dotenv";
+
+// Ensure env vars are loaded
+dotenv.config();
+
+const convex = new ConvexHttpClient(process.env.CONVEX_URL!);
 
 export async function executePlugin(
   input: ExecutePluginInput,
 ): Promise<{ output: unknown; nodeState: Record<string, unknown> }> {
-  const { pluginId, config, inputs, context, nodeState = {} } = input;
+  const {
+    pluginId,
+    config,
+    inputs,
+    context,
+    nodeState = {},
+    credentialMappings,
+  } = input;
+
+  console.log(`Credential mappings: ${JSON.stringify(credentialMappings)}`);
 
   // Send heartbeat to show activity is alive
   Context.current().heartbeat();
@@ -58,18 +75,33 @@ export async function executePlugin(
   }
 
   // 4. Load user credentials if plugin requires them
-  // TODO: In production, fetch credentials from Convex based on context.userId
-  // For now, use credentials from context (passed from workflow)
-  const credentials = context.credentials || {};
+  const credentials: Record<string, any> = context.credentials || {};
 
-  // Check if plugin requires credentials that are missing
-  if (metadata?.credentials && metadata.credentials.length > 0) {
-    for (const credentialSchema of metadata.credentials) {
-      if (credentialSchema.required && !credentials[credentialSchema.key]) {
-        throw new Error(
-          `Missing required credential: ${credentialSchema.label} (${credentialSchema.key})`,
-        );
+  // Support new credential system
+  if (
+    metadata?.credentialRequirements &&
+    metadata.credentialRequirements.length > 0
+  ) {
+    for (const req of metadata.credentialRequirements) {
+      const key = req.alias || req.id;
+      // Use mappings passed from workflow
+      const mappedId =
+        credentialMappings?.[req.id] || credentialMappings?.[key];
+
+      if (!mappedId) {
+        if (req.required !== false) {
+          throw new Error(
+            `Missing credential mapping for ${key} (ID: ${req.id})`,
+          );
+        }
+        continue;
       }
+
+      // Fetch the full credential (including secrets) securely
+      const credData = await convex.action(api.credentials.getForExecution, {
+        credentialId: mappedId as any,
+      });
+      credentials[key] = credData;
     }
   }
 

@@ -35,6 +35,8 @@ export default defineSchema({
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()), // Plugin behavior settings (timeout, format, etc.)
+        // Mapping of Credential Request Alias (or ID) -> User Credential ID
+        credentialMappings: v.optional(v.record(v.string(), v.string())),
       }),
     ),
     connections: v.array(
@@ -121,15 +123,16 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_workflow_id", ["workflowId"]),
 
-  // Plugin credentials (encrypted)
-  plugin_credentials: defineTable({
+  // User Credentials (new system)
+  user_credentials: defineTable({
     userId: v.string(),
-    pluginId: v.string(),
-    // Credentials stored as encrypted JSON
-    credentials: v.string(), // Will be encrypted
+    typeId: v.string(), // The Credential Type ID (e.g. "openai-api")
+    name: v.string(), // User's label for this credential
+    data: v.string(), // Encrypted JSON
+    metadata: v.optional(v.any()), // Extra non-sensitive data
   })
     .index("by_user", ["userId"])
-    .index("by_user_and_plugin", ["userId", "pluginId"]),
+    .index("by_user_and_type", ["userId", "typeId"]),
 
   // User settings/preferences
   user_settings: defineTable({

@@ -1,0 +1,317 @@
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@kianax/server/convex/_generated/api";
+import { getAllCredentialTypes, type CredentialType } from "@kianax/plugins";
+import { useState } from "react";
+import { Button } from "@kianax/ui/components/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@kianax/ui/components/sheet";
+import { Input } from "@kianax/ui/components/input";
+import { Label } from "@kianax/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@kianax/ui/components/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@kianax/ui/components/card";
+import { Loader2, Plus, Trash2, Key } from "lucide-react";
+import { z } from "zod";
+import { toast } from "sonner";
+
+export default function CredentialsPage() {
+  const credentials = useQuery(api.credentials.list);
+  const createCredential = useMutation(api.credentials.create);
+  const removeCredential = useMutation(api.credentials.remove);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await removeCredential({ id: id as any });
+      toast.success("Credential removed");
+    } catch (error) {
+      toast.error("Failed to remove credential");
+    }
+  };
+
+  if (credentials === undefined) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container py-8">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Credentials</h1>
+          <p className="text-muted-foreground">
+            Manage your API keys and connections.
+          </p>
+        </div>
+        <CreateCredentialDialog
+          createCredential={createCredential}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
+      </div>
+
+      <div className="grid gap-4">
+        {credentials.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+            <Key className="h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold">No credentials yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Add your first credential to start using integrations.
+            </p>
+            <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Credential
+            </Button>
+          </div>
+        ) : (
+          credentials.map((cred: any) => (
+            <Card key={cred._id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle className="text-base">{cred.name}</CardTitle>
+                  <CardDescription>
+                    {getAllCredentialTypes().find((t) => t.id === cred.typeId)
+                      ?.displayName || cred.typeId}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive/90"
+                  onClick={() => handleDelete(cred._id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreateCredentialDialog({
+  createCredential,
+  open,
+  onOpenChange,
+}: {
+  createCredential: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const credentialTypes = getAllCredentialTypes();
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [name, setName] = useState("");
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedType = credentialTypes.find((t) => t.id === selectedTypeId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedType) return;
+
+    setIsSubmitting(true);
+    try {
+      // Validate using Zod
+      const validData = selectedType.schema.parse(formData);
+
+      if (selectedType.type === "oauth2" && selectedType.oauthConfig) {
+        // 1. Create PENDING credential with user inputs (Client ID/Secret)
+        const credentialId = await createCredential({
+          typeId: selectedType.id,
+          name: name || selectedType.displayName,
+          data: JSON.stringify(validData),
+          metadata: { status: "pending_oauth" },
+        });
+
+        // 2. Construct Auth URL
+        // Note: We use the current origin for the callback
+        const redirectUri = `${window.location.origin}/dashboard/settings/credentials/callback`;
+        const authUrl = new URL(
+          selectedType.oauthConfig.authorizationUrl || "",
+        );
+
+        authUrl.searchParams.set("response_type", "code");
+
+        // Map known fields or expect strict naming in schema
+        // Cast validData to any to access potential clientId property
+        const data = validData as any;
+        if (data.clientId) {
+          authUrl.searchParams.set("client_id", data.clientId as string);
+        }
+
+        authUrl.searchParams.set("redirect_uri", redirectUri);
+        authUrl.searchParams.set(
+          "scope",
+          selectedType.oauthConfig.scopes.join(" "),
+        );
+
+        // State carries the credential ID to update later
+        authUrl.searchParams.set("state", credentialId);
+
+        // Force offline access to get refresh token
+        authUrl.searchParams.set("access_type", "offline");
+        authUrl.searchParams.set("prompt", "consent");
+
+        // 3. Redirect
+        window.location.href = authUrl.toString();
+        return;
+      }
+
+      await createCredential({
+        typeId: selectedType.id,
+        name: name || selectedType.displayName,
+        data: JSON.stringify(validData),
+        metadata: {},
+      });
+      toast.success("Credential created");
+      onOpenChange(false);
+      // Reset form
+      setName("");
+      setFormData({});
+      setSelectedTypeId("");
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(
+          "Validation failed: " + (error.issues?.[0]?.message || error.message),
+        );
+      } else {
+        toast.error("Failed to create credential: " + error.message);
+      }
+    } finally {
+      // Only stop submitting if we didn't redirect (which returns early)
+      if (selectedType.type !== "oauth2") {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Credential
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto overflow-x-auto">
+        <SheetHeader>
+          <SheetTitle>Add Credential</SheetTitle>
+          <SheetDescription>Connect a new service to Kianax.</SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select
+              value={selectedTypeId}
+              onValueChange={(v) => {
+                setSelectedTypeId(v);
+                setFormData({});
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a service..." />
+              </SelectTrigger>
+              <SelectContent>
+                {credentialTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedType && (
+            <>
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  placeholder="My API Key"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              {/* Dynamic Form Fields */}
+              {generateFormFields(selectedType, formData, setFormData)}
+            </>
+          )}
+
+          <SheetFooter>
+            <Button type="submit" disabled={isSubmitting || !selectedType}>
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {selectedType?.type === "oauth2" ? "Connect" : "Save"}
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function generateFormFields(
+  type: CredentialType,
+  formData: Record<string, string>,
+  setFormData: (data: Record<string, string>) => void,
+) {
+  // Introspect Zod schema to generate inputs
+
+  if (!(type.schema instanceof z.ZodObject)) {
+    return (
+      <p className="text-destructive">
+        Unsupported schema type (must be ZodObject)
+      </p>
+    );
+  }
+
+  const shape = type.schema.shape;
+
+  return Object.entries(shape).map(([key, schema]: [string, any]) => {
+    const isPassword = type.maskedFields?.includes(key);
+    // Basic Label derivation
+    const label =
+      key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
+
+    return (
+      <div key={key} className="space-y-2">
+        <Label htmlFor={key}>{label}</Label>
+        <Input
+          id={key}
+          type={isPassword ? "password" : "text"}
+          value={formData[key] || ""}
+          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+          required={!schema.isOptional()}
+        />
+      </div>
+    );
+  });
+}

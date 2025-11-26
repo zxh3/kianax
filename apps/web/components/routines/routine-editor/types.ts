@@ -6,6 +6,7 @@ export interface RoutineNode {
   label: string;
   position: { x: number; y: number };
   config?: Record<string, unknown>;
+  credentialMappings?: Record<string, string>;
 }
 
 export interface RoutineConnection {

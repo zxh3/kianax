@@ -9,10 +9,11 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as credentials from "../credentials.js";
 import type * as executions from "../executions.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
-import type * as plugins from "../plugins.js";
+import type * as oauth from "../oauth.js";
 import type * as routines from "../routines.js";
 import type * as settings from "../settings.js";
 import type * as users from "../users.js";
@@ -25,10 +26,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  credentials: typeof credentials;
   executions: typeof executions;
   http: typeof http;
   messages: typeof messages;
-  plugins: typeof plugins;
+  oauth: typeof oauth;
   routines: typeof routines;
   settings: typeof settings;
   users: typeof users;

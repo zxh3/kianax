@@ -18,7 +18,8 @@ interface PluginCardProps {
 }
 
 export function PluginCard({ plugin, onConfigure }: PluginCardProps) {
-  const hasCredentials = plugin.credentials && plugin.credentials.length > 0;
+  const hasCredentials =
+    plugin.credentialRequirements && plugin.credentialRequirements.length > 0;
 
   return (
     <Card className="hover:shadow-md transition-shadow h-full flex flex-col">

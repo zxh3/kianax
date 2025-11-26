@@ -15,14 +15,20 @@ import {
 import { staticDataPlugin } from "./static-data";
 import { ifElsePlugin } from "./if-else";
 import { httpRequestPlugin } from "./http";
+import { openaiMessagePlugin } from "./openai";
 
-const PLUGINS = [staticDataPlugin, ifElsePlugin, httpRequestPlugin];
+const PLUGINS: Plugin<any, any>[] = [
+  staticDataPlugin,
+  ifElsePlugin,
+  httpRequestPlugin,
+  openaiMessagePlugin,
+];
 
 /**
  * Plugin registry - maps plugin IDs to plugin classes or instances
  * Supports both class-based plugins and builder-created plugins
  */
-export const pluginRegistry = new Map<string, Plugin>(
+export const pluginRegistry = new Map<string, Plugin<any, any>>(
   PLUGINS.map((plugin) => [plugin.getId(), plugin]),
 );
 
@@ -30,7 +36,7 @@ export const pluginRegistry = new Map<string, Plugin>(
  * Get a plugin by ID
  * Returns the plugin class or instance
  */
-export function getPlugin(pluginId: string): Plugin | undefined {
+export function getPlugin(pluginId: string): Plugin<any, any> | undefined {
   return pluginRegistry.get(pluginId);
 }
 
@@ -56,7 +62,7 @@ export function getPluginMetadata(
 /**
  * Get all plugins
  */
-export function getAllPlugins(): Plugin[] {
+export function getAllPlugins(): Plugin<any, any>[] {
   return Array.from(pluginRegistry.values());
 }
 
@@ -110,6 +116,8 @@ export function isValidPluginId(pluginId: string): boolean {
  * Create an instance of a plugin
  * Handles both class-based plugins and builder-created instances
  */
-export function createPluginInstance(pluginId: string): Plugin | undefined {
+export function createPluginInstance(
+  pluginId: string,
+): Plugin<any, any> | undefined {
   return getPlugin(pluginId);
 }

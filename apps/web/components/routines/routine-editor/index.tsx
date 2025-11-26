@@ -204,6 +204,7 @@ export function RoutineEditor({
           pluginId: node.pluginId,
           onConfigure: handleConfigureNode,
           config: node.config,
+          credentialMappings: node.credentialMappings,
         },
       }));
     },
@@ -248,6 +249,7 @@ export function RoutineEditor({
           label: data.label,
           position: node.position,
           config: data.config,
+          credentialMappings: data.credentialMappings,
         };
       });
     },
@@ -388,11 +390,19 @@ export function RoutineEditor({
   );
 
   const handleSaveNodeConfig = useCallback(
-    (nodeId: string, config: Record<string, unknown>, label: string) => {
+    (
+      nodeId: string,
+      config: Record<string, unknown>,
+      label: string,
+      credentialMappings?: Record<string, string>,
+    ) => {
       setNodes((nds) =>
         nds.map((node) =>
           node.id === nodeId
-            ? { ...node, data: { ...node.data, config, label } }
+            ? {
+                ...node,
+                data: { ...node.data, config, label, credentialMappings },
+              }
             : node,
         ),
       );
@@ -585,6 +595,9 @@ export function RoutineEditor({
                       config?: Record<string, unknown>;
                     }
                   ).config
+                }
+                credentialMappings={
+                  (configuringNode.data as PluginNodeData).credentialMappings
                 }
                 onSave={handleSaveNodeConfig}
               />

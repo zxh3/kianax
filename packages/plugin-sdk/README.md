@@ -183,22 +183,6 @@ builder.withConfig(
 );
 ```
 
-### `.withCredentials(credentials[])`
-
-Specify required credentials (API keys, OAuth tokens, etc.)
-
-```typescript
-builder.withCredentials([
-  {
-    key: "apiKey",
-    label: "API Key",
-    description: "Your service API key",
-    type: "password",
-    required: true,
-  },
-]);
-```
-
 ### `.withConfigUI(component)`
 
 Provide a custom React component for configuration UI.
@@ -374,14 +358,6 @@ export const githubPlugin = createPlugin("github-stars")
       forks: z.number(),
     }),
   })
-  .withCredentials([
-    {
-      key: "githubToken",
-      label: "GitHub Token",
-      type: "password",
-      required: false,
-    },
-  ])
   .execute(async ({ inputs, context }) => {
     const { owner, name } = inputs.repo;
     const token = context.credentials?.githubToken;

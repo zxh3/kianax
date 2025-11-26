@@ -1,13 +1,23 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Label } from "@kianax/ui/components/label";
-import { getPluginConfigComponent } from "@kianax/plugins";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@kianax/ui/components/select";
+import { getPluginConfigComponent, getPluginMetadata } from "@kianax/plugins";
 import { ScrollArea } from "@kianax/ui/components/scroll-area";
-import { IconX } from "@tabler/icons-react";
+import { IconX, IconKey } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { useQuery } from "convex/react";
+import { api } from "@kianax/server/convex/_generated/api";
+import Link from "next/link";
 
 interface NodeConfigDrawerProps {
   isOpen: boolean;
@@ -17,10 +27,12 @@ interface NodeConfigDrawerProps {
   pluginName: string;
   nodeLabel: string;
   config?: Record<string, unknown>;
+  credentialMappings?: Record<string, string>;
   onSave: (
     nodeId: string,
     config: Record<string, unknown>,
     label: string,
+    credentialMappings?: Record<string, string>,
   ) => void;
   className?: string;
 }
@@ -39,6 +51,7 @@ export function NodeConfigDrawer({
   pluginName,
   nodeLabel,
   config,
+  credentialMappings,
   onSave,
   className,
 }: NodeConfigDrawerProps) {
@@ -48,12 +61,31 @@ export function NodeConfigDrawer({
     config || {},
   );
   const [localLabel, setLocalLabel] = useState<string>(nodeLabel);
+  const [localCredentialMappings, setLocalCredentialMappings] = useState<
+    Record<string, string>
+  >(credentialMappings || {});
+
+  // Get plugin metadata to check for credential requirements
+  const metadata = getPluginMetadata(pluginId);
+  const requirements = metadata?.credentialRequirements || [];
+
+  // Fetch user's credentials if requirements exist
+  const userCredentials = useQuery(api.credentials.list);
+
+  // Update local state when props change (re-opening drawer or changing node)
+  useEffect(() => {
+    if (isOpen) {
+      setLocalConfig(config || {});
+      setLocalLabel(nodeLabel);
+      setLocalCredentialMappings(credentialMappings || {});
+    }
+  }, [isOpen, config, nodeLabel, credentialMappings]);
 
   // Get the plugin's config component from the registry
   const ConfigComponent = getPluginConfigComponent(pluginId);
 
   const handleSave = () => {
-    onSave(nodeId, localConfig, localLabel);
+    onSave(nodeId, localConfig, localLabel, localCredentialMappings);
     toast.success("Configuration saved");
   };
 
@@ -106,6 +138,78 @@ export function NodeConfigDrawer({
               Give this node a descriptive name to identify it in your routine.
             </p>
           </div>
+
+          {/* Credential Selection Section */}
+          {requirements.length > 0 && (
+            <>
+              <div className="border-t border-border pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <IconKey className="size-4" />
+                    Credentials
+                  </h4>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    asChild
+                  >
+                    <Link
+                      href="/dashboard/settings/credentials"
+                      target="_blank"
+                    >
+                      Manage
+                    </Link>
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {requirements.map((req) => {
+                    const key = req.alias || req.id;
+                    // Filter user credentials that match the required type ID
+                    const compatibleCredentials =
+                      userCredentials?.filter((c) => c.typeId === req.id) || [];
+
+                    return (
+                      <div key={key} className="space-y-2">
+                        <Label className="text-xs font-medium flex gap-1">
+                          {req.alias || req.id}
+                          {req.required !== false && (
+                            <span className="text-destructive">*</span>
+                          )}
+                        </Label>
+                        <Select
+                          value={localCredentialMappings[key] || ""}
+                          onValueChange={(value) =>
+                            setLocalCredentialMappings((prev) => ({
+                              ...prev,
+                              [key]: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select credential..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compatibleCredentials.length > 0 ? (
+                              compatibleCredentials.map((cred) => (
+                                <SelectItem key={cred._id} value={cred._id}>
+                                  {cred.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <div className="p-2 text-xs text-muted-foreground text-center">
+                                No compatible credentials found.
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Divider */}
           {ConfigComponent && (

@@ -24,7 +24,18 @@ export {
   hasPluginConfigUI,
 } from "./config-registry";
 
+// Export credential registry
+export {
+  registerCredential,
+  getCredentialType,
+  getAllCredentialTypes,
+} from "./credentials/registry";
+
+// Re-export types
+export type { CredentialType } from "@kianax/plugin-sdk";
+
 // Export all builder-based plugins
 export { staticDataPlugin } from "./static-data";
+export { openaiMessagePlugin } from "./openai";
 export { ifElsePlugin } from "./if-else";
 export { httpRequestPlugin } from "./http";

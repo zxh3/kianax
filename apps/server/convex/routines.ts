@@ -29,6 +29,7 @@ export const create = mutation({
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()),
+        credentialMappings: v.optional(v.record(v.string(), v.string())),
       }),
     ),
     connections: v.array(
@@ -135,6 +136,7 @@ export const update = mutation({
           label: v.string(),
           position: v.object({ x: v.number(), y: v.number() }),
           config: v.optional(v.any()),
+          credentialMappings: v.optional(v.record(v.string(), v.string())),
         }),
       ),
     ),
@@ -202,6 +204,7 @@ export const addNode = mutation({
       label: v.string(),
       position: v.object({ x: v.number(), y: v.number() }),
       config: v.optional(v.any()),
+      credentialMappings: v.optional(v.record(v.string(), v.string())),
     }),
   },
   handler: async (ctx, args) => {

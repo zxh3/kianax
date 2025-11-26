@@ -3,17 +3,6 @@
  * Shared type definitions for Temporal workflows and activities
  */
 
-/**
- * Plugin execution context
- */
-export interface PluginContext {
-  userId: string;
-  routineId: string;
-  executionId: string;
-  credentials?: Record<string, string>;
-  triggerData?: unknown;
-}
-
 export interface RoutineInput {
   routineId: string;
   userId: string;
@@ -31,6 +20,10 @@ export interface Node {
    * Note: Use static-data plugin for constant input values
    */
   config: Record<string, unknown>;
+  /**
+   * Mapping of Credential Request Alias (or ID) -> User Credential ID
+   */
+  credentialMappings?: Record<string, string>;
 }
 
 export interface Connection {
@@ -49,6 +42,15 @@ export interface ExecutePluginInput {
     nodeId: string; // Workflow-specific node tracking
   };
   nodeState?: Record<string, unknown>; // Persistent state for stateful nodes (e.g., loops)
+  credentialMappings?: Record<string, string>; // Pass mappings to activity
+}
+
+export interface PluginContext {
+  userId: string;
+  routineId: string;
+  executionId: string;
+  credentials?: Record<string, any>;
+  triggerData?: unknown;
 }
 
 export interface CreateRoutineExecutionInput {
