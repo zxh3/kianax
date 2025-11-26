@@ -491,9 +491,9 @@ export function RoutineEditor({
 
   // Calculate result drawer position if config drawer is also open
   // Default: right-2 (8px)
-  // If config open: right-2 + w-96 (384px) + gap-4 (16px) = 408px
+  // If config open: right-2 (8px) + w-96 (384px) + gap-2 (8px) = 400px
   const resultDrawerStyle =
-    configDrawerOpen && configuringNode ? "right-[408px]" : "";
+    configDrawerOpen && configuringNode ? "right-[400px]" : "";
 
   return (
     <div className="flex h-full w-full flex-col">
