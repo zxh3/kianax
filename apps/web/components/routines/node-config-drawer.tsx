@@ -22,9 +22,6 @@ interface NodeConfigDrawerProps {
     config: Record<string, unknown>,
     label: string,
   ) => void;
-  // New props for switching to result drawer
-  testExecution: any | null; // Full execution object to check for nodeStates
-  onSwitchToResult: (nodeId: string) => void;
   className?: string;
 }
 
@@ -43,8 +40,6 @@ export function NodeConfigDrawer({
   nodeLabel,
   config,
   onSave,
-  testExecution, // New
-  onSwitchToResult, // New
   className,
 }: NodeConfigDrawerProps) {
   const nodeLabelInputId = useId();
@@ -65,10 +60,6 @@ export function NodeConfigDrawer({
   const handleConfigChange = (newConfig: Record<string, unknown>) => {
     setLocalConfig(newConfig);
   };
-
-  // Check if there are any test results for this node
-  const hasTestResults =
-    testExecution?.nodeStates?.some((s: any) => s.nodeId === nodeId) || false;
 
   if (!isOpen) return null;
 
@@ -141,15 +132,6 @@ export function NodeConfigDrawer({
 
       {/* Footer */}
       <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
-        {hasTestResults && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onSwitchToResult(nodeId)}
-          >
-            Show Last Result
-          </Button>
-        )}
         <Button variant="outline" size="sm" onClick={onClose}>
           Cancel
         </Button>

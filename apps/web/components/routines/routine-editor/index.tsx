@@ -489,18 +489,6 @@ export function RoutineEditor({
     }
   }
 
-  const handleSwitchToConfig = useCallback((nodeId: string) => {
-    setConfiguringNodeId(nodeId);
-    setConfigDrawerOpen(true);
-    // We don't close the result drawer to allow viewing both
-  }, []);
-
-  const handleSwitchToResult = useCallback((nodeId: string) => {
-    setSelectedResultNodeId(nodeId);
-    setResultDrawerOpen(true);
-    // We don't close the config drawer to allow viewing both
-  }, []);
-
   // Calculate result drawer position if config drawer is also open
   // Default: right-2 (8px)
   // If config open: right-2 + w-96 (384px) + gap-4 (16px) = 408px
@@ -603,8 +591,6 @@ export function RoutineEditor({
                   ).config
                 }
                 onSave={handleSaveNodeConfig}
-                testExecution={testExecution} // Pass testExecution
-                onSwitchToResult={handleSwitchToResult} // Pass handler
               />
             )}
 
@@ -619,7 +605,6 @@ export function RoutineEditor({
                 nodeId={selectedResultNode.id}
                 nodeLabel={(selectedResultNode.data as PluginNodeData).label}
                 executionState={selectedNodeExecutionState}
-                onSwitchToConfig={handleSwitchToConfig} // Pass handler
                 className={resultDrawerStyle}
               />
             )}
