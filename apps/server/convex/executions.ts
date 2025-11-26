@@ -178,7 +178,7 @@ export const storeNodeResult = mutation({
         const existingEntry = execution.nodeStates[existingIndex];
         // biome-ignore lint/style/noNonNullAssertion: index was just checked
         const startedAt = existingEntry!.startedAt;
-        
+
         const nodeState = {
           ...existingEntry,
           nodeId: args.nodeId,
@@ -188,9 +188,10 @@ export const storeNodeResult = mutation({
           error: args.error,
           completedAt: args.completedAt,
           // Calculate duration based on node's start time
-          duration: (args.completedAt && startedAt)
-            ? args.completedAt - startedAt
-            : undefined,
+          duration:
+            args.completedAt && startedAt
+              ? args.completedAt - startedAt
+              : undefined,
         };
 
         const updatedNodeStates = [...execution.nodeStates];
