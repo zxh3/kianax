@@ -141,74 +141,69 @@ export function NodeConfigDrawer({
 
           {/* Credential Selection Section */}
           {requirements.length > 0 && (
-            <>
-              <div className="border-t border-border pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <IconKey className="size-4" />
-                    Credentials
-                  </h4>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
-                    asChild
-                  >
-                    <Link
-                      href="/dashboard/settings/credentials"
-                      target="_blank"
-                    >
-                      Manage
-                    </Link>
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  {requirements.map((req) => {
-                    const key = req.alias || req.id;
-                    // Filter user credentials that match the required type ID
-                    const compatibleCredentials =
-                      userCredentials?.filter((c) => c.typeId === req.id) || [];
-
-                    return (
-                      <div key={key} className="space-y-2">
-                        <Label className="text-xs font-medium flex gap-1">
-                          {req.alias || req.id}
-                          {req.required !== false && (
-                            <span className="text-destructive">*</span>
-                          )}
-                        </Label>
-                        <Select
-                          value={localCredentialMappings[key] || ""}
-                          onValueChange={(value) =>
-                            setLocalCredentialMappings((prev) => ({
-                              ...prev,
-                              [key]: value,
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select credential..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {compatibleCredentials.length > 0 ? (
-                              compatibleCredentials.map((cred) => (
-                                <SelectItem key={cred._id} value={cred._id}>
-                                  {cred.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <div className="p-2 text-xs text-muted-foreground text-center">
-                                No compatible credentials found.
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="border-t border-border pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <IconKey className="size-4" />
+                  Credentials
+                </h4>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  asChild
+                >
+                  <Link href="/dashboard/settings/credentials" target="_blank">
+                    Manage
+                  </Link>
+                </Button>
               </div>
-            </>
+              <div className="space-y-4">
+                {requirements.map((req) => {
+                  const key = req.alias || req.id;
+                  // Filter user credentials that match the required type ID
+                  const compatibleCredentials =
+                    userCredentials?.filter((c) => c.typeId === req.id) || [];
+
+                  return (
+                    <div key={key} className="space-y-2">
+                      <Label className="text-xs font-medium flex gap-1">
+                        {req.alias || req.id}
+                        {req.required !== false && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </Label>
+                      <Select
+                        value={localCredentialMappings[key] || ""}
+                        onValueChange={(value) =>
+                          setLocalCredentialMappings((prev) => ({
+                            ...prev,
+                            [key]: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select credential..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {compatibleCredentials.length > 0 ? (
+                            compatibleCredentials.map((cred) => (
+                              <SelectItem key={cred._id} value={cred._id}>
+                                {cred.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-2 text-xs text-muted-foreground text-center">
+                              No compatible credentials found.
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* Divider */}
