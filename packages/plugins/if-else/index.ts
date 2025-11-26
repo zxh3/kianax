@@ -248,7 +248,7 @@ export const ifElsePlugin = createPlugin("if-else")
 
     const output = {
       result: finalResult,
-      data,
+      value: data,
       groups: groupResults,
     };
 

@@ -24,6 +24,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import PluginNode, { type PluginNodeData } from "../plugin-node";
 import { NodeConfigDrawer } from "../node-config-drawer";
+import { TestResultDrawer } from "../test-result-drawer";
 import { TestRunPanel } from "../test-run-panel";
 import { Textarea } from "@kianax/ui/components/textarea";
 import { toast } from "sonner";
@@ -68,6 +69,10 @@ export function RoutineEditor({
   const [testWorkflowId, setTestWorkflowId] = useState<string | null>(null);
   const [testPanelOpen, setTestPanelOpen] = useState(false);
   const [isStartingTest, setIsStartingTest] = useState(false);
+  const [resultDrawerOpen, setResultDrawerOpen] = useState(false);
+  const [selectedResultNodeId, setSelectedResultNodeId] = useState<
+    string | null
+  >(null);
 
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,11 +179,21 @@ export function RoutineEditor({
     setConfigDrawerOpen(true);
   }, []);
 
-  // Handler for node click - opens the configuration drawer
-  const onNodeClick = useCallback((_: unknown, node: Node) => {
-    setConfiguringNodeId(node.id);
-    setConfigDrawerOpen(true);
-  }, []);
+  // Handler for node click - opens the configuration drawer OR result drawer
+  const onNodeClick = useCallback(
+    (_: unknown, node: Node) => {
+      if (testPanelOpen) {
+        setSelectedResultNodeId(node.id);
+        setResultDrawerOpen(true);
+        setConfigDrawerOpen(false);
+      } else {
+        setConfiguringNodeId(node.id);
+        setConfigDrawerOpen(true);
+        setResultDrawerOpen(false);
+      }
+    },
+    [testPanelOpen],
+  );
 
   // Convert routine nodes to React Flow nodes
   const convertToReactFlowNodes = useCallback(
@@ -465,6 +480,17 @@ export function RoutineEditor({
 
   const configuringNode = nodes.find((n) => n.id === configuringNodeId);
 
+  const selectedResultNode = nodes.find((n) => n.id === selectedResultNodeId);
+  let selectedNodeExecutionState = null;
+  if (testExecution?.nodeStates && selectedResultNodeId) {
+    const states = testExecution.nodeStates.filter(
+      (s: any) => s.nodeId === selectedResultNodeId,
+    );
+    if (states.length > 0) {
+      selectedNodeExecutionState = states[states.length - 1];
+    }
+  }
+
   return (
     <div className="flex h-full w-full flex-col">
       {/* Top Toolbar */}
@@ -564,11 +590,31 @@ export function RoutineEditor({
               />
             )}
 
+            {/* Test Result Drawer */}
+            {selectedResultNode && (
+              <TestResultDrawer
+                isOpen={resultDrawerOpen}
+                onClose={() => {
+                  setResultDrawerOpen(false);
+                  setSelectedResultNodeId(null);
+                }}
+                nodeId={selectedResultNode.id}
+                nodeLabel={(selectedResultNode.data as PluginNodeData).label}
+                executionState={selectedNodeExecutionState}
+              />
+            )}
+
             {/* Test Run Panel */}
             <TestRunPanel
               workflowId={testWorkflowId}
               isOpen={testPanelOpen}
               onClose={() => setTestPanelOpen(false)}
+              onSelectNode={(nodeId) => {
+                setSelectedResultNodeId(nodeId);
+                setResultDrawerOpen(true);
+                setConfigDrawerOpen(false);
+              }}
+              selectedNodeId={selectedResultNodeId}
             />
           </>
         ) : (
