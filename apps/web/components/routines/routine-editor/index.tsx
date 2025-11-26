@@ -491,6 +491,18 @@ export function RoutineEditor({
     }
   }
 
+  const handleSwitchToConfig = useCallback((nodeId: string) => {
+    setConfiguringNodeId(nodeId);
+    setConfigDrawerOpen(true);
+    setResultDrawerOpen(false); // Close result drawer
+  }, []);
+
+  const handleSwitchToResult = useCallback((nodeId: string) => {
+    setSelectedResultNodeId(nodeId);
+    setResultDrawerOpen(true);
+    setConfigDrawerOpen(false); // Close config drawer
+  }, []);
+
   return (
     <div className="flex h-full w-full flex-col">
       {/* Top Toolbar */}
@@ -587,6 +599,8 @@ export function RoutineEditor({
                   ).config
                 }
                 onSave={handleSaveNodeConfig}
+                testExecution={testExecution} // Pass testExecution
+                onSwitchToResult={handleSwitchToResult} // Pass handler
               />
             )}
 
@@ -601,6 +615,7 @@ export function RoutineEditor({
                 nodeId={selectedResultNode.id}
                 nodeLabel={(selectedResultNode.data as PluginNodeData).label}
                 executionState={selectedNodeExecutionState}
+                onSwitchToConfig={handleSwitchToConfig} // Pass handler
               />
             )}
 

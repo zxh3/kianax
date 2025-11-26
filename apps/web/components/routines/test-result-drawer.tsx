@@ -18,6 +18,7 @@ interface TestResultDrawerProps {
   nodeId: string;
   nodeLabel: string;
   executionState: any; // Using any to match existing loose typing, ideally should be typed
+  onSwitchToConfig: (nodeId: string) => void;
 }
 
 export function TestResultDrawer({
@@ -26,6 +27,7 @@ export function TestResultDrawer({
   nodeId,
   nodeLabel,
   executionState,
+  onSwitchToConfig,
 }: TestResultDrawerProps) {
   if (!isOpen) return null;
 
@@ -156,6 +158,13 @@ export function TestResultDrawer({
           )}
         </div>
       </ScrollArea>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => onSwitchToConfig(nodeId)}>
+          Edit Configuration
+        </Button>
+      </div>
     </div>
   );
 }
