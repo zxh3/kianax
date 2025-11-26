@@ -8,6 +8,8 @@
 import { Context } from "@temporalio/activity";
 import type { ExecutePluginInput } from "@kianax/shared/temporal";
 import { createPluginInstance, getPluginMetadata } from "@kianax/plugins";
+import { getConvexClient } from "./convex";
+import { api } from "../../../server/convex/_generated/api";
 
 export async function executePlugin(
   input: ExecutePluginInput,
@@ -59,9 +61,39 @@ export async function executePlugin(
     }
 
     // 4. Load user credentials if plugin requires them
-    // TODO: In production, fetch credentials from Convex based on context.userId
-    // For now, use credentials from context (passed from workflow)
-    const credentials = context.credentials || {};
+    let credentials = context.credentials || {};
+
+    // Fetch from Convex if plugin requires credentials
+    // We prioritize secure fetching over passed context
+    if (metadata?.credentials && metadata.credentials.length > 0) {
+      try {
+        const convex = getConvexClient();
+        // Use type assertion or 'any' because the API types might not be generated yet
+        // in the local environment until 'npx convex dev' runs.
+        const storedCreds = await convex.query(
+          (api.plugins as any).getWorkerCredentials,
+          {
+            userId: context.userId,
+            pluginId,
+          },
+        );
+
+        if (storedCreds) {
+          let parsed = storedCreds;
+          if (typeof storedCreds === "string") {
+            try {
+              parsed = JSON.parse(storedCreds);
+            } catch (_e) {
+              /* keep as string */
+            }
+          }
+          credentials = { ...credentials, ...parsed };
+        }
+      } catch (err) {
+        console.warn("Failed to fetch credentials from Convex:", err);
+        // Fallback to context credentials if fetch fails (e.g. network issue)
+      }
+    }
 
     // Check if plugin requires credentials that are missing
     if (metadata?.credentials && metadata.credentials.length > 0) {
@@ -87,6 +119,8 @@ export async function executePlugin(
       nodeId: context.nodeId,
       credentials,
       triggerData: context.triggerData,
+      loopIteration: context.loopIteration,
+      loopAccumulator: context.loopAccumulator,
     });
 
     // 6. Validate outputs against plugin's output schemas

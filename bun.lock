@@ -37,7 +37,7 @@
       "dependencies": {
         "@convex-dev/better-auth": "^0.9.7",
         "@temporalio/client": "^1.13.2",
-        "convex": "^1.28.2",
+        "convex": "^1.29.3",
       },
       "devDependencies": {
         "typescript": "5.9.2",
@@ -2340,6 +2340,8 @@
     "@inquirer/external-editor/iconv-lite": ["iconv-lite@0.7.0", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3.0.0" } }, "sha512-cf6L2Ds3h57VVmkZe+Pn+5APsT7FpqJtEhhieDCvrE2MK5Qk9MyffgQyuxQTm6BChfeZNtcOLHp9IcWRVcIcBQ=="],
 
     "@kianax/server/@temporalio/client": ["@temporalio/client@1.13.2", "", { "dependencies": { "@grpc/grpc-js": "^1.12.4", "@temporalio/common": "1.13.2", "@temporalio/proto": "1.13.2", "abort-controller": "^3.0.0", "long": "^5.2.3", "uuid": "^11.1.0" } }, "sha512-gyptINv/i6DTG4sRgE6S10vsO6V56iQQujDFaVIwg5pcRsRqqHIwoOldI4j1RqrEoEy7J4prRBGNwOd5H3Yf8A=="],
+
+    "@kianax/server/convex": ["convex@1.29.3", "", { "dependencies": { "esbuild": "0.25.4", "prettier": "^3.0.0" }, "peerDependencies": { "@auth0/auth0-react": "^2.0.1", "@clerk/clerk-react": "^4.12.8 || ^5.0.0", "react": "^18.0.0 || ^19.0.0-0 || ^19.0.0" }, "optionalPeers": ["@auth0/auth0-react", "@clerk/clerk-react", "react"], "bin": { "convex": "bin/main.js" } }, "sha512-tg5TXzMjpNk9m50YRtdp6US+t7ckxE4E+7DNKUCjJ2MupQs2RBSPF/z5SNN4GUmQLSfg0eMILDySzdAvjTrhnw=="],
 
     "@kianax/ui/zod": ["zod@4.1.12", "", {}, "sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ=="],
 

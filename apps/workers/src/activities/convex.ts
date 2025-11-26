@@ -19,7 +19,7 @@ import { api } from "../../../server/convex/_generated/api";
  */
 let convexClient: ConvexHttpClient | null = null;
 
-function getConvexClient(): ConvexHttpClient {
+export function getConvexClient(): ConvexHttpClient {
   if (!convexClient) {
     const convexUrl = process.env.CONVEX_URL;
 
