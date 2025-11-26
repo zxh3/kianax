@@ -179,17 +179,15 @@ export function RoutineEditor({
     setConfigDrawerOpen(true);
   }, []);
 
-  // Handler for node click - opens the configuration drawer OR result drawer
+  // Handler for node click - opens the result drawer if in test mode
+  // Otherwise, clicking the node body just selects it (default React Flow behavior)
+  // Configuration is now opened exclusively via the gear icon on the node
   const onNodeClick = useCallback(
     (_: unknown, node: Node) => {
       if (testPanelOpen) {
         setSelectedResultNodeId(node.id);
         setResultDrawerOpen(true);
         setConfigDrawerOpen(false);
-      } else {
-        setConfiguringNodeId(node.id);
-        setConfigDrawerOpen(true);
-        setResultDrawerOpen(false);
       }
     },
     [testPanelOpen],

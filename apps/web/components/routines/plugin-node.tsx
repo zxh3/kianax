@@ -6,7 +6,6 @@ import {
   getPluginOutputs,
   getPluginMetadata,
 } from "@/lib/plugins";
-import { hasPluginConfigUI } from "@kianax/plugins";
 
 export interface PluginNodeData extends Record<string, unknown> {
   label: string;
@@ -31,10 +30,6 @@ function PluginNode({ data, selected, id }: NodeProps) {
   );
   const outputs = useMemo(
     () => getPluginOutputs(nodeData.pluginId),
-    [nodeData.pluginId],
-  );
-  const hasConfigUI = useMemo(
-    () => hasPluginConfigUI(nodeData.pluginId),
     [nodeData.pluginId],
   );
 
@@ -92,16 +87,14 @@ function PluginNode({ data, selected, id }: NodeProps) {
             </span>
           </div>
         </div>
-        {hasConfigUI && (
-          <button
-            type="button"
-            onClick={handleConfigClick}
-            className="p-1.5 rounded-md hover:bg-muted hover:shadow-sm border border-transparent hover:border-border transition-all text-muted-foreground hover:text-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
-            title="Configure"
-          >
-            <IconSettings className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleConfigClick}
+          className="p-1.5 rounded-md hover:bg-muted hover:shadow-sm border border-transparent hover:border-border transition-all text-muted-foreground hover:text-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
+          title="Configure"
+        >
+          <IconSettings className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Body */}
