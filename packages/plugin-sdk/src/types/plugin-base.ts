@@ -136,12 +136,14 @@ export abstract class Plugin<TConfigSchema extends z.ZodType = z.ZodType> {
    * @param inputs - Record of input port names to their values
    * @param config - Plugin configuration
    * @param context - Execution context
+   * @param nodeState - Persistent node state (for loop nodes, stateful operations, etc.)
    * @returns Record of output port names to their values
    */
   abstract execute(
     inputs: Record<string, any>,
     config: TConfigSchema extends z.ZodType ? z.infer<TConfigSchema> : unknown,
     context: PluginContext,
+    nodeState: Record<string, unknown>,
   ): Promise<Record<string, any>>;
 
   /**

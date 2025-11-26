@@ -70,6 +70,7 @@ export class PluginTester {
       options.inputs,
       options.config,
       context,
+      {}, // nodeState (empty for testing)
     );
 
     // Validate outputs

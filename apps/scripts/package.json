@@ -16,7 +16,7 @@
     "@kianax/shared": "*",
     "@kianax/workers": "*",
     "@temporalio/client": "^1.13.0",
-    "convex": "^1.17.5",
+    "convex": "^1.28.2",
     "dotenv": "^16.4.7",
     "nanoid": "^5.0.1"
   },

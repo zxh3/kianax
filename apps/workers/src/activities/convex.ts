@@ -107,11 +107,13 @@ export async function storeNodeResult(
     await convex.mutation(api.executions.storeNodeResult, {
       workflowId: input.workflowId,
       nodeId: input.nodeId,
-      ...(input.iteration !== undefined && { iteration: input.iteration }),
       status: input.status,
       ...(input.output !== undefined && { output: input.output }),
       ...(input.error !== undefined && { error: input.error }),
-      completedAt: input.completedAt,
+      ...(input.startedAt !== undefined && { startedAt: input.startedAt }),
+      ...(input.completedAt !== undefined && {
+        completedAt: input.completedAt,
+      }),
     });
   } catch (error: any) {
     console.error("Failed to store node result:", error);

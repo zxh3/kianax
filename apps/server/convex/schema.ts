@@ -35,7 +35,6 @@ export default defineSchema({
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()), // Plugin behavior settings (timeout, format, etc.)
-        enabled: v.boolean(),
       }),
     ),
     connections: v.array(
@@ -45,23 +44,6 @@ export default defineSchema({
         targetNodeId: v.string(),
         sourceHandle: v.optional(v.string()),
         targetHandle: v.optional(v.string()),
-        // Conditional execution (for logic nodes)
-        condition: v.optional(
-          v.object({
-            type: v.union(
-              v.literal("branch"),
-              v.literal("default"),
-              v.literal("loop"),
-            ),
-            value: v.optional(v.string()), // Branch value: "true", "false", etc.
-            loopConfig: v.optional(
-              v.object({
-                maxIterations: v.number(),
-                accumulatorFields: v.optional(v.array(v.string())),
-              }),
-            ),
-          }),
-        ),
       }),
     ),
     tags: v.optional(v.array(v.string())),
@@ -106,7 +88,6 @@ export default defineSchema({
     nodeStates: v.array(
       v.object({
         nodeId: v.string(),
-        iteration: v.optional(v.number()), // Iteration number for nodes in loops (0-based)
         status: v.string(),
         input: v.optional(v.any()),
         output: v.optional(v.any()),

@@ -29,7 +29,6 @@ export const create = mutation({
         label: v.string(),
         position: v.object({ x: v.number(), y: v.number() }),
         config: v.optional(v.any()),
-        enabled: v.boolean(),
       }),
     ),
     connections: v.array(
@@ -39,12 +38,6 @@ export const create = mutation({
         targetNodeId: v.string(),
         sourceHandle: v.optional(v.string()),
         targetHandle: v.optional(v.string()),
-        condition: v.optional(
-          v.object({
-            type: v.union(v.literal("branch"), v.literal("default")),
-            value: v.optional(v.string()),
-          }),
-        ),
       }),
     ),
     tags: v.optional(v.array(v.string())),
@@ -142,7 +135,6 @@ export const update = mutation({
           label: v.string(),
           position: v.object({ x: v.number(), y: v.number() }),
           config: v.optional(v.any()),
-          enabled: v.boolean(),
         }),
       ),
     ),
@@ -154,12 +146,6 @@ export const update = mutation({
           targetNodeId: v.string(),
           sourceHandle: v.optional(v.string()),
           targetHandle: v.optional(v.string()),
-          condition: v.optional(
-            v.object({
-              type: v.union(v.literal("branch"), v.literal("default")),
-              value: v.optional(v.string()),
-            }),
-          ),
         }),
       ),
     ),
@@ -216,7 +202,6 @@ export const addNode = mutation({
       label: v.string(),
       position: v.object({ x: v.number(), y: v.number() }),
       config: v.optional(v.any()),
-      enabled: v.boolean(),
     }),
   },
   handler: async (ctx, args) => {
@@ -249,12 +234,6 @@ export const addConnection = mutation({
       targetNodeId: v.string(),
       sourceHandle: v.optional(v.string()),
       targetHandle: v.optional(v.string()),
-      condition: v.optional(
-        v.object({
-          type: v.union(v.literal("branch"), v.literal("default")),
-          value: v.optional(v.string()),
-        }),
-      ),
     }),
   },
   handler: async (ctx, args) => {

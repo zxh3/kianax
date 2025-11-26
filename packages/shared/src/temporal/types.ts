@@ -3,7 +3,16 @@
  * Shared type definitions for Temporal workflows and activities
  */
 
-import type { PluginContext as BasePluginContext } from "../types/plugin";
+/**
+ * Plugin execution context
+ */
+export interface PluginContext {
+  userId: string;
+  routineId: string;
+  executionId: string;
+  credentials?: Record<string, string>;
+  triggerData?: unknown;
+}
 
 export interface RoutineInput {
   routineId: string;
@@ -22,52 +31,24 @@ export interface Node {
    * Note: Use static-data plugin for constant input values
    */
   config: Record<string, unknown>;
-  enabled: boolean;
 }
 
 export interface Connection {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
-  sourceHandle?: string; // Output port on source node
+  sourceHandle?: string; // Output port on source node (e.g., "true", "false", "success", "error")
   targetHandle?: string; // Input port on target node
-
-  // Conditional execution (for logic nodes)
-  condition?: {
-    type: "branch" | "default" | "loop";
-    value?: string; // Branch value: "true", "false", etc.
-    loopConfig?: {
-      maxIterations: number;
-      accumulatorFields?: string[];
-    };
-  };
-}
-
-/**
- * Loop state tracking for iterative execution
- */
-export interface LoopState {
-  iteration: number;
-  maxIterations: number;
-  accumulator: Record<string, unknown>;
-  startedAt: number;
-}
-
-/**
- * Plugin execution context for Temporal workflows
- * Extends base PluginContext with nodeId for workflow-specific tracking
- */
-export interface TemporalPluginContext extends BasePluginContext {
-  nodeId: string;
-  loopIteration?: number; // Current iteration if in a loop
-  loopAccumulator?: Record<string, unknown>; // Accumulated data from previous iterations
 }
 
 export interface ExecutePluginInput {
   pluginId: string;
   config: Record<string, unknown>;
   inputs: Record<string, unknown>;
-  context: TemporalPluginContext;
+  context: PluginContext & {
+    nodeId: string; // Workflow-specific node tracking
+  };
+  nodeState?: Record<string, unknown>; // Persistent state for stateful nodes (e.g., loops)
 }
 
 export interface CreateRoutineExecutionInput {
@@ -96,12 +77,12 @@ export interface StoreNodeResultInput {
   workflowId: string; // Temporal workflow ID for tracking
   routineId: string;
   nodeId: string;
-  iteration?: number; // Iteration number for nodes in loops (0-based)
-  status: "completed" | "failed";
+  status: "running" | "completed" | "failed";
   output?: unknown;
   error?: {
     message: string;
     stack?: string;
   };
-  completedAt: number;
+  startedAt?: number;
+  completedAt?: number;
 }

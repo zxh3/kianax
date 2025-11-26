@@ -58,7 +58,6 @@ export async function POST(
         pluginId: node.pluginId,
         type: node.type,
         config: node.config || {},
-        enabled: node.enabled,
       })),
       connections: routine.connections,
       triggerData: {

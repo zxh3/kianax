@@ -1,7 +1,6 @@
 /**
  * Temporal Module
- * Exports all Temporal-related types and constants
+ * Exports all Temporal-related types
  */
 
 export * from "./types";
-export * from "./constants";

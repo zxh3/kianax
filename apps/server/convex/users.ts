@@ -1,38 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation } from "./_generated/server";
 import { v } from "convex/values";
-import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { createAuth, authComponent } from "./auth";
-
-/**
- * Helper to get authenticated user or throw
- * Throws "Not authenticated" error if user is not authenticated
- */
-export async function getCurrentUserOrThrow(ctx: QueryCtx | MutationCtx) {
-  const user = await authComponent.getAuthUser(ctx);
-
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
-  return user;
-}
-
-/**
- * Helper to get current authenticated user (returns null if not authenticated)
- */
-export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
-  return await authComponent.getAuthUser(ctx);
-}
-
-/**
- * Query to get current user information
- */
-export const currentUser = query({
-  args: {},
-  handler: async (ctx) => {
-    return await getCurrentUser(ctx);
-  },
-});
+import { GenericCtx } from "@convex-dev/better-auth";
+import { DataModel } from "./_generated/dataModel";
 
 export const updateUserPassword = mutation({
   args: {
@@ -40,7 +10,10 @@ export const updateUserPassword = mutation({
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+    const { auth, headers } = await authComponent.getAuth(
+      createAuth,
+      ctx as unknown as GenericCtx<DataModel>,
+    );
     await auth.api.changePassword({
       body: {
         currentPassword: args.currentPassword,

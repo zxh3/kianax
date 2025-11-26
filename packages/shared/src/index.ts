@@ -1,11 +1,8 @@
 /**
- * Kianax Shared Package
+ * Workflow Types Package
  *
- * Shared types, utilities, and constants used across all packages.
+ * Shared type definitions for Temporal workflow execution.
+ * This package defines the contract between workers and scripts for routine execution.
  */
 
-// Re-export all types
-export * from "./types/index";
-
-// Re-export Temporal types and constants
 export * from "./temporal/index";

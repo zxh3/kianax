@@ -59,6 +59,8 @@ export type ExecuteFunction<TInputs, TOutputs, TConfig> = (params: {
   inputs: TInputs;
   config: TConfig;
   context: PluginContext;
+  /** Persistent node state (for loop nodes, stateful operations, etc.) */
+  nodeState: Record<string, unknown>;
 }) => Promise<Partial<TOutputs>>;
 
 /**
@@ -315,8 +317,9 @@ class BuiltPlugin extends Plugin {
     inputs: Record<string, any>,
     config: any,
     context: PluginContext,
+    nodeState: Record<string, unknown>,
   ): Promise<Record<string, any>> {
-    const result = await this._execute({ inputs, config, context });
+    const result = await this._execute({ inputs, config, context, nodeState });
     return result as Record<string, any>;
   }
 }

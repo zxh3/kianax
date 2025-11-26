@@ -3,7 +3,6 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { components } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
-import type { QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
 import { betterAuth } from "better-auth";
 
 const siteUrl = process.env.SITE_URL!;
@@ -46,7 +45,7 @@ export const createAuth = (
  * Helper to get authenticated user ID
  * Returns userId if authenticated, undefined otherwise
  */
-export async function getAuthUser(ctx: QueryCtx | MutationCtx | ActionCtx) {
+export async function getAuthUser(ctx: GenericCtx<DataModel>) {
   return await authComponent.getAuthUser(ctx);
 }
 
@@ -54,7 +53,7 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx | ActionCtx) {
  * Helper to get authenticated user ID or throw
  * Throws "Not authenticated" error if user is not authenticated
  */
-export async function requireAuthUser(ctx: QueryCtx | MutationCtx | ActionCtx) {
+export async function requireAuthUser(ctx: GenericCtx<DataModel>) {
   const user = await getAuthUser(ctx);
 
   if (!user) {
@@ -63,11 +62,11 @@ export async function requireAuthUser(ctx: QueryCtx | MutationCtx | ActionCtx) {
   return user;
 }
 
-// Example function for getting the current user
-// Feel free to edit, omit, etc.
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return authComponent.getAuthUser(ctx);
+    return await authComponent.getAuthUser(
+      ctx as unknown as GenericCtx<DataModel>,
+    );
   },
 });

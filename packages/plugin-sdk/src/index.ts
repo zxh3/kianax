@@ -13,6 +13,30 @@ export type {
   PluginTag,
 } from "./types/common";
 
+// Export enhanced port system
+export {
+  PortType,
+  definePort,
+  portToMetadata,
+  isPortType,
+  type PortDefinition,
+  type PortMetadata,
+} from "./types/ports";
+
+// Export declarative parameter system
+export {
+  ParameterType,
+  defineParameter,
+  parameterToMetadata,
+  isParameterType,
+  shouldShowParameter,
+  type ParameterDefinition,
+  type ParameterMetadata,
+  type ParameterOption,
+  type ParameterTypeOptions,
+  type DisplayCondition,
+} from "./types/parameters";
+
 // Export Plugin base class and core types
 export {
   Plugin,

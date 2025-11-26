@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@kianax/execution-engine": "*",
     "@kianax/plugin-sdk": "*",
     "@kianax/plugins": "*",
     "@kianax/shared": "*",

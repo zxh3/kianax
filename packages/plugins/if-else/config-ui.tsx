@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
-import { Label } from "@kianax/ui/components/label";
 import {
   Select,
   SelectContent,
@@ -12,15 +11,33 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { BaseConfigUI, ConfigSection, ConfigCard, InfoCard } from "../ui";
+
+type ComparisonOperator =
+  | "=="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "contains"
+  | "startsWith"
+  | "endsWith"
+  | "matches"
+  | "exists"
+  | "empty";
 
 interface Condition {
-  operator: string;
-  compareValue: string;
+  operator: ComparisonOperator;
+  compareValue: unknown;
+}
+
+interface ConditionGroup {
+  conditions: Condition[];
 }
 
 export interface IfElseConfig {
-  conditions: Condition[];
-  logicalOperator: "AND" | "OR";
+  conditionGroups: ConditionGroup[];
 }
 
 interface IfElseConfigUIProps {
@@ -38,25 +55,33 @@ const OPERATORS = [
   { value: "contains", label: "Contains" },
   { value: "startsWith", label: "Starts With" },
   { value: "endsWith", label: "Ends With" },
+  { value: "matches", label: "Matches Regex" },
   { value: "exists", label: "Exists" },
   { value: "empty", label: "Is Empty" },
 ];
 
 /**
- * Configuration UI for If-Else Logic Plugin
+ * Configuration UI for If-Else Conditional Branch Plugin
  *
- * This component is exported by the plugin and rendered by the workflow editor
- * when users need to configure the plugin.
+ * Supports "OR of AND groups" logic:
+ * - Each group's conditions are ANDed together
+ * - Groups are ORed together
  */
 export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
   const defaultConfig: IfElseConfig = {
-    conditions: [{ operator: "==", compareValue: "" }],
-    logicalOperator: "AND" as const,
+    conditionGroups: [
+      {
+        conditions: [{ operator: "==", compareValue: "" }],
+      },
+    ],
   };
 
   const [localConfig, setLocalConfig] = useState<IfElseConfig>(() => {
-    // Validate that value has the required structure
-    if (value?.conditions && Array.isArray(value.conditions)) {
+    if (
+      value?.conditionGroups &&
+      Array.isArray(value.conditionGroups) &&
+      value.conditionGroups.length > 0
+    ) {
       return value;
     }
     return defaultConfig;
@@ -67,179 +92,220 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
     onChange(newConfig);
   };
 
-  const handleAddCondition = () => {
+  // Group operations
+  const addGroup = () => {
     handleChange({
-      ...localConfig,
-      conditions: [
-        ...localConfig.conditions,
-        { operator: "==", compareValue: "" },
+      conditionGroups: [
+        ...localConfig.conditionGroups,
+        { conditions: [{ operator: "==", compareValue: "" }] },
       ],
     });
   };
 
-  const handleRemoveCondition = (index: number) => {
+  const removeGroup = (groupIndex: number) => {
+    if (localConfig.conditionGroups.length === 1) return; // Keep at least one group
     handleChange({
-      ...localConfig,
-      conditions: localConfig.conditions.filter((_, i) => i !== index),
+      conditionGroups: localConfig.conditionGroups.filter(
+        (_, i) => i !== groupIndex,
+      ),
     });
   };
 
-  const handleConditionChange = (
-    index: number,
+  // Condition operations
+  const addCondition = (groupIndex: number) => {
+    const newGroups = [...localConfig.conditionGroups];
+    const group = newGroups[groupIndex];
+    if (group) {
+      newGroups[groupIndex] = {
+        conditions: [...group.conditions, { operator: "==", compareValue: "" }],
+      };
+      handleChange({ conditionGroups: newGroups });
+    }
+  };
+
+  const removeCondition = (groupIndex: number, conditionIndex: number) => {
+    const newGroups = [...localConfig.conditionGroups];
+    const group = newGroups[groupIndex];
+    if (group && group.conditions.length > 1) {
+      // Keep at least one condition per group
+      newGroups[groupIndex] = {
+        conditions: group.conditions.filter((_, i) => i !== conditionIndex),
+      };
+      handleChange({ conditionGroups: newGroups });
+    }
+  };
+
+  const updateCondition = (
+    groupIndex: number,
+    conditionIndex: number,
     field: keyof Condition,
     value: string,
   ) => {
-    const newConditions = [...localConfig.conditions];
-    const existingCondition = newConditions[index] || {
-      operator: "",
-      compareValue: "",
-    };
-    newConditions[index] = {
-      ...existingCondition,
-      [field]: value,
-    };
-    handleChange({
-      ...localConfig,
-      conditions: newConditions,
-    });
+    const newGroups = [...localConfig.conditionGroups];
+    const group = newGroups[groupIndex];
+    if (group) {
+      const newConditions = [...group.conditions];
+      const condition = newConditions[conditionIndex];
+      if (condition) {
+        newConditions[conditionIndex] = { ...condition, [field]: value };
+        newGroups[groupIndex] = { conditions: newConditions };
+        handleChange({ conditionGroups: newGroups });
+      }
+    }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Logical Operator */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium text-foreground">
-          When multiple conditions match
-        </Label>
-        <Select
-          value={localConfig.logicalOperator}
-          onValueChange={(value: "AND" | "OR") =>
-            handleChange({ ...localConfig, logicalOperator: value })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="AND">
-              All conditions must be true (AND)
-            </SelectItem>
-            <SelectItem value="OR">
-              At least one condition must be true (OR)
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Conditions */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium text-foreground">
-            Conditions
-          </Label>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleAddCondition}
-            className="h-8"
-          >
+    <BaseConfigUI>
+      <ConfigSection
+        label="Condition Groups"
+        description="OR of AND groups: conditions within a group are ANDed, groups are ORed together"
+        action={
+          <Button size="sm" variant="outline" onClick={addGroup}>
             <IconPlus className="mr-2 size-3.5" />
-            Add Condition
+            Add Group
           </Button>
-        </div>
-
+        }
+      >
         <div className="space-y-4">
-          {localConfig.conditions.map((condition, index) => (
+          {localConfig.conditionGroups.map((group, groupIndex) => (
             <div
-              key={index}
-              className="relative p-4 border border-border rounded-xl bg-card shadow-sm transition-all hover:border-ring group"
+              key={groupIndex}
+              className="p-4 border-2 border-dashed border-border rounded-xl bg-muted/30 space-y-3"
             >
-              {/* Card Header */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Condition {index + 1}
-                </span>
-                {localConfig.conditions.length > 1 && (
+              {/* Group Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider px-2 py-1 bg-background border border-border rounded">
+                    Group {groupIndex + 1}
+                  </span>
+                  {group.conditions.length > 1 && (
+                    <span className="text-xs text-muted-foreground">
+                      (All conditions must match)
+                    </span>
+                  )}
+                </div>
+                {localConfig.conditionGroups.length > 1 && (
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
-                    onClick={() => handleRemoveCondition(index)}
-                    title="Remove condition"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => removeGroup(groupIndex)}
+                    title="Remove group"
                   >
                     <IconTrash className="size-3.5" />
                   </Button>
                 )}
               </div>
 
-              {/* Card Content */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">
-                    Operator
-                  </Label>
-                  <Select
-                    value={condition.operator}
-                    onValueChange={(value) =>
-                      handleConditionChange(index, "operator", value)
+              {/* Conditions in this group */}
+              <div className="space-y-2">
+                {group.conditions.map((condition, conditionIndex) => (
+                  <ConfigCard
+                    key={conditionIndex}
+                    title={
+                      group.conditions.length > 1
+                        ? `Condition ${conditionIndex + 1}`
+                        : undefined
                     }
+                    removable={group.conditions.length > 1}
+                    onRemove={() => removeCondition(groupIndex, conditionIndex)}
+                    className="bg-card"
                   >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {OPERATORS.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 min-w-0">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Operator
+                        </label>
+                        <Select
+                          value={condition.operator}
+                          onValueChange={(value) =>
+                            updateCondition(
+                              groupIndex,
+                              conditionIndex,
+                              "operator",
+                              value,
+                            )
+                          }
+                        >
+                          <SelectTrigger className="h-9 w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {OPERATORS.map((op) => (
+                              <SelectItem key={op.value} value={op.value}>
+                                {op.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                {!["exists", "empty"].includes(condition.operator) && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Compare Value
-                    </Label>
-                    <Input
-                      value={condition.compareValue}
-                      onChange={(e) =>
-                        handleConditionChange(
-                          index,
-                          "compareValue",
-                          (e.target as HTMLInputElement).value,
-                        )
-                      }
-                      placeholder="Value to match..."
-                      className="h-9"
-                    />
-                  </div>
-                )}
+                      {!["exists", "empty"].includes(condition.operator) && (
+                        <div className="space-y-1.5 min-w-0">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            Compare Value
+                          </label>
+                          <Input
+                            value={String(condition.compareValue || "")}
+                            onChange={(e) =>
+                              updateCondition(
+                                groupIndex,
+                                conditionIndex,
+                                "compareValue",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Value to compare..."
+                            className="h-9"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </ConfigCard>
+                ))}
               </div>
+
+              {/* Add condition button */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => addCondition(groupIndex)}
+                className="w-full border border-dashed"
+              >
+                <IconPlus className="mr-2 size-3.5" />
+                Add Condition (AND)
+              </Button>
             </div>
           ))}
         </div>
-      </div>
+      </ConfigSection>
 
-      {/* Help Text */}
-      <div className="p-4 bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-1 flex items-center gap-2">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:text-blue-400">
-            i
-          </span>
-          How logic works
-        </p>
-        <p className="text-xs leading-relaxed">
-          The incoming data will be evaluated against these conditions. If the
-          result is true, the execution flows to the{" "}
+      <InfoCard title="How Boolean Logic Works">
+        <div className="space-y-2">
+          <p>
+            <strong className="text-foreground">Within a group:</strong> All
+            conditions must match (AND)
+          </p>
+          <p>
+            <strong className="text-foreground">Between groups:</strong> At
+            least one group must match (OR)
+          </p>
+          <div className="mt-3 p-2 bg-background border border-border rounded text-xs font-mono">
+            (Group 1 Cond 1 AND Cond 2) OR (Group 2 Cond 1)
+          </div>
+        </div>
+      </InfoCard>
+
+      <InfoCard title="Output Behavior" variant="success">
+        <p>
+          If conditions pass, execution flows to the{" "}
           <span className="font-medium text-emerald-600 dark:text-emerald-400">
             True
           </span>{" "}
           output. Otherwise, it flows to the{" "}
           <span className="font-medium text-destructive">False</span> output.
         </p>
-      </div>
-    </div>
+      </InfoCard>
+    </BaseConfigUI>
   );
 }

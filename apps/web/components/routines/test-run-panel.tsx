@@ -141,11 +141,23 @@ export function TestRunPanel({
                           ? "bg-emerald-500"
                           : nodeState.status === "failed"
                             ? "bg-destructive"
-                            : "bg-blue-500"
+                            : nodeState.status === "running"
+                              ? "bg-blue-500 animate-pulse"
+                              : "bg-muted-foreground"
                       }`}
                     />
                     <span className="font-mono text-xs text-muted-foreground">
-                      {format(new Date(nodeState.completedAt), "HH:mm:ss.SSS")}
+                      {nodeState.completedAt
+                        ? format(
+                            new Date(nodeState.completedAt),
+                            "HH:mm:ss.SSS",
+                          )
+                        : nodeState.startedAt
+                          ? format(
+                              new Date(nodeState.startedAt),
+                              "HH:mm:ss.SSS",
+                            )
+                          : "—"}
                     </span>
                     <span className="font-medium flex-1 text-foreground">
                       {nodeState.nodeId}

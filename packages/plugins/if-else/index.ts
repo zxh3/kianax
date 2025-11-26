@@ -1,43 +1,103 @@
 /**
- * If-Else Logic Plugin (Builder Pattern)
+ * Conditional Branch Plugin
  *
- * Conditional branching based on comparisons and logical operators.
- * This demonstrates the builder pattern for complex logic plugins.
+ * Routes execution flow based on condition evaluation.
+ * Conditions are configured at design-time (part of workflow structure).
+ * Only the value being tested flows at runtime.
+ *
+ * Boolean Logic: OR of AND groups
+ * - Each group's conditions are ANDed together
+ * - Groups are ORed together
+ * - Example: (temp > 70 AND humidity > 80) OR (temp > 90)
+ *
+ * Usage Examples:
+ * - Single condition: [{ conditions: [{ operator: ">", compareValue: 70 }] }]
+ * - Simple AND: [{ conditions: [cond1, cond2, cond3] }]
+ * - Simple OR: [{ conditions: [cond1] }, { conditions: [cond2] }, { conditions: [cond3] }]
+ * - Complex: [{ conditions: [cond1, cond2] }, { conditions: [cond3, cond4] }]
+ *   → Evaluates as: (cond1 AND cond2) OR (cond3 AND cond4)
+ *
+ * Design principles:
+ * - Conditions = workflow structure (design-time config)
+ * - Value = runtime data (input)
+ * - Errors route to false branch (graceful degradation)
+ * - Visual editor can display configured conditions
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
 import { IfElseConfigUI } from "./config-ui";
 
-// Schema for the data we're evaluating
-const dataSchema = z.any().describe("The value to evaluate");
+/**
+ * Comparison operators
+ */
+const ComparisonOperator = z.enum([
+  "==",
+  "!=",
+  ">",
+  "<",
+  ">=",
+  "<=",
+  "contains",
+  "startsWith",
+  "endsWith",
+  "matches",
+  "exists",
+  "empty",
+]);
 
-// Schema for result data (passed to both branches)
-const resultSchema = z.object({
-  result: z.boolean().describe("The result of the condition evaluation"),
-  details: z
-    .string()
-    .optional()
-    .describe("Human-readable explanation of the result"),
-  evaluatedValue: z.unknown().describe("The original value that was evaluated"),
-});
+type ComparisonOperator = z.infer<typeof ComparisonOperator>;
 
-// Config schema defines what users can configure in the UI
-const configSchema = z.object({
-  conditions: z.array(
-    z.object({
-      operator: z.string(),
-      compareValue: z.string(),
-    }),
-  ),
-  logicalOperator: z.enum(["AND", "OR"]),
+/**
+ * Single condition (configured at design-time)
+ */
+const ConditionSchema = z.object({
+  operator: ComparisonOperator.describe("Comparison operator"),
+  compareValue: z.unknown().describe("Value to compare against"),
 });
 
 /**
- * Helper: Evaluate a single condition
+ * Condition group (all conditions within a group are ANDed)
+ */
+const ConditionGroupSchema = z.object({
+  conditions: z
+    .array(ConditionSchema)
+    .min(1)
+    .describe("Conditions to AND together"),
+});
+
+/**
+ * Output: evaluation results with details
+ */
+const BranchOutputSchema = z.object({
+  result: z.boolean().describe("Overall condition result"),
+  value: z.unknown().describe("The value that was tested"),
+  groups: z
+    .array(
+      z.object({
+        passed: z
+          .boolean()
+          .describe("Whether this group passed (all conditions ANDed)"),
+        conditions: z
+          .array(
+            z.object({
+              operator: z.string(),
+              expected: z.unknown(),
+              actual: z.unknown(),
+              passed: z.boolean(),
+            }),
+          )
+          .describe("Individual condition results within this group"),
+      }),
+    )
+    .describe("Results for each condition group (groups are ORed together)"),
+});
+
+/**
+ * Evaluate a single condition
  */
 function evaluateCondition(
   value: unknown,
-  operator: string,
+  operator: ComparisonOperator,
   compareValue: unknown,
 ): boolean {
   switch (operator) {
@@ -69,14 +129,27 @@ function evaluateCondition(
       return false;
 
     case "startsWith":
-      if (typeof value === "string" && typeof compareValue === "string") {
-        return value.startsWith(compareValue);
-      }
-      return false;
+      return (
+        typeof value === "string" &&
+        typeof compareValue === "string" &&
+        value.startsWith(compareValue)
+      );
 
     case "endsWith":
+      return (
+        typeof value === "string" &&
+        typeof compareValue === "string" &&
+        value.endsWith(compareValue)
+      );
+
+    case "matches":
       if (typeof value === "string" && typeof compareValue === "string") {
-        return value.endsWith(compareValue);
+        try {
+          const regex = new RegExp(compareValue);
+          return regex.test(value);
+        } catch {
+          return false;
+        }
       }
       return false;
 
@@ -89,32 +162,15 @@ function evaluateCondition(
       if (Array.isArray(value)) return value.length === 0;
       if (typeof value === "object") return Object.keys(value).length === 0;
       return false;
-
-    default:
-      throw new Error(`Unsupported operator: ${operator}`);
   }
-}
-
-/**
- * Helper: Stringify values for display
- */
-function stringifyValue(value: unknown): string {
-  if (value === null) return "null";
-  if (value === undefined) return "undefined";
-  if (typeof value === "string") return `"${value}"`;
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  if (Array.isArray(value)) return `[${value.length} items]`;
-  if (typeof value === "object") return `{${Object.keys(value).length} keys}`;
-  return String(value);
 }
 
 export const ifElsePlugin = createPlugin("if-else")
   .withMetadata({
-    name: "If-Else Logic",
+    name: "Conditional Branch",
     description:
-      "Conditional branching with support for comparisons (==, !=, >, <, >=, <=) and logical operators (AND, OR)",
-    version: "1.0.0",
+      "Routes execution based on configured conditions. Configure comparison logic at design-time; value flows at runtime.",
+    version: "2.0.0",
     icon: "🔀",
     tags: ["logic"],
     author: {
@@ -124,87 +180,79 @@ export const ifElsePlugin = createPlugin("if-else")
   })
   .withInput("data", {
     label: "Data",
-    description: "The data to evaluate",
-    schema: dataSchema,
+    description: "The data to test against configured conditions",
+    schema: z.unknown(),
   })
   .withOutput("true", {
     label: "True",
-    description: "Executed when condition is true",
-    schema: resultSchema,
+    description: "Executed when conditions pass",
+    schema: BranchOutputSchema,
   })
   .withOutput("false", {
     label: "False",
-    description: "Executed when condition is false",
-    schema: resultSchema,
+    description: "Executed when conditions fail",
+    schema: BranchOutputSchema,
   })
-  .withConfig(configSchema)
-  .withConfigUI(IfElseConfigUI)
+  .withConfig(
+    z.object({
+      conditionGroups: z
+        .array(ConditionGroupSchema)
+        .min(1)
+        .describe(
+          "Condition groups (OR of AND groups). Each group's conditions are ANDed; groups are ORed together.",
+        ),
+    }),
+  )
+  .withConfigUI(IfElseConfigUI as any)
   .execute(async ({ inputs, config }) => {
-    // Fully typed!
-    const value = inputs.data;
+    const data = inputs.data;
 
-    // If no config, default to always true
-    if (!config || !config.conditions || config.conditions.length === 0) {
+    // Evaluate each group (conditions within a group are ANDed)
+    const groupResults = config.conditionGroups.map((group) => {
+      const conditionResults = group.conditions.map((condition) => {
+        try {
+          const passed = evaluateCondition(
+            data,
+            condition.operator,
+            condition.compareValue,
+          );
+
+          return {
+            operator: condition.operator,
+            expected: condition.compareValue,
+            actual: data,
+            passed,
+          };
+        } catch {
+          // Errors route to false branch (graceful degradation)
+          return {
+            operator: condition.operator,
+            expected: condition.compareValue,
+            actual: data,
+            passed: false,
+          };
+        }
+      });
+
+      // Group passes if ALL conditions pass (AND)
+      const groupPassed = conditionResults.every((c) => c.passed);
+
       return {
-        true: {
-          result: true,
-          details: "No conditions configured, defaulting to true",
-          evaluatedValue: value,
-        },
+        passed: groupPassed,
+        conditions: conditionResults,
       };
-    }
+    });
 
-    const results: boolean[] = [];
-    const explanations: string[] = [];
+    // Final result: true if ANY group passes (OR of AND groups)
+    const finalResult = groupResults.some((g) => g.passed);
 
-    // Evaluate each condition
-    for (const condition of config.conditions) {
-      const result = evaluateCondition(
-        value,
-        condition.operator,
-        condition.compareValue,
-      );
-
-      results.push(result);
-
-      // Build explanation
-      const valueStr = stringifyValue(value);
-      const compareStr = stringifyValue(condition.compareValue);
-      const operatorStr = condition.operator;
-
-      explanations.push(`${valueStr} ${operatorStr} ${compareStr} = ${result}`);
-    }
-
-    // Combine results based on logical operator
-    let finalResult: boolean;
-
-    if (config.logicalOperator === "AND") {
-      finalResult = results.every((r) => r === true);
-    } else {
-      // OR
-      finalResult = results.some((r) => r === true);
-    }
-
-    // Build details
-    const details = `Evaluated ${config.conditions.length} condition(s) with ${config.logicalOperator}: ${explanations.join(`, ${config.logicalOperator} `)}. Result: ${finalResult}`;
-
-    // Return result data on the appropriate output port
-    const resultData = {
+    const output = {
       result: finalResult,
-      details,
-      evaluatedValue: value,
+      data,
+      groups: groupResults,
     };
 
-    // Only one output port will have data
-    // The workflow executor will follow only the port that has data
-    if (finalResult) {
-      return {
-        true: resultData,
-      };
-    } else {
-      return {
-        false: resultData,
-      };
-    }
+    // Only active branch receives output
+    return finalResult ? { true: output } : { false: output };
   })
   .build();

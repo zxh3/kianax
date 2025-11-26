@@ -50,10 +50,11 @@ function PluginNode({ data, selected, id }: NodeProps) {
 
   // Determine border/ring styles based on execution status or selection
   let statusClasses = "";
+  console.log(nodeData.executionStatus);
   if (nodeData.executionStatus === "running") {
-    statusClasses = "ring-2 ring-muted border-primary animate-pulse";
+    statusClasses = "border-primary animate-pulse";
   } else if (nodeData.executionStatus === "completed") {
-    statusClasses = "border-foreground shadow-sm";
+    statusClasses = "border-green-300/50 shadow-sm";
   } else if (nodeData.executionStatus === "failed") {
     statusClasses = "border-destructive ring-1 ring-destructive";
   } else if (selected) {
@@ -64,10 +65,10 @@ function PluginNode({ data, selected, id }: NodeProps) {
 
   return (
     <div
-      className={`relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group ${statusClasses} ${!nodeData.enabled ? "opacity-60 grayscale" : ""}`}
+      className={`relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group ${statusClasses}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-b from-card to-muted/20 rounded-t-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-linear-to-b from-card to-muted/20 rounded-t-xl">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div
             className={`flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm ${

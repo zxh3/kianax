@@ -1,23 +1,26 @@
 # @kianax/shared
 
-Shared types, utilities, and constants used across Kianax packages.
+Workflow type definitions for Temporal execution.
+
+## Purpose
+
+This package defines the **contract** between workers and scripts for routine execution via Temporal workflows.
+
+## Contents
+
+- **Temporal Types**: Interface definitions for workflow inputs, activity inputs, and execution tracking
+  - `RoutineInput` - Input to the routine executor workflow
+  - `ExecutePluginInput` - Input to the plugin execution activity
+  - `CreateRoutineExecutionInput` - Create execution record
+  - `UpdateRoutineStatusInput` - Update execution status
+  - `StoreNodeResultInput` - Store node execution results
 
 ## Usage
 
 ```typescript
-import type { Workflow, Plugin, ExecutionStatus } from '@kianax/shared';
+import type { RoutineInput, ExecutePluginInput } from '@kianax/shared/temporal';
 ```
 
-## Structure
+## Why This Package Exists
 
-- `src/types/` - TypeScript type definitions
-  - `workflow.ts` - Workflow DAG types
-  - `plugin.ts` - Plugin system types
-  - `execution.ts` - Execution monitoring types
-  - `index.ts` - Central exports
-
-## Packages Using This
-
-- `apps/web` - Next.js frontend
-- `apps/workers` - Temporal workers
-- `packages/plugin-sdk` - Plugin development SDK (future)
+Scripts need to trigger workflows via Temporal client, which requires knowing the workflow input types. Workers need the same types to define workflow signatures. This package is the minimal shared contract between them.

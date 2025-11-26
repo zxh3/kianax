@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@kianax/ui/components/button";
+import { Input } from "@kianax/ui/components/input";
+import { Label } from "@kianax/ui/components/label";
 import { getPluginConfigComponent } from "@kianax/plugins";
 import { ScrollArea } from "@kianax/ui/components/scroll-area";
 import { IconX } from "@tabler/icons-react";
@@ -13,8 +15,13 @@ interface NodeConfigDrawerProps {
   nodeId: string;
   pluginId: string;
   pluginName: string;
+  nodeLabel: string;
   config?: Record<string, unknown>;
-  onSave: (nodeId: string, config: Record<string, unknown>) => void;
+  onSave: (
+    nodeId: string,
+    config: Record<string, unknown>,
+    label: string,
+  ) => void;
 }
 
 /**
@@ -29,18 +36,22 @@ export function NodeConfigDrawer({
   nodeId,
   pluginId,
   pluginName,
+  nodeLabel,
   config,
   onSave,
 }: NodeConfigDrawerProps) {
+  const nodeLabelInputId = useId();
+
   const [localConfig, setLocalConfig] = useState<Record<string, unknown>>(
     config || {},
   );
+  const [localLabel, setLocalLabel] = useState<string>(nodeLabel);
 
   // Get the plugin's config component from the registry
   const ConfigComponent = getPluginConfigComponent(pluginId);
 
   const handleSave = () => {
-    onSave(nodeId, localConfig);
+    onSave(nodeId, localConfig, localLabel);
     toast.success("Configuration saved");
   };
 
@@ -71,8 +82,35 @@ export function NodeConfigDrawer({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-4 space-y-6">
+          {/* Node Label Section */}
+          <div className="space-y-2">
+            <Label htmlFor="node-label" className="text-sm font-medium">
+              Node Label
+            </Label>
+            <Input
+              id={nodeLabelInputId}
+              value={localLabel}
+              onChange={(e) => setLocalLabel(e.target.value)}
+              placeholder="Enter node name..."
+              className="font-medium"
+            />
+            <p className="text-xs text-muted-foreground">
+              Give this node a descriptive name to identify it in your routine.
+            </p>
+          </div>
+
+          {/* Divider */}
+          {ConfigComponent && (
+            <div className="border-t border-border pt-6">
+              <h4 className="text-sm font-semibold text-foreground mb-4">
+                Plugin Configuration
+              </h4>
+            </div>
+          )}
+
+          {/* Plugin Config */}
           {ConfigComponent ? (
             <ConfigComponent
               value={localConfig}
@@ -91,11 +129,9 @@ export function NodeConfigDrawer({
         <Button variant="outline" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        {ConfigComponent && (
-          <Button size="sm" onClick={handleSave}>
-            Save Changes
-          </Button>
-        )}
+        <Button size="sm" onClick={handleSave}>
+          Save Changes
+        </Button>
       </div>
     </div>
   );

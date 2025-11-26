@@ -1,13 +1,13 @@
 /**
- * Static Data Plugin (Builder Pattern)
+ * Static Data Plugin
  *
- * Outputs constant/static data values.
- * Use this as a data source to provide hardcoded inputs to downstream nodes.
+ * Outputs predefined data configured at design-time.
+ * Use this to inject constants, test data, or hardcoded values into your workflow.
  *
- * This is the builder-pattern version demonstrating:
- * - Minimal plugin with no inputs
- * - Configuration-based output
- * - Type safety with z.any() (accepts any data type)
+ * Design principles:
+ * - Data configured once at design-time (workflow structure)
+ * - No runtime inputs (pure data source)
+ * - Useful for testing, defaults, and constant values
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
@@ -17,30 +17,35 @@ export const staticDataPlugin = createPlugin("static-data")
   .withMetadata({
     name: "Static Data",
     description:
-      "Outputs constant data values. Use as a data source for testing or providing hardcoded inputs.",
-    version: "1.0.0",
+      "Outputs static data configured at design-time. Useful for constants, test data, and default values.",
+    version: "2.0.0",
     author: {
       name: "Kianax",
       url: "https://kianax.com",
     },
     tags: ["data-source"],
-    icon: "📊",
+    icon: "📌",
   })
-  // No inputs needed - this is a pure data source
+  .withInput("data", {
+    label: "Data",
+    description: "The static data input",
+    schema: z.unknown(),
+  })
   .withOutput("data", {
     label: "Data",
     description: "The static data output",
-    schema: z.any(),
+    schema: z.unknown(),
   })
   .withConfig(
     z.object({
-      data: z.any().describe("The static data to output"),
+      data: z
+        .unknown()
+        .describe("Static data to output (any JSON-serializable value)"),
     }),
   )
   .withConfigUI(StaticDataConfigUI)
   .execute(async ({ config }) => {
-    // Simply return the configured static data
-    // config.data is typed, though as z.any() it accepts anything
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     return {
       data: config.data,
     };

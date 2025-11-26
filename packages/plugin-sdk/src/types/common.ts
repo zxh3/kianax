@@ -21,6 +21,9 @@ export type PluginTag =
 
 /**
  * Plugin execution context passed to the execute method
+ *
+ * Note: Loop state is managed by individual loop nodes via nodeState,
+ * not by the execution engine. See loop-control plugin for example.
  */
 export interface PluginContext {
   userId: string;
@@ -29,8 +32,6 @@ export interface PluginContext {
   nodeId: string;
   credentials?: Record<string, string>;
   triggerData?: unknown;
-  loopIteration?: number; // Current iteration if in a loop
-  loopAccumulator?: Record<string, unknown>; // Accumulated data from previous iterations
 }
 
 /**

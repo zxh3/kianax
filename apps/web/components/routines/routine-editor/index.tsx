@@ -31,6 +31,7 @@ import { Toolbar } from "./toolbar";
 import { NodeSelector } from "./sidebar";
 import { TopBar } from "./topbar";
 import { useTheme } from "next-themes";
+import { getPluginMetadata } from "@/lib/plugins";
 import type {
   RoutineEditorProps,
   RoutineNode,
@@ -189,7 +190,6 @@ export function RoutineEditor({
         data: {
           label: node.label,
           pluginId: node.pluginId,
-          enabled: node.enabled,
           onConfigure: handleConfigureNode,
           config: node.config,
         },
@@ -212,16 +212,11 @@ export function RoutineEditor({
           strokeWidth: 2,
           strokeDasharray: "5 5",
           stroke:
-            conn.condition?.value === "true" || conn.sourceHandle === "true"
+            conn.sourceHandle === "true" || conn.sourceHandle === "success"
               ? "#10b981"
-              : conn.condition?.value === "false" ||
-                  conn.sourceHandle === "false"
+              : conn.sourceHandle === "false" || conn.sourceHandle === "error"
                 ? "#ef4444"
-                : conn.sourceHandle === "success"
-                  ? "#10b981"
-                  : conn.sourceHandle === "error"
-                    ? "#ef4444"
-                    : "#94a3b8",
+                : "#94a3b8",
         },
       }));
     },
@@ -241,7 +236,6 @@ export function RoutineEditor({
           label: data.label,
           position: node.position,
           config: data.config,
-          enabled: data.enabled,
         };
       });
     },
@@ -251,25 +245,13 @@ export function RoutineEditor({
   // Convert React Flow edges back to routine connections
   const convertFromReactFlowEdges = useCallback(
     (reactFlowEdges: Edge[]): RoutineConnection[] => {
-      return reactFlowEdges.map((edge) => {
-        const conn: RoutineConnection = {
-          id: edge.id,
-          sourceNodeId: edge.source,
-          targetNodeId: edge.target,
-          sourceHandle: edge.sourceHandle || undefined,
-          targetHandle: edge.targetHandle || undefined,
-        };
-
-        // Add condition if it's a conditional edge (from logic nodes)
-        if (edge.sourceHandle === "true" || edge.sourceHandle === "false") {
-          conn.condition = {
-            type: "branch",
-            value: edge.sourceHandle,
-          };
-        }
-
-        return conn;
-      });
+      return reactFlowEdges.map((edge) => ({
+        id: edge.id,
+        sourceNodeId: edge.source,
+        targetNodeId: edge.target,
+        sourceHandle: edge.sourceHandle || undefined,
+        targetHandle: edge.targetHandle || undefined,
+      }));
     },
     [],
   );
@@ -394,11 +376,11 @@ export function RoutineEditor({
   );
 
   const handleSaveNodeConfig = useCallback(
-    (nodeId: string, config: Record<string, unknown>) => {
+    (nodeId: string, config: Record<string, unknown>, label: string) => {
       setNodes((nds) =>
         nds.map((node) =>
           node.id === nodeId
-            ? { ...node, data: { ...node.data, config } }
+            ? { ...node, data: { ...node.data, config, label } }
             : node,
         ),
       );
@@ -429,7 +411,6 @@ export function RoutineEditor({
         data: {
           label: pluginName,
           pluginId,
-          enabled: true,
           onConfigure: handleConfigureNode,
         },
       };
@@ -566,7 +547,12 @@ export function RoutineEditor({
                 }}
                 nodeId={configuringNode.id}
                 pluginId={(configuringNode.data as PluginNodeData).pluginId}
-                pluginName={(configuringNode.data as PluginNodeData).label}
+                pluginName={
+                  getPluginMetadata(
+                    (configuringNode.data as PluginNodeData).pluginId,
+                  )?.name || "Plugin"
+                }
+                nodeLabel={(configuringNode.data as PluginNodeData).label}
                 config={
                   (
                     configuringNode.data as PluginNodeData & {

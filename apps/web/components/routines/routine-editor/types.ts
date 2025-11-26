@@ -6,7 +6,6 @@ export interface RoutineNode {
   label: string;
   position: { x: number; y: number };
   config?: Record<string, unknown>;
-  enabled: boolean;
 }
 
 export interface RoutineConnection {
@@ -15,14 +14,6 @@ export interface RoutineConnection {
   targetNodeId: string;
   sourceHandle?: string;
   targetHandle?: string;
-  condition?: {
-    type: "branch" | "default" | "loop";
-    value?: string;
-    loopConfig?: {
-      maxIterations: number;
-      accumulatorFields?: string[];
-    };
-  };
 }
 
 export interface RoutineEditorProps {

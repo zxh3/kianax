@@ -123,7 +123,8 @@ export const storeNodeResult = mutation({
         stack: v.optional(v.string()),
       }),
     ),
-    completedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Find execution by workflow ID
@@ -138,25 +139,64 @@ export const storeNodeResult = mutation({
       );
     }
 
-    // Create node state entry
-    // For loop nodes, each iteration creates a new entry
-    const nodeState = {
-      nodeId: args.nodeId,
-      ...(args.iteration !== undefined && { iteration: args.iteration }),
-      status: args.status,
-      output: args.output,
-      error: args.error,
-      completedAt: args.completedAt,
-      duration: args.completedAt - execution.startedAt,
-    };
+    // For "running" status, update existing entry if present, otherwise add new
+    if (args.status === "running") {
+      // Check if there's already an entry for this node
+      const existingIndex = execution.nodeStates.findIndex(
+        (s: any) => s.nodeId === args.nodeId,
+      );
 
-    // Always append (don't update existing)
-    // This allows tracking all iterations of loop nodes
-    const updatedNodeStates = [...execution.nodeStates, nodeState];
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const updatedNodeStates = [...execution.nodeStates];
+        updatedNodeStates[existingIndex] = {
+          ...updatedNodeStates[existingIndex],
+          nodeId: args.nodeId,
+          status: "running",
+          startedAt: args.startedAt,
+        };
+        await ctx.db.patch(execution._id, { nodeStates: updatedNodeStates });
+      } else {
+        // Add new running entry
+        const nodeState = {
+          nodeId: args.nodeId,
+          status: "running",
+          startedAt: args.startedAt,
+        };
+        await ctx.db.patch(execution._id, {
+          nodeStates: [...execution.nodeStates, nodeState],
+        });
+      }
+    } else {
+      // For completed/failed, update existing running entry or add new
+      const existingIndex = execution.nodeStates.findIndex(
+        (s: any) => s.nodeId === args.nodeId && s.status === "running",
+      );
 
-    await ctx.db.patch(execution._id, {
-      nodeStates: updatedNodeStates,
-    });
+      const nodeState = {
+        nodeId: args.nodeId,
+        ...(args.iteration !== undefined && { iteration: args.iteration }),
+        status: args.status,
+        output: args.output,
+        error: args.error,
+        completedAt: args.completedAt,
+        duration: args.completedAt
+          ? args.completedAt - execution.startedAt
+          : undefined,
+      };
+
+      if (existingIndex >= 0) {
+        // Update the running entry with final status
+        const updatedNodeStates = [...execution.nodeStates];
+        updatedNodeStates[existingIndex] = nodeState;
+        await ctx.db.patch(execution._id, { nodeStates: updatedNodeStates });
+      } else {
+        // Append new entry
+        await ctx.db.patch(execution._id, {
+          nodeStates: [...execution.nodeStates, nodeState],
+        });
+      }
+    }
 
     return execution._id;
   },

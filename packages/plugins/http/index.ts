@@ -1,53 +1,74 @@
 /**
- * HTTP Request Plugin (Builder Pattern)
+ * HTTP Request Plugin
  *
- * Make HTTP requests to any API or webhook endpoint.
+ * Make HTTP requests to external APIs and services.
+ * Supports all standard HTTP methods, headers, query params, and request bodies.
+ *
+ * Design decisions:
+ * - Request parameters are inputs (runtime), not config (design-time)
+ * - Config is for behavior: timeouts, retries, redirect handling
+ * - Strongly typed HTTP methods
+ * - Separate success/error output ports for clean error handling
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
+import { HttpRequestConfigUI } from "./config-ui";
 
-const requestSchema = z.object({
-  url: z.string().url().describe("The URL to send the request to"),
-  method: z
-    .enum(["GET", "POST", "PUT", "DELETE", "PATCH"])
-    .optional()
-    .default("GET")
-    .describe("HTTP method"),
+/**
+ * HTTP methods enum
+ */
+const HttpMethod = z.enum(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]);
+type HttpMethod = z.infer<typeof HttpMethod>;
+
+/**
+ * Input schema - request parameters
+ */
+const RequestInputSchema = z.object({
+  url: z
+    .string()
+    .url("Must be a valid URL")
+    .describe("The URL to send the request to"),
+  method: HttpMethod.default("GET").describe("HTTP method"),
   headers: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
-    .describe("Custom headers (key-value pairs)"),
+    .describe("Request headers (key-value pairs)"),
   body: z
     .unknown()
     .optional()
-    .describe("Request body (will be JSON stringified for POST/PUT/PATCH)"),
+    .describe("Request body (auto-serialized to JSON for POST/PUT/PATCH)"),
   queryParams: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
-    .describe("Query parameters (key-value pairs)"),
+    .describe("URL query parameters (key-value pairs)"),
 });
 
-const responseSchema = z.object({
-  success: z.boolean().describe("Whether the request succeeded"),
-  status: z.number().describe("HTTP status code"),
+/**
+ * Success response schema
+ */
+const SuccessResponseSchema = z.object({
+  status: z.number().describe("HTTP status code (200-299)"),
   statusText: z.string().describe("HTTP status text"),
-  data: z.unknown().optional().describe("Response data"),
-  headers: z.record(z.string()).optional().describe("Response headers"),
+  data: z.unknown().describe("Response data (parsed JSON or raw text)"),
+  headers: z.record(z.string(), z.string()).describe("Response headers"),
 });
 
-const errorSchema = z.object({
-  success: z.boolean().describe("Whether the request succeeded"),
+/**
+ * Error response schema
+ */
+const ErrorResponseSchema = z.object({
   status: z.number().describe("HTTP status code"),
   statusText: z.string().describe("HTTP status text"),
-  error: z.string().describe("Error message"),
+  message: z.string().describe("Error message"),
+  data: z.unknown().optional().describe("Response body if available"),
 });
 
 export const httpRequestPlugin = createPlugin("http-request")
   .withMetadata({
     name: "HTTP Request",
     description:
-      "Make HTTP requests (GET, POST, PUT, DELETE) to any API endpoint with custom headers, body, and authentication",
-    version: "1.0.0",
+      "Make HTTP requests to external APIs with support for all standard methods, custom headers, query parameters, and request bodies.",
+    version: "2.0.0",
     author: {
       name: "Kianax",
       url: "https://kianax.com",
@@ -57,164 +78,168 @@ export const httpRequestPlugin = createPlugin("http-request")
   })
   .withInput("request", {
     label: "Request",
-    description: "HTTP request parameters",
-    schema: requestSchema,
+    description: "HTTP request parameters (URL, method, headers, body, etc.)",
+    schema: RequestInputSchema,
   })
   .withOutput("success", {
     label: "Success",
-    description: "Executed when request succeeds",
-    schema: responseSchema,
+    description: "Successful response (2xx status codes)",
+    schema: SuccessResponseSchema,
   })
   .withOutput("error", {
     label: "Error",
-    description: "Executed when request fails",
-    schema: errorSchema,
+    description: "Error response (4xx, 5xx, network errors, timeouts)",
+    schema: ErrorResponseSchema,
   })
   .withConfig(
     z.object({
       timeout: z
         .number()
-        .optional()
+        .min(100)
+        .max(300000)
         .default(30000)
-        .describe("Request timeout in milliseconds"),
+        .describe("Request timeout in milliseconds (100ms - 5min)"),
       retries: z
         .number()
-        .optional()
+        .min(0)
+        .max(5)
         .default(0)
-        .describe("Number of retries on failure"),
+        .describe("Number of retry attempts on failure (0-5)"),
+      retryDelay: z
+        .number()
+        .min(0)
+        .max(10000)
+        .default(1000)
+        .describe("Delay between retries in milliseconds"),
       followRedirects: z
         .boolean()
-        .optional()
         .default(true)
-        .describe("Follow HTTP redirects"),
+        .describe("Automatically follow HTTP 3xx redirects"),
     }),
   )
+  .withConfigUI(HttpRequestConfigUI as any)
   .execute(async ({ inputs, config }) => {
-    const input = inputs.request;
+    const { url: baseUrl, method, headers, body, queryParams } = inputs.request;
 
     try {
       // Build URL with query parameters
-      const url = new URL(input.url);
-      if (input.queryParams) {
-        Object.entries(input.queryParams).forEach(([key, value]) => {
-          url.searchParams.append(key, value as string);
-        });
+      const url = new URL(baseUrl);
+      if (queryParams) {
+        for (const [key, value] of Object.entries(queryParams)) {
+          url.searchParams.append(key, String(value));
+        }
       }
 
-      // Build headers
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...input.headers,
+      // Build request headers
+      const requestHeaders: Record<string, string> = {
+        ...(body && method !== "GET" && method !== "HEAD"
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...headers,
       };
 
       // Build fetch options
       const options: RequestInit = {
-        method: input.method,
-        headers,
+        method,
+        headers: requestHeaders,
         redirect: config.followRedirects ? "follow" : "manual",
       };
 
-      // Add body for POST/PUT/PATCH
-      if (
-        input.body &&
-        (input.method === "POST" ||
-          input.method === "PUT" ||
-          input.method === "PATCH")
-      ) {
-        options.body =
-          typeof input.body === "string"
-            ? input.body
-            : JSON.stringify(input.body);
+      // Add body for methods that support it
+      if (body && method !== "GET" && method !== "HEAD") {
+        options.body = typeof body === "string" ? body : JSON.stringify(body);
       }
 
-      // Make request with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), config.timeout);
+      // Retry logic with exponential backoff
+      let lastError: Error | undefined;
 
-      try {
-        let response: Response;
-        let lastError: Error | undefined;
+      for (let attempt = 0; attempt <= config.retries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
-        // Retry logic
-        for (let attempt = 0; attempt <= config.retries; attempt++) {
-          try {
-            response = await fetch(url.toString(), {
-              ...options,
-              signal: controller.signal,
-            });
+        try {
+          const response = await fetch(url.toString(), {
+            ...options,
+            signal: controller.signal,
+          });
 
-            // If successful or non-retryable status, break
-            if (response.ok || response.status < 500) {
-              clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
 
-              // Parse response
-              let data: unknown;
-              const contentType = response.headers.get("content-type");
+          // Parse response body
+          let data: unknown;
+          const contentType = response.headers.get("content-type");
 
-              if (contentType?.includes("application/json")) {
-                data = await response.json();
-              } else {
-                data = await response.text();
-              }
-
-              // Build response headers object
-              const responseHeaders: Record<string, string> = {};
-              response.headers.forEach((value, key) => {
-                responseHeaders[key] = value;
-              });
-
-              if (response.ok) {
-                return {
-                  success: {
-                    success: true,
-                    status: response.status,
-                    statusText: response.statusText,
-                    data,
-                    headers: responseHeaders,
-                  },
-                };
-              } else {
-                return {
-                  error: {
-                    success: false,
-                    status: response.status,
-                    statusText: response.statusText,
-                    error: `HTTP ${response.status}: ${response.statusText}`,
-                  },
-                };
-              }
-            }
-
-            lastError = new Error(
-              `HTTP ${response.status}: ${response.statusText}`,
-            );
-          } catch (err) {
-            lastError = err instanceof Error ? err : new Error(String(err));
-
-            // If not the last attempt, wait before retry
-            if (attempt < config.retries) {
-              await new Promise((resolve) =>
-                setTimeout(resolve, 1000 * (attempt + 1)),
-              );
-            }
+          if (contentType?.includes("application/json")) {
+            data = await response.json();
+          } else if (contentType?.includes("text/")) {
+            data = await response.text();
+          } else {
+            data = await response.text(); // Fallback to text
           }
+
+          // Build response headers map
+          const responseHeaders: Record<string, string> = {};
+          response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+          });
+
+          // Return based on HTTP status
+          if (response.ok) {
+            return {
+              success: {
+                status: response.status,
+                statusText: response.statusText,
+                data,
+                headers: responseHeaders,
+              },
+            };
+          }
+
+          // Non-2xx response (don't retry client errors)
+          if (response.status >= 400 && response.status < 500) {
+            return {
+              error: {
+                status: response.status,
+                statusText: response.statusText,
+                message: `HTTP ${response.status}: ${response.statusText}`,
+                data,
+              },
+            };
+          }
+
+          // 5xx server error - will retry if configured
+          lastError = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+        } catch (err) {
+          clearTimeout(timeoutId);
+          lastError = err instanceof Error ? err : new Error(String(err));
         }
 
-        // All retries failed
-        throw lastError || new Error("Request failed after all retries");
-      } finally {
-        clearTimeout(timeoutId);
+        // Wait before retry (exponential backoff)
+        if (attempt < config.retries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, config.retryDelay * 2 ** attempt),
+          );
+        }
       }
+
+      // All retries exhausted
+      throw (
+        lastError ||
+        new Error(`Request failed after ${config.retries + 1} attempts`)
+      );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
+      const isTimeout = message.includes("aborted");
 
       return {
         error: {
-          success: false,
           status: 0,
-          statusText: "Error",
-          error: `HTTP Request failed: ${errorMessage}`,
+          statusText: isTimeout ? "Timeout" : "Error",
+          message: isTimeout
+            ? `Request timed out after ${config.timeout}ms`
+            : `Request failed: ${message}`,
         },
       };
     }

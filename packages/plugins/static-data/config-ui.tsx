@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Label } from "@kianax/ui/components/label";
-import { Textarea } from "@kianax/ui/components/textarea";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
+import { Textarea } from "@kianax/ui/components/textarea";
 import {
   Select,
   SelectContent,
@@ -13,9 +12,10 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { toast } from "sonner";
+import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
 
-interface StaticDataConfig {
-  data?: any;
+export interface StaticDataConfig {
+  data: unknown;
 }
 
 interface StaticDataConfigUIProps {
@@ -35,7 +35,7 @@ export function StaticDataConfigUI({
   onChange,
 }: StaticDataConfigUIProps) {
   // Helper to determine initial type
-  const getInitialType = (data: any): DataType => {
+  const getInitialType = (data: unknown): DataType => {
     if (data === null || data === undefined) return "json";
     if (typeof data === "number") return "number";
     if (typeof data === "boolean") return "boolean";
@@ -57,7 +57,7 @@ export function StaticDataConfigUI({
     ) {
       try {
         return JSON.stringify(data || {}, null, 2);
-      } catch (_e) {
+      } catch {
         return "{}";
       }
     }
@@ -76,11 +76,11 @@ export function StaticDataConfigUI({
     typeof value?.data === "boolean" ? String(value.data) : "true",
   );
 
-  const [error, setError] = useState<string | null>(null);
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const handleTypeChange = (newType: DataType) => {
     setDataType(newType);
-    setError(null);
+    setJsonError(null);
 
     // Set default value for new type
     switch (newType) {
@@ -105,7 +105,7 @@ export function StaticDataConfigUI({
 
   const handleJsonChange = (newValue: string) => {
     setJsonString(newValue);
-    setError(null);
+    setJsonError(null);
 
     try {
       if (newValue.trim() === "") {
@@ -114,8 +114,8 @@ export function StaticDataConfigUI({
       }
       const parsed = JSON.parse(newValue);
       onChange({ data: parsed });
-    } catch (_e) {
-      setError("Invalid JSON format");
+    } catch {
+      setJsonError("Invalid JSON format");
     }
   };
 
@@ -126,7 +126,7 @@ export function StaticDataConfigUI({
 
   const handleNumberChange = (val: string) => {
     setNumberValue(val);
-    const num = Number(val); // Consider handling NaN or empty string
+    const num = Number(val);
     if (!Number.isNaN(num)) {
       onChange({ data: num });
     }
@@ -142,17 +142,19 @@ export function StaticDataConfigUI({
       const parsed = JSON.parse(jsonString);
       const formatted = JSON.stringify(parsed, null, 2);
       setJsonString(formatted);
-      setError(null);
-    } catch (_e) {
+      setJsonError(null);
+      toast.success("JSON formatted successfully");
+    } catch {
       toast.error("Cannot format invalid JSON");
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Type Selector */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium text-foreground">Data Type</Label>
+    <BaseConfigUI>
+      <ConfigSection
+        label="Data Type"
+        description="Type of static data to output"
+      >
         <Select
           value={dataType}
           onValueChange={(v) => handleTypeChange(v as DataType)}
@@ -167,24 +169,25 @@ export function StaticDataConfigUI({
             <SelectItem value="boolean">Boolean</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </ConfigSection>
 
-      {/* Value Input */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium text-foreground">Value</Label>
-          {dataType === "json" && (
+      <ConfigSection
+        label="Value"
+        description="This value will be passed downstream as the output of this node"
+        action={
+          dataType === "json" ? (
             <Button
               variant="outline"
               size="sm"
               onClick={handleFormat}
               className="h-7 text-xs"
             >
-              Prettify
+              Format JSON
             </Button>
-          )}
-        </div>
-
+          ) : undefined
+        }
+        error={jsonError || undefined}
+      >
         {dataType === "json" && (
           <div className="relative">
             <Textarea
@@ -192,14 +195,11 @@ export function StaticDataConfigUI({
               onChange={(e) => handleJsonChange(e.target.value)}
               placeholder='{ "key": "value" }'
               className={`font-mono text-xs min-h-[300px] resize-y ${
-                error ? "border-destructive focus-visible:ring-destructive" : ""
+                jsonError
+                  ? "border-destructive focus-visible:ring-destructive"
+                  : ""
               }`}
             />
-            {error && (
-              <div className="absolute bottom-2 right-2 text-xs text-destructive bg-background/90 px-2 py-1 rounded border border-destructive/30 shadow-sm">
-                {error}
-              </div>
-            )}
           </div>
         )}
 
@@ -231,24 +231,33 @@ export function StaticDataConfigUI({
             </SelectContent>
           </Select>
         )}
+      </ConfigSection>
 
-        <p className="text-xs text-muted-foreground">
-          This value will be passed downstream as the output of this node.
+      <InfoCard title="Usage Tip">
+        <p>
+          Use this node to provide constant values, mock API responses, or test
+          data for your routine. The data will be available to downstream nodes.
         </p>
-      </div>
+      </InfoCard>
 
-      <div className="p-4 bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-1 flex items-center gap-2">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:text-blue-400">
-            i
-          </span>
-          Usage Tip
-        </p>
-        <p className="text-xs leading-relaxed">
-          Use this node to mock API responses or provide constant configuration
-          values for your routine.
-        </p>
-      </div>
-    </div>
+      {dataType === "json" && (
+        <InfoCard title="JSON Examples" variant="info">
+          <div className="space-y-2">
+            <div>
+              <strong className="text-foreground">Object:</strong>
+              <code className="block text-xs mt-1 p-2 bg-background rounded">
+                {`{ "name": "John", "age": 30 }`}
+              </code>
+            </div>
+            <div>
+              <strong className="text-foreground">Array:</strong>
+              <code className="block text-xs mt-1 p-2 bg-background rounded">
+                {`["apple", "banana", "orange"]`}
+              </code>
+            </div>
+          </div>
+        </InfoCard>
+      )}
+    </BaseConfigUI>
   );
 }

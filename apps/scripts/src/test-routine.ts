@@ -48,7 +48,6 @@ function createSimpleWeatherRoutine(userId: string) {
             units: "fahrenheit",
           },
         },
-        enabled: true,
       },
       {
         id: "n2",
@@ -56,7 +55,6 @@ function createSimpleWeatherRoutine(userId: string) {
         label: "Get Mock Weather",
         position: { x: 100, y: 250 },
         config: {},
-        enabled: true,
       },
     ],
     connections: [
@@ -74,13 +72,14 @@ function createSimpleWeatherRoutine(userId: string) {
  * Conditional Logic Routine (With Branching)
  *
  * Flow:
- *   [Static Data: condition input] → [If-Else]
+ *   [Static Data: test value] → [If-Else (configured: > 70)]
  *                                        ↙        ↘
  *                          [Static: True Alert]  [Static: False Alert]
  *
  * This tests:
  * - Conditional branching (if-else logic)
- * - Data flow through conditional nodes
+ * - Conditions configured in node (design-time)
+ * - Value flows as data (runtime)
  * - Only one branch executes (dead branch handling)
  * - 100% local, no external APIs
  */
@@ -89,62 +88,60 @@ function createConditionalRoutine(userId: string) {
     userId,
     name: "Conditional Branching Test",
     description:
-      "Test if-else conditional logic with static data (fully local)",
+      "Test if-else conditional logic with configured conditions and runtime data",
     status: "active" as const,
     triggerType: "manual" as const,
     nodes: [
       {
         id: "n1",
         pluginId: "static-data",
-        label: "Condition Input",
+        label: "Test Value (10)",
         position: { x: 100, y: 100 },
         config: {
-          data: {
-            value: 10, // Test value (temperature)
-            conditions: [
-              {
-                operator: ">",
-                compareValue: 70,
-              },
-            ],
-            logicalOperator: "AND",
-          },
+          data: 10, // The value to test (should be < 70, so FALSE branch)
         },
-        enabled: true,
       },
       {
         id: "n2",
         pluginId: "if-else",
         label: "Check if > 70",
         position: { x: 100, y: 250 },
-        config: {},
-        enabled: true,
+        config: {
+          conditionGroups: [
+            {
+              conditions: [
+                {
+                  operator: ">",
+                  compareValue: 70,
+                },
+              ],
+            },
+          ],
+        },
       },
       {
         id: "n3",
         pluginId: "static-data",
-        label: "True Branch Output",
+        label: "True Branch (Hot!)",
         position: { x: 50, y: 400 },
         config: {
           data: {
-            message: "Condition was TRUE! (85 > 70)",
+            message: "Temperature is HOT (> 70)",
             branch: "true",
           },
         },
-        enabled: true,
       },
       {
         id: "n4",
         pluginId: "static-data",
-        label: "False Branch Output",
+        label: "False Branch (Cool)",
         position: { x: 250, y: 400 },
         config: {
           data: {
-            message: "Condition was FALSE! (85 > 70)",
+            message: "Temperature is COOL (<= 70)",
             branch: "false",
           },
         },
-        enabled: true,
       },
     ],
     connections: [
@@ -152,24 +149,20 @@ function createConditionalRoutine(userId: string) {
         id: "c1",
         sourceNodeId: "n1",
         targetNodeId: "n2",
+        sourceHandle: "data",
+        targetHandle: "value", // Input is now just "value"
       },
       {
         id: "c2",
         sourceNodeId: "n2",
         targetNodeId: "n3",
-        condition: {
-          type: "branch" as const,
-          value: "true",
-        },
+        sourceHandle: "true",
       },
       {
         id: "c3",
         sourceNodeId: "n2",
         targetNodeId: "n4",
-        condition: {
-          type: "branch" as const,
-          value: "false",
-        },
+        sourceHandle: "false",
       },
     ],
     tags: ["conditional", "branching", "if-else", "testing", "local"],
@@ -252,7 +245,6 @@ async function run() {
       id: node.id,
       pluginId: node.pluginId,
       config: node.config || {},
-      enabled: node.enabled,
     })),
     connections: savedRoutine.connections,
     triggerData: {

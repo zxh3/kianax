@@ -11,36 +11,18 @@ import {
   type PluginTag,
 } from "@kianax/plugin-sdk";
 
-// Type for plugin class constructor OR plugin instance
-type PluginClass = new () => Plugin;
-type PluginEntry = PluginClass | Plugin;
-
 // Import all builder-based plugins
-import { mockWeatherPlugin } from "./mock-weather";
 import { staticDataPlugin } from "./static-data";
 import { ifElsePlugin } from "./if-else";
-import { stockPricePlugin } from "./stock-price";
 import { httpRequestPlugin } from "./http";
-import { emailPlugin } from "./email";
-import { aiTransformPlugin } from "./ai-transformer";
-import { loopControlPlugin } from "./loop-control";
 
-const PLUGINS = [
-  mockWeatherPlugin,
-  staticDataPlugin,
-  ifElsePlugin,
-  stockPricePlugin,
-  httpRequestPlugin,
-  emailPlugin,
-  aiTransformPlugin,
-  loopControlPlugin,
-];
+const PLUGINS = [staticDataPlugin, ifElsePlugin, httpRequestPlugin];
 
 /**
  * Plugin registry - maps plugin IDs to plugin classes or instances
  * Supports both class-based plugins and builder-created plugins
  */
-export const pluginRegistry = new Map<string, PluginEntry>(
+export const pluginRegistry = new Map<string, Plugin>(
   PLUGINS.map((plugin) => [plugin.getId(), plugin]),
 );
 
@@ -48,7 +30,7 @@ export const pluginRegistry = new Map<string, PluginEntry>(
  * Get a plugin by ID
  * Returns the plugin class or instance
  */
-export function getPlugin(pluginId: string): PluginEntry | undefined {
+export function getPlugin(pluginId: string): Plugin | undefined {
   return pluginRegistry.get(pluginId);
 }
 
@@ -74,7 +56,7 @@ export function getPluginMetadata(
 /**
  * Get all plugins
  */
-export function getAllPlugins(): PluginEntry[] {
+export function getAllPlugins(): Plugin[] {
   return Array.from(pluginRegistry.values());
 }
 
@@ -129,15 +111,5 @@ export function isValidPluginId(pluginId: string): boolean {
  * Handles both class-based plugins and builder-created instances
  */
 export function createPluginInstance(pluginId: string): Plugin | undefined {
-  const entry = getPlugin(pluginId);
-  if (!entry) return undefined;
-
-  // Check if it's a class (has constructor) or an instance
-  if (typeof entry === "function") {
-    // It's a class, instantiate it
-    return new entry();
-  } else {
-    // It's already an instance (from builder), return it
-    return entry;
-  }
+  return getPlugin(pluginId);
 }

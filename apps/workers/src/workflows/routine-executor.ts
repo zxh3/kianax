@@ -1,29 +1,22 @@
 /**
- * Dynamic Routine Executor Workflow
+ * Routine Executor Workflow
  *
- * Supports conditional branching, parallel execution, and dynamic routing.
- *
- * Key features:
- * - Conditional edge traversal (if-else branches)
- * - BFS-based execution (dynamic path determination)
- * - Better data flow (handle-based input/output mapping)
+ * Uses the execution-engine package for graph traversal
+ * with Temporal activities for plugin execution.
  */
 
 import { proxyActivities, workflowInfo } from "@temporalio/workflow";
 import type * as activities from "../activities";
 import type { RoutineInput } from "@kianax/shared/temporal";
 import {
-  buildExecutionGraph,
-  findEntryNodes,
-  findReadyNodes,
-  determineNextNodes,
-  gatherNodeInputs,
-  validateGraph,
-  updateLoopState,
-  getLoopContext,
+  BFSIterationStrategy,
   ExecutionState,
   type ExecutionGraph,
-} from "../lib/graph-executor";
+  type Node,
+  type Edge,
+  validateGraph,
+} from "@kianax/execution-engine";
+import { adaptRoutineInput } from "../lib/routine-adapter";
 
 // Proxy activities with timeout and retry configuration
 const {
@@ -42,12 +35,7 @@ const {
 });
 
 /**
- * Dynamic Routine Executor
- *
- * Executes a user-defined routine with support for:
- * - Conditional branching (if-else, switch)
- * - Parallel execution (independent nodes)
- * - Dynamic routing (runtime path determination)
+ * Routine Executor using execution-engine
  */
 export async function routineExecutor(input: RoutineInput): Promise<void> {
   const { routineId, userId, triggerData } = input;
@@ -55,10 +43,15 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   // Get workflow execution info
   const { workflowId: executionId, runId } = workflowInfo();
 
+  // Convert Temporal format to execution-engine format
+  const routine = adaptRoutineInput(input);
+
   // Validate graph structure
-  const validation = validateGraph(input);
+  const validation = validateGraph(routine);
   if (!validation.valid) {
-    throw new Error(`Invalid routine graph:\n${validation.errors.join("\n")}`);
+    throw new Error(
+      `Invalid routine graph:\n${validation.errors.map((e) => `- ${e.message}`).join("\n")}`,
+    );
   }
 
   // Create execution record in Convex
@@ -81,11 +74,24 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
 
   try {
     // Build execution graph
-    const graph = buildExecutionGraph(input);
+    const graph = buildExecutionGraph(routine, routineId, triggerData);
     const state = new ExecutionState();
 
-    // Execute graph with BFS traversal
-    await executeBFS(graph, state, executionId);
+    // Use BFS iteration strategy from execution-engine
+    const iterationStrategy = new BFSIterationStrategy();
+
+    // Execute using the strategy with our custom node executor
+    await iterationStrategy.execute(
+      graph,
+      state,
+      async (nodeId: string) => {
+        await executeNodeWithActivity(nodeId, graph, state, executionId);
+      },
+      {
+        maxExecutionTime: 30 * 60 * 1000, // 30 minutes
+        maxExecutions: 10000, // Prevent infinite loops
+      },
+    );
 
     // All nodes completed successfully
     await updateRoutineStatus({
@@ -93,7 +99,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
       routineId,
       status: "completed",
       completedAt: Date.now(),
-      executionPath: state.executionPath,
+      executionPath: state.executionPath.map((item) => item.nodeId),
     });
   } catch (error: any) {
     // Workflow failed
@@ -114,100 +120,51 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
 }
 
 /**
- * BFS execution with conditional branching
+ * Build execution graph (adapted from execution-engine)
  */
-async function executeBFS(
-  graph: ExecutionGraph,
-  state: ExecutionState,
-  executionId: string,
-): Promise<void> {
-  // Find entry nodes (no incoming edges)
-  const entryNodes = findEntryNodes(graph.nodes, graph.edges);
+function buildExecutionGraph(
+  routine: { id?: string; nodes: Node[]; connections: Edge[] },
+  routineId: string,
+  triggerData?: unknown,
+): ExecutionGraph {
+  const nodes = new Map<string, Node>();
+  const edgesByTarget = new Map<string, Edge[]>();
+  const edgesBySource = new Map<string, Edge[]>();
 
-  if (entryNodes.length === 0) {
-    throw new Error("No entry nodes found - routine has no starting point");
+  // Index nodes by ID
+  for (const node of routine.nodes) {
+    nodes.set(node.id, node);
   }
 
-  // Initialize queue with entry nodes
-  let queue = [...entryNodes];
-
-  while (queue.length > 0) {
-    // Find nodes ready to execute (all dependencies satisfied)
-    const ready = findReadyNodes(queue, graph.edges, state);
-
-    if (ready.length === 0) {
-      // No nodes ready - check if we're done or have a deadlock
-      if (queue.length > 0) {
-        throw new Error(
-          `Execution deadlock: ${queue.length} nodes waiting but none are ready`,
-        );
-      }
-      break;
+  // Index edges by source and target
+  for (const edge of routine.connections) {
+    // By target
+    if (!edgesByTarget.has(edge.targetNodeId)) {
+      edgesByTarget.set(edge.targetNodeId, []);
     }
+    edgesByTarget.get(edge.targetNodeId)!.push(edge);
 
-    // Execute ready nodes in parallel
-    await Promise.all(
-      ready.map((nodeId) => executeNode(nodeId, graph, state, executionId)),
-    );
-
-    // Remove executed nodes from queue
-    queue = queue.filter((id) => !state.executed.has(id));
-
-    // Determine next nodes based on outputs (handles conditional branching and loops)
-    const nextNodes = new Set<string>();
-
-    for (const nodeId of ready) {
-      const nodeOutput = state.nodeOutputs.get(nodeId);
-      const { nextNodes: regularNext, loopEdges } = determineNextNodes(
-        nodeId,
-        nodeOutput,
-        graph.nodes,
-        graph.edges,
-      );
-
-      // Handle regular edges
-      for (const nextId of regularNext) {
-        if (!state.executed.has(nextId) && !queue.includes(nextId)) {
-          nextNodes.add(nextId);
-        }
-      }
-
-      // Handle loop edges
-      for (const loopEdge of loopEdges) {
-        if (!loopEdge.condition?.loopConfig) continue;
-
-        const shouldContinue = updateLoopState(
-          loopEdge.id,
-          loopEdge.targetNodeId,
-          loopEdge.condition.loopConfig.maxIterations,
-          loopEdge.condition.loopConfig.accumulatorFields,
-          nodeOutput,
-          state,
-        );
-
-        if (shouldContinue) {
-          // Re-queue the target node for another iteration
-          // Remove it from executed set so it can run again
-          state.executed.delete(loopEdge.targetNodeId);
-
-          // Add to queue if not already queued
-          if (!queue.includes(loopEdge.targetNodeId)) {
-            nextNodes.add(loopEdge.targetNodeId);
-          }
-        }
-        // If loop is done (shouldContinue = false), don't re-queue
-      }
+    // By source
+    if (!edgesBySource.has(edge.sourceNodeId)) {
+      edgesBySource.set(edge.sourceNodeId, []);
     }
-
-    // Add next nodes to queue
-    queue.push(...Array.from(nextNodes));
+    edgesBySource.get(edge.sourceNodeId)!.push(edge);
   }
+
+  return {
+    routineId,
+    triggerData,
+    nodes,
+    edges: routine.connections,
+    edgesByTarget,
+    edgesBySource,
+  };
 }
 
 /**
- * Execute a single node
+ * Execute a single node using Temporal activity
  */
-async function executeNode(
+async function executeNodeWithActivity(
   nodeId: string,
   graph: ExecutionGraph,
   state: ExecutionState,
@@ -219,59 +176,85 @@ async function executeNode(
     throw new Error(`Node not found: ${nodeId}`);
   }
 
-  // Gather inputs from upstream nodes
-  // All nodes work identically: inputs come from upstream outputs
-  // For nodes with no upstream (entry nodes), inputs will be empty {}
-  const inputs = gatherNodeInputs(nodeId, graph.edges, state);
+  // Gather inputs from upstream nodes (using execution-engine logic)
+  const inputs = gatherNodeInputs(nodeId, graph, state);
 
-  // Get loop context if node is inside a loop
-  const loopContext = getLoopContext(nodeId, graph.edges, state);
+  // Get or initialize nodeState for stateful plugins
+  const nodeState = state.getNodeState(nodeId);
 
   try {
+    // Mark node as running before execution
+    await storeNodeResult({
+      workflowId: executionId,
+      routineId: graph.routineId,
+      nodeId,
+      status: "running",
+      startedAt: Date.now(),
+    });
+
+    const startTime = Date.now();
+
     // Execute plugin as Temporal Activity
-    const output = await executePlugin({
+    const result = await executePlugin({
       pluginId: node.pluginId,
-      config: node.config,
+      config: node.parameters, // parameters = config in execution-engine
       inputs,
       context: {
-        userId: graph.userId,
+        userId: graph.routineId, // TODO: Pass userId from graph metadata
         routineId: graph.routineId,
         executionId,
         nodeId,
         triggerData: graph.triggerData,
-        loopIteration: loopContext.iteration,
-        loopAccumulator: loopContext.accumulator,
       },
+      nodeState,
     });
 
-    // Store output for downstream nodes
-    state.nodeOutputs.set(nodeId, output);
-    state.executed.add(nodeId);
-    state.executionPath.push(nodeId);
+    // Store updated nodeState
+    if (result.nodeState) {
+      state.setNodeState(nodeId, result.nodeState);
+    }
+
+    // Convert plugin output to PortData[] format
+    const portDataArray = convertToPortData(result.output);
+
+    // Store result in state
+    state.addNodeResult(nodeId, {
+      outputs: portDataArray,
+      executionTime: Date.now() - startTime,
+      status: "success",
+    });
 
     // Persist to Convex for observability
     await storeNodeResult({
       workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
-      iteration: loopContext.iteration, // Track iteration for loop nodes
       status: "completed",
-      output,
+      output: result.output,
       completedAt: Date.now(),
     });
   } catch (error: any) {
     // Unwrap Temporal ActivityFailure to get the real error message
-    // Temporal wraps activity errors in ActivityFailure, with the actual error in 'cause'
     const rootCause = error.cause || error;
     const errorMessage = rootCause.message || error.message || "Unknown error";
     const errorStack = rootCause.stack || error.stack;
+
+    // Mark node as failed
+    state.addNodeResult(nodeId, {
+      outputs: [],
+      executionTime: 0,
+      status: "error",
+      error: {
+        message: errorMessage,
+        stack: errorStack,
+      },
+    });
 
     // Node execution failed
     await storeNodeResult({
       workflowId: executionId,
       routineId: graph.routineId,
       nodeId,
-      iteration: loopContext.iteration, // Track iteration for loop nodes
       status: "failed",
       error: {
         message: errorMessage,
@@ -285,4 +268,64 @@ async function executeNode(
       `Node ${nodeId} (${node.pluginId}) failed: ${errorMessage}`,
     );
   }
+}
+
+/**
+ * Gather inputs for a node from upstream nodes
+ * Converts from PortData[] back to Record<string, unknown>
+ */
+function gatherNodeInputs(
+  nodeId: string,
+  graph: ExecutionGraph,
+  state: ExecutionState,
+): Record<string, unknown> {
+  const incomingEdges = graph.edgesByTarget.get(nodeId) || [];
+  const inputs: Record<string, unknown> = {};
+
+  for (const edge of incomingEdges) {
+    // Get the latest output from the source node
+    const portDataArray = state.nodeOutputs.get(edge.sourceNodeId);
+
+    if (portDataArray) {
+      // Find the specific port
+      const portData = portDataArray.find(
+        (p) => p.portName === edge.sourcePort,
+      );
+
+      if (portData?.items && portData.items.length > 0 && portData.items[0]) {
+        // For now, take the first item's data
+        // TODO: Handle multiple items (n8n-style batch processing)
+        inputs[edge.targetPort] = portData.items[0].data;
+      }
+    }
+  }
+
+  return inputs;
+}
+
+/**
+ * Convert plugin output (Record<string, unknown>) to PortData[]
+ */
+function convertToPortData(
+  output: unknown,
+): import("@kianax/execution-engine").PortData[] {
+  if (!output || typeof output !== "object") {
+    return [];
+  }
+
+  const portDataArray: import("@kianax/execution-engine").PortData[] = [];
+
+  for (const [portName, data] of Object.entries(output)) {
+    portDataArray.push({
+      portName,
+      items: [
+        {
+          data,
+          metadata: {},
+        },
+      ],
+    });
+  }
+
+  return portDataArray;
 }
