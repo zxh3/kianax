@@ -25,7 +25,6 @@ import "@xyflow/react/dist/style.css";
 import PluginNode, { type PluginNodeData } from "../plugin-node";
 import { NodeConfigDrawer } from "../node-config-drawer";
 import { TestResultDrawer } from "../test-result-drawer";
-import { TestRunPanel } from "../test-run-panel";
 import { Textarea } from "@kianax/ui/components/textarea";
 import { toast } from "sonner";
 import { Toolbar } from "./toolbar";
@@ -605,19 +604,6 @@ export function RoutineEditor({
                 className={resultDrawerStyle}
               />
             )}
-
-            {/* Test Run Panel */}
-            <TestRunPanel
-              workflowId={testWorkflowId}
-              isOpen={testPanelOpen}
-              onClose={() => setTestPanelOpen(false)}
-              onSelectNode={(nodeId) => {
-                setSelectedResultNodeId(nodeId);
-                setResultDrawerOpen(true);
-                // Don't close config drawer
-              }}
-              selectedNodeId={selectedResultNodeId}
-            />
           </>
         ) : (
           <div className="h-full p-4">

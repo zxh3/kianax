@@ -6,6 +6,7 @@ import {
   getPluginOutputs,
   getPluginMetadata,
 } from "@/lib/plugins";
+import { cn } from "@kianax/ui/lib/utils";
 
 export interface PluginNodeData extends Record<string, unknown> {
   label: string;
@@ -44,33 +45,36 @@ function PluginNode({ data, selected, id }: NodeProps) {
   };
 
   // Determine border/ring styles based on execution status or selection
-  let statusClasses = "";
-  console.log(nodeData.executionStatus);
-  if (nodeData.executionStatus === "running") {
-    statusClasses = "border-primary animate-pulse";
-  } else if (nodeData.executionStatus === "completed") {
-    statusClasses = "border-green-300/50 shadow-sm";
-  } else if (nodeData.executionStatus === "failed") {
-    statusClasses = "border-destructive ring-1 ring-destructive";
-  } else if (selected) {
-    statusClasses = "border-primary shadow-md";
-  } else {
-    statusClasses = "border-border shadow-sm hover:border-ring";
-  }
+  // Priority: selected > execution status > default
+  const statusClasses = cn(
+    // Base classes
+    "relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group",
+    // Execution status effects (non-conflicting with selection)
+    nodeData.executionStatus === "running" && "animate-pulse",
+    // Border/shadow: selected takes priority, then execution status, then default
+    selected
+      ? "border-primary shadow-md"
+      : nodeData.executionStatus === "running"
+        ? "border-primary"
+        : nodeData.executionStatus === "completed"
+          ? "border-green-300/50 shadow-sm"
+          : nodeData.executionStatus === "failed"
+            ? "border-destructive ring-1 ring-destructive"
+            : "border-border shadow-sm hover:border-ring",
+  );
 
   return (
-    <div
-      className={`relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group ${statusClasses}`}
-    >
+    <div className={statusClasses}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-linear-to-b from-card to-muted/20 rounded-t-xl">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div
-            className={`flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm ${
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm",
               selected
                 ? "bg-primary/10 border-primary/20 text-primary"
-                : "bg-background border-border text-muted-foreground"
-            }`}
+                : "bg-background border-border text-muted-foreground",
+            )}
           >
             {metadata?.icon ? (
               <div className="text-lg">{metadata.icon}</div>
@@ -117,7 +121,7 @@ function PluginNode({ data, selected, id }: NodeProps) {
                         position={Position.Left}
                         id={inputPorts[i].name}
                         title={inputPorts[i].description}
-                        className="!w-2.5 !h-2.5 !bg-background !border-[2px] !border-muted-foreground hover:!border-foreground transition-all hover:!bg-foreground shadow-sm z-50"
+                        className="w-2.5! h-2.5! bg-background! border-2! border-muted-foreground! hover:border-foreground! transition-all hover:bg-foreground! shadow-sm! z-50"
                       />
                       <span className="text-xs font-medium text-muted-foreground pl-2">
                         {inputPorts[i].label}
@@ -138,7 +142,7 @@ function PluginNode({ data, selected, id }: NodeProps) {
                         position={Position.Right}
                         id={outputPorts[i].name}
                         title={outputPorts[i].description}
-                        className="!w-2.5 !h-2.5 !bg-background !border-[2px] !border-muted-foreground transition-all hover:!bg-foreground hover:!border-foreground shadow-sm z-50"
+                        className="w-2.5! h-2.5! bg-background! border-2! border-muted-foreground! transition-all hover:bg-foreground! hover:border-foreground! shadow-sm! z-50"
                       />
                     </>
                   )}
