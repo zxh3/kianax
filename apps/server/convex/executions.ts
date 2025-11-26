@@ -173,25 +173,45 @@ export const storeNodeResult = mutation({
         (s: any) => s.nodeId === args.nodeId && s.status === "running",
       );
 
-      const nodeState = {
-        nodeId: args.nodeId,
-        ...(args.iteration !== undefined && { iteration: args.iteration }),
-        status: args.status,
-        output: args.output,
-        error: args.error,
-        completedAt: args.completedAt,
-        duration: args.completedAt
-          ? args.completedAt - execution.startedAt
-          : undefined,
-      };
-
       if (existingIndex >= 0) {
         // Update the running entry with final status
+        const existingEntry = execution.nodeStates[existingIndex];
+        // biome-ignore lint/style/noNonNullAssertion: index was just checked
+        const startedAt = existingEntry!.startedAt;
+        
+        const nodeState = {
+          ...existingEntry,
+          nodeId: args.nodeId,
+          ...(args.iteration !== undefined && { iteration: args.iteration }),
+          status: args.status,
+          output: args.output,
+          error: args.error,
+          completedAt: args.completedAt,
+          // Calculate duration based on node's start time
+          duration: (args.completedAt && startedAt)
+            ? args.completedAt - startedAt
+            : undefined,
+        };
+
         const updatedNodeStates = [...execution.nodeStates];
         updatedNodeStates[existingIndex] = nodeState;
         await ctx.db.patch(execution._id, { nodeStates: updatedNodeStates });
       } else {
-        // Append new entry
+        // Append new entry (case where we missed the running event or it's instantaneous)
+        const nodeState = {
+          nodeId: args.nodeId,
+          ...(args.iteration !== undefined && { iteration: args.iteration }),
+          status: args.status,
+          output: args.output,
+          error: args.error,
+          startedAt: args.startedAt,
+          completedAt: args.completedAt,
+          duration:
+            args.completedAt && args.startedAt
+              ? args.completedAt - args.startedAt
+              : undefined,
+        };
+
         await ctx.db.patch(execution._id, {
           nodeStates: [...execution.nodeStates, nodeState],
         });
