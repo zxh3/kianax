@@ -4,24 +4,23 @@
  * Supports conditional branching, parallel execution, and dynamic routing.
  *
  * Key features:
- * - Conditional edge traversal (if-else branches)
+ * - Conditional edge traversal (if-else, switch)
  * - BFS-based execution (dynamic path determination)
  * - Better data flow (handle-based input/output mapping)
  */
 
-import { proxyActivities, workflowInfo } from "@temporalio/workflow";
+import {
+  proxyActivities,
+  workflowInfo,
+  ApplicationFailure,
+} from "@temporalio/workflow";
 import type * as activities from "../activities";
 import type { RoutineInput } from "@kianax/shared/temporal";
 import {
   buildExecutionGraph,
-  findEntryNodes,
-  findReadyNodes,
-  determineNextNodes,
-  gatherNodeInputs,
   validateGraph,
-  updateLoopState,
-  getLoopContext,
-  ExecutionState,
+  GraphIterator,
+  type ExecutionTask,
   type ExecutionGraph,
 } from "../lib/graph-executor";
 
@@ -40,6 +39,9 @@ const {
     maximumAttempts: 3,
   },
 });
+
+// Concurrency limit
+const MAX_CONCURRENT_ACTIVITIES = 20;
 
 /**
  * Dynamic Routine Executor
@@ -80,12 +82,78 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   });
 
   try {
-    // Build execution graph
+    // Initialize Graph Iterator
     const graph = buildExecutionGraph(input);
-    const state = new ExecutionState();
+    const iterator = new GraphIterator(graph);
 
-    // Execute graph with BFS traversal
-    await executeBFS(graph, state, executionId);
+    // Active promises tracker
+    // Key: nodeId|contextHash
+    const pendingPromises = new Map<string, Promise<void>>();
+
+    // Task buffer (for tasks ready but waiting for concurrency slot)
+    const taskBuffer: ExecutionTask[] = [];
+
+    // Main Event Loop
+    while (
+      !iterator.isDone() ||
+      pendingPromises.size > 0 ||
+      taskBuffer.length > 0
+    ) {
+      // 1. Refill Buffer
+      // Pull as many as we can to fill buffer up to a reasonable size (e.g. 2x concurrent limit)
+      // to avoid calling nextBatch() too often if graph is huge
+      if (taskBuffer.length < MAX_CONCURRENT_ACTIVITIES) {
+        const newTasks = iterator.nextBatch();
+        taskBuffer.push(...newTasks);
+      }
+
+      // 2. Schedule Activities
+      while (
+        pendingPromises.size < MAX_CONCURRENT_ACTIVITIES &&
+        taskBuffer.length > 0
+      ) {
+        const task = taskBuffer.shift()!;
+        const taskKey = getTaskKey(task);
+
+        // Create the promise for this node execution
+        const promise = executeNode(task, graph, iterator, executionId)
+          .then((output) => {
+            // Success: Update graph state
+            iterator.markNodeCompleted(task, output);
+          })
+          .catch((err) => {
+            // Failure: Mark failed
+            iterator.markNodeFailed(task, err);
+            throw err; // Re-throw to be caught by Promise.race
+          })
+          .finally(() => {
+            // Cleanup from pending map
+            pendingPromises.delete(taskKey);
+          });
+
+        pendingPromises.set(taskKey, promise);
+      }
+
+      // 3. Wait for progress
+      if (pendingPromises.size > 0) {
+        // Wait for at least one activity to finish
+        // This unblocks the loop to schedule new ready tasks
+        await Promise.race(pendingPromises.values());
+      } else {
+        // No pending activities.
+        // If iterator is not done and buffer is empty, we might be deadlocked?
+        if (iterator.hasRunningNodes()) {
+          // Should be impossible if pendingPromises is empty but runningNodes > 0
+          // unless we failed to track a promise.
+          throw new ApplicationFailure(
+            "Execution stalled: Internal state mismatch",
+          );
+        }
+
+        // If iterator is done (no queue, no running), we exit loop.
+        break;
+      }
+    }
 
     // All nodes completed successfully
     await updateRoutineStatus({
@@ -93,7 +161,7 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
       routineId,
       status: "completed",
       completedAt: Date.now(),
-      executionPath: state.executionPath,
+      executionPath: iterator.getState().executionPath,
     });
   } catch (error: any) {
     // Workflow failed
@@ -113,121 +181,42 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
   }
 }
 
-/**
- * BFS execution with conditional branching
- */
-async function executeBFS(
-  graph: ExecutionGraph,
-  state: ExecutionState,
-  executionId: string,
-): Promise<void> {
-  // Find entry nodes (no incoming edges)
-  const entryNodes = findEntryNodes(graph.nodes, graph.edges);
-
-  if (entryNodes.length === 0) {
-    throw new Error("No entry nodes found - routine has no starting point");
-  }
-
-  // Initialize queue with entry nodes
-  let queue = [...entryNodes];
-
-  while (queue.length > 0) {
-    // Find nodes ready to execute (all dependencies satisfied)
-    const ready = findReadyNodes(queue, graph.edges, state);
-
-    if (ready.length === 0) {
-      // No nodes ready - check if we're done or have a deadlock
-      if (queue.length > 0) {
-        throw new Error(
-          `Execution deadlock: ${queue.length} nodes waiting but none are ready`,
-        );
-      }
-      break;
-    }
-
-    // Execute ready nodes in parallel
-    await Promise.all(
-      ready.map((nodeId) => executeNode(nodeId, graph, state, executionId)),
-    );
-
-    // Remove executed nodes from queue
-    queue = queue.filter((id) => !state.executed.has(id));
-
-    // Determine next nodes based on outputs (handles conditional branching and loops)
-    const nextNodes = new Set<string>();
-
-    for (const nodeId of ready) {
-      const nodeOutput = state.nodeOutputs.get(nodeId);
-      const { nextNodes: regularNext, loopEdges } = determineNextNodes(
-        nodeId,
-        nodeOutput,
-        graph.nodes,
-        graph.edges,
-      );
-
-      // Handle regular edges
-      for (const nextId of regularNext) {
-        if (!state.executed.has(nextId) && !queue.includes(nextId)) {
-          nextNodes.add(nextId);
-        }
-      }
-
-      // Handle loop edges
-      for (const loopEdge of loopEdges) {
-        if (!loopEdge.condition?.loopConfig) continue;
-
-        const shouldContinue = updateLoopState(
-          loopEdge.id,
-          loopEdge.targetNodeId,
-          loopEdge.condition.loopConfig.maxIterations,
-          loopEdge.condition.loopConfig.accumulatorFields,
-          nodeOutput,
-          state,
-        );
-
-        if (shouldContinue) {
-          // Re-queue the target node for another iteration
-          // Remove it from executed set so it can run again
-          state.executed.delete(loopEdge.targetNodeId);
-
-          // Add to queue if not already queued
-          if (!queue.includes(loopEdge.targetNodeId)) {
-            nextNodes.add(loopEdge.targetNodeId);
-          }
-        }
-        // If loop is done (shouldContinue = false), don't re-queue
-      }
-    }
-
-    // Add next nodes to queue
-    queue.push(...Array.from(nextNodes));
-  }
+function getTaskKey(task: ExecutionTask): string {
+  // Simple unique key for the map
+  // logic matches GraphIterator.getContextKey roughly but doesn't need to be exact
+  // as long as it's unique per execution instance
+  if (task.context.loopStack.length === 0) return task.nodeId;
+  const hash = task.context.loopStack
+    .map((l) => `${l.edgeId}:${l.iteration}`)
+    .join("|");
+  return `${task.nodeId}|${hash}`;
 }
 
 /**
  * Execute a single node
  */
 async function executeNode(
-  nodeId: string,
+  task: ExecutionTask,
   graph: ExecutionGraph,
-  state: ExecutionState,
+  iterator: GraphIterator,
   executionId: string,
-): Promise<void> {
-  const node = graph.nodes.get(nodeId);
+): Promise<unknown> {
+  const node = graph.nodes.get(task.nodeId);
 
   if (!node) {
-    throw new Error(`Node not found: ${nodeId}`);
+    throw new Error(`Node not found: ${task.nodeId}`);
   }
 
-  // Gather inputs from upstream nodes
-  // All nodes work identically: inputs come from upstream outputs
-  // For nodes with no upstream (entry nodes), inputs will be empty {}
-  const inputs = gatherNodeInputs(nodeId, graph.edges, state);
-
-  // Get loop context if node is inside a loop
-  const loopContext = getLoopContext(nodeId, graph.edges, state);
+  // Gather inputs using the Iterator's context-aware logic
+  const inputs = iterator.gatherInputs(task);
 
   try {
+    // Get innermost loop context for logging/metrics
+    const currentLoop =
+      task.context.loopStack[task.context.loopStack.length - 1];
+    const iteration = currentLoop ? currentLoop.iteration : undefined;
+    const accumulator = currentLoop ? currentLoop.accumulator : undefined;
+
     // Execute plugin as Temporal Activity
     const output = await executePlugin({
       pluginId: node.pluginId,
@@ -237,41 +226,41 @@ async function executeNode(
         userId: graph.userId,
         routineId: graph.routineId,
         executionId,
-        nodeId,
+        nodeId: task.nodeId,
         triggerData: graph.triggerData,
-        loopIteration: loopContext.iteration,
-        loopAccumulator: loopContext.accumulator,
+        loopIteration: iteration,
+        loopAccumulator: accumulator,
       },
     });
-
-    // Store output for downstream nodes
-    state.nodeOutputs.set(nodeId, output);
-    state.executed.add(nodeId);
-    state.executionPath.push(nodeId);
 
     // Persist to Convex for observability
     await storeNodeResult({
       workflowId: executionId,
       routineId: graph.routineId,
-      nodeId,
-      iteration: loopContext.iteration, // Track iteration for loop nodes
+      nodeId: task.nodeId,
+      iteration: iteration,
       status: "completed",
       output,
       completedAt: Date.now(),
     });
+
+    return output;
   } catch (error: any) {
-    // Unwrap Temporal ActivityFailure to get the real error message
-    // Temporal wraps activity errors in ActivityFailure, with the actual error in 'cause'
     const rootCause = error.cause || error;
     const errorMessage = rootCause.message || error.message || "Unknown error";
     const errorStack = rootCause.stack || error.stack;
+
+    // Get iteration for error log
+    const currentLoop =
+      task.context.loopStack[task.context.loopStack.length - 1];
+    const iteration = currentLoop ? currentLoop.iteration : undefined;
 
     // Node execution failed
     await storeNodeResult({
       workflowId: executionId,
       routineId: graph.routineId,
-      nodeId,
-      iteration: loopContext.iteration, // Track iteration for loop nodes
+      nodeId: task.nodeId,
+      iteration: iteration,
       status: "failed",
       error: {
         message: errorMessage,
@@ -282,7 +271,7 @@ async function executeNode(
 
     // Re-throw to stop execution
     throw new Error(
-      `Node ${nodeId} (${node.pluginId}) failed: ${errorMessage}`,
+      `Node ${task.nodeId} (${node.pluginId}) failed: ${errorMessage}`,
     );
   }
 }

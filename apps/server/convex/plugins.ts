@@ -62,3 +62,23 @@ export const getPluginCredentials = query({
     return credentials.credentials;
   },
 });
+
+/**
+ * Get plugin credentials for the worker (System Internal)
+ * DANGEROUS: This query allows fetching credentials by userId.
+ * It should only be used by the secure Worker environment.
+ */
+export const getWorkerCredentials = query({
+  args: { userId: v.string(), pluginId: v.string() },
+  handler: async (ctx, { userId, pluginId }) => {
+    // TODO: Authenticate that this is the worker (e.g. check secret header or strict role)
+    const credentials = await ctx.db
+      .query("plugin_credentials")
+      .withIndex("by_user_and_plugin", (q) =>
+        q.eq("userId", userId).eq("pluginId", pluginId),
+      )
+      .unique();
+
+    return credentials?.credentials || null;
+  },
+});

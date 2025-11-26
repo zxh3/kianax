@@ -11,7 +11,10 @@ import "dotenv/config";
 import { Client, Connection } from "@temporalio/client";
 import { nanoid } from "nanoid";
 import { routineExecutor } from "@kianax/workers";
-import type { RoutineInput } from "@kianax/shared/temporal";
+import type {
+  RoutineInput,
+  Connection as RoutineConnection,
+} from "@kianax/shared/temporal";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../server/convex/_generated/api";
 
@@ -64,6 +67,8 @@ function createSimpleWeatherRoutine(userId: string) {
         id: "c1",
         sourceNodeId: "n1",
         targetNodeId: "n2",
+        type: "flow" as const,
+        sourceHandle: "default",
       },
     ],
     tags: ["weather", "mock", "testing", "local"],
@@ -75,7 +80,7 @@ function createSimpleWeatherRoutine(userId: string) {
  *
  * Flow:
  *   [Static Data: condition input] → [If-Else]
- *                                        ↙        ↘
+ *                                        ↗        ↘
  *                          [Static: True Alert]  [Static: False Alert]
  *
  * This tests:
@@ -152,24 +157,22 @@ function createConditionalRoutine(userId: string) {
         id: "c1",
         sourceNodeId: "n1",
         targetNodeId: "n2",
+        type: "flow" as const,
+        sourceHandle: "default",
       },
       {
         id: "c2",
         sourceNodeId: "n2",
         targetNodeId: "n3",
-        condition: {
-          type: "branch" as const,
-          value: "true",
-        },
+        type: "flow" as const,
+        sourceHandle: "true", // Explicit handle for TRUE branch
       },
       {
         id: "c3",
         sourceNodeId: "n2",
         targetNodeId: "n4",
-        condition: {
-          type: "branch" as const,
-          value: "false",
-        },
+        type: "flow" as const,
+        sourceHandle: "false", // Explicit handle for FALSE branch
       },
     ],
     tags: ["conditional", "branching", "if-else", "testing", "local"],
@@ -232,7 +235,12 @@ async function run() {
 
   // Step 1: Write routine to Convex
   console.log("💾 Writing routine to Convex database...");
-  const routineId = await convex.mutation(api.routines.create, routineData);
+  // Note: we use 'any' cast here because the Convex schema might not be fully updated
+  // to reflect the strict Connection type yet, but we're passing valid data.
+  const routineId = await convex.mutation(
+    api.routines.create,
+    routineData as any,
+  );
   console.log(`✅ Routine saved to Convex: ${routineId}\n`);
 
   // Step 2: Fetch routine from Convex
@@ -244,7 +252,22 @@ async function run() {
   console.log(`✅ Routine fetched from database\n`);
 
   // Step 3: Convert Convex routine to RoutineInput for Temporal workflow
-  console.log("🔄 Converting routine to workflow input...");
+  console.log("↔️ Converting routine to workflow input...");
+
+  // Explicitly map connections to satisfy the strict RoutineInput type
+  const connections: RoutineConnection[] = savedRoutine.connections.map(
+    (conn: any) => ({
+      id: conn.id,
+      sourceNodeId: conn.sourceNodeId,
+      targetNodeId: conn.targetNodeId,
+      type: conn.type || "flow", // Default to "flow" if missing (though our data has it)
+      sourceHandle: conn.sourceHandle,
+      targetHandle: conn.targetHandle,
+      sourceDataPort: conn.sourceDataPort,
+      loopConfig: conn.loopConfig,
+    }),
+  );
+
   const routineInput: RoutineInput = {
     routineId: savedRoutine._id,
     userId: savedRoutine.userId,
@@ -254,7 +277,7 @@ async function run() {
       config: node.config || {},
       enabled: node.enabled,
     })),
-    connections: savedRoutine.connections,
+    connections: connections,
     triggerData: {
       timestamp: Date.now(),
       source: "test-script-e2e",

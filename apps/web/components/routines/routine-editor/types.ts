@@ -1,4 +1,5 @@
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
+import type { Connection } from "@kianax/shared/temporal";
 
 export interface RoutineNode {
   id: string;
@@ -9,21 +10,7 @@ export interface RoutineNode {
   enabled: boolean;
 }
 
-export interface RoutineConnection {
-  id: string;
-  sourceNodeId: string;
-  targetNodeId: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  condition?: {
-    type: "branch" | "default" | "loop";
-    value?: string;
-    loopConfig?: {
-      maxIterations: number;
-      accumulatorFields?: string[];
-    };
-  };
-}
+export type RoutineConnection = Connection;
 
 export interface RoutineEditorProps {
   routineId: Id<"routines">;

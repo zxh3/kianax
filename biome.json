@@ -40,7 +40,8 @@
       "correctness": {
         "useExhaustiveDependencies": "warn",
         "noNestedComponentDefinitions": "off",
-        "noInvalidPositionAtImportRule": "off"
+        "noInvalidPositionAtImportRule": "off",
+        "useUniqueElementIds": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",

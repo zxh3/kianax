@@ -25,22 +25,86 @@ export interface Node {
   enabled: boolean;
 }
 
-export interface Connection {
+/**
+ * Base interface for all connections
+ */
+interface BaseConnection {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
-  sourceHandle?: string; // Output port on source node
-  targetHandle?: string; // Input port on target node
+}
 
-  // Conditional execution (for logic nodes)
-  condition?: {
-    type: "branch" | "default" | "loop";
-    value?: string; // Branch value: "true", "false", etc.
-    loopConfig?: {
-      maxIterations: number;
-      accumulatorFields?: string[];
-    };
+/**
+ * Flow Connection (Control Flow)
+ * Dictates execution order and branching
+ */
+export interface FlowConnection extends BaseConnection {
+  type: "flow";
+
+  /**
+   * The output port/handle name on the source node.
+   * Represents the Control Signal (e.g., "default", "true", "false", "loop").
+   */
+  sourceHandle: string;
+
+  /**
+   * The input port/handle name on the target node.
+   * For flow connections, this is primarily metadata for the UI (e.g., matching ReactFlow's targetHandle).
+   * In the current executor logic, flow connections usually trigger the target node's default entry.
+   * Future enhancements might use this for nodes with multiple distinct flow entry points.
+   */
+  targetHandle?: string;
+
+  /**
+   * Configuration for loop edges
+   */
+  loopConfig?: {
+    maxIterations: number;
+    accumulatorFields?: string[];
   };
+}
+
+/**
+ * Data Connection (Data Flow)
+ * Dictates data transfer between nodes
+ */
+export interface DataConnection extends BaseConnection {
+  type: "data";
+
+  /**
+   * The output port/handle name on the source node.
+   * Represents the Data Output Name (e.g., "temperature", "result").
+   */
+  sourceHandle: string;
+
+  /**
+   * The input port/handle name on the target node.
+   * Represents the Data Input Name (e.g., "city", "input").
+   */
+  targetHandle: string;
+}
+
+/**
+ * Connection Type Discriminated Union
+ */
+export type Connection = FlowConnection | DataConnection;
+
+export type ConnectionType = Connection["type"];
+
+/**
+ * Standardized Plugin Execution Result
+ */
+export interface PluginResult {
+  /**
+   * Control signal to activate next nodes
+   * Defaults to "default" if omitted
+   */
+  signal?: string;
+
+  /**
+   * Data outputs mapped to output ports
+   */
+  data: Record<string, unknown>;
 }
 
 /**

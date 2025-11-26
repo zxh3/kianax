@@ -201,29 +201,35 @@ export function RoutineEditor({
   // Convert routine connections to React Flow edges
   const convertToReactFlowEdges = useCallback(
     (routineConnections: RoutineConnection[]): Edge[] => {
-      return routineConnections.map((conn) => ({
-        id: conn.id,
-        source: conn.sourceNodeId,
-        target: conn.targetNodeId,
-        sourceHandle: conn.sourceHandle,
-        targetHandle: conn.targetHandle,
-        animated: true,
-        style: {
-          strokeWidth: 2,
-          strokeDasharray: "5 5",
-          stroke:
-            conn.condition?.value === "true" || conn.sourceHandle === "true"
-              ? "#10b981"
-              : conn.condition?.value === "false" ||
-                  conn.sourceHandle === "false"
-                ? "#ef4444"
-                : conn.sourceHandle === "success"
-                  ? "#10b981"
-                  : conn.sourceHandle === "error"
-                    ? "#ef4444"
-                    : "#94a3b8",
-        },
-      }));
+      return routineConnections.map((conn) => {
+        const isFlow = conn.type === "flow";
+        const targetHandle = isFlow ? "__entry__" : conn.targetHandle;
+
+        return {
+          id: conn.id,
+          source: conn.sourceNodeId,
+          target: conn.targetNodeId,
+          sourceHandle: conn.sourceHandle,
+          targetHandle,
+          animated: true,
+          style: {
+            strokeWidth: isFlow ? 3 : 2,
+            strokeDasharray: isFlow ? undefined : "5 5",
+            stroke:
+              conn.sourceHandle === "true" || conn.sourceHandle === "success"
+                ? "#10b981"
+                : conn.sourceHandle === "false" || conn.sourceHandle === "error"
+                  ? "#ef4444"
+                  : isFlow
+                    ? "#6366f1" // Flow color (Indigo)
+                    : "#94a3b8", // Data color (Slate)
+          },
+          data:
+            isFlow && conn.loopConfig
+              ? { loopConfig: conn.loopConfig }
+              : undefined,
+        };
+      });
     },
     [],
   );
@@ -252,23 +258,28 @@ export function RoutineEditor({
   const convertFromReactFlowEdges = useCallback(
     (reactFlowEdges: Edge[]): RoutineConnection[] => {
       return reactFlowEdges.map((edge) => {
-        const conn: RoutineConnection = {
-          id: edge.id,
-          sourceNodeId: edge.source,
-          targetNodeId: edge.target,
-          sourceHandle: edge.sourceHandle || undefined,
-          targetHandle: edge.targetHandle || undefined,
-        };
+        const isFlow = edge.targetHandle === "__entry__";
 
-        // Add condition if it's a conditional edge (from logic nodes)
-        if (edge.sourceHandle === "true" || edge.sourceHandle === "false") {
-          conn.condition = {
-            type: "branch",
-            value: edge.sourceHandle,
+        if (isFlow) {
+          return {
+            id: edge.id,
+            type: "flow",
+            sourceNodeId: edge.source,
+            targetNodeId: edge.target,
+            sourceHandle: edge.sourceHandle || "default",
+            // loopConfig could be retrieved from edge.data if we had a UI to edit it
+            loopConfig: edge.data?.loopConfig as any,
           };
         }
 
-        return conn;
+        return {
+          id: edge.id,
+          type: "data",
+          sourceNodeId: edge.source,
+          targetNodeId: edge.target,
+          sourceHandle: edge.sourceHandle!,
+          targetHandle: edge.targetHandle!,
+        };
       });
     },
     [],
@@ -354,14 +365,16 @@ export function RoutineEditor({
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
+      const isFlow = connection.targetHandle === "__entry__";
+
       // Customize edge based on connection
       const newEdge: Edge = {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         animated: true,
         style: {
-          strokeWidth: 2,
-          strokeDasharray: "5 5",
+          strokeWidth: isFlow ? 3 : 2,
+          strokeDasharray: isFlow ? undefined : "5 5",
           stroke:
             connection.sourceHandle === "true" ||
             connection.sourceHandle === "success"
@@ -369,7 +382,9 @@ export function RoutineEditor({
               : connection.sourceHandle === "false" ||
                   connection.sourceHandle === "error"
                 ? "#ef4444"
-                : "#94a3b8",
+                : isFlow
+                  ? "#6366f1"
+                  : "#94a3b8",
         },
         label: connection.sourceHandle || undefined,
         labelStyle: {

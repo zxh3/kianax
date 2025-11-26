@@ -109,7 +109,7 @@ export default function RoutineEditorPage({ params }: PageProps) {
         <RoutineEditor
           routineId={routineId}
           initialNodes={routine.nodes || []}
-          initialConnections={routine.connections || []}
+          initialConnections={(routine.connections || []) as any}
           onSave={handleSave}
           onTest={handleTest}
         />
