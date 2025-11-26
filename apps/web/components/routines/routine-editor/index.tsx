@@ -492,14 +492,20 @@ export function RoutineEditor({
   const handleSwitchToConfig = useCallback((nodeId: string) => {
     setConfiguringNodeId(nodeId);
     setConfigDrawerOpen(true);
-    setResultDrawerOpen(false); // Close result drawer
+    // We don't close the result drawer to allow viewing both
   }, []);
 
   const handleSwitchToResult = useCallback((nodeId: string) => {
     setSelectedResultNodeId(nodeId);
     setResultDrawerOpen(true);
-    setConfigDrawerOpen(false); // Close config drawer
+    // We don't close the config drawer to allow viewing both
   }, []);
+
+  // Calculate result drawer position if config drawer is also open
+  // Default: right-2 (8px)
+  // If config open: right-2 + w-96 (384px) + gap-4 (16px) = 408px
+  const resultDrawerStyle =
+    configDrawerOpen && configuringNode ? "right-[408px]" : "";
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -572,7 +578,7 @@ export function RoutineEditor({
               />
             </ReactFlow>
 
-            {/* Node Configuration Drawer */}
+            {/* Node Configuration Drawer (Always right-aligned) */}
             {configuringNode && (
               <NodeConfigDrawer
                 key={configuringNode.id}
@@ -602,7 +608,7 @@ export function RoutineEditor({
               />
             )}
 
-            {/* Test Result Drawer */}
+            {/* Test Result Drawer (Shifts left if config is open) */}
             {selectedResultNode && (
               <TestResultDrawer
                 isOpen={resultDrawerOpen}
@@ -614,6 +620,7 @@ export function RoutineEditor({
                 nodeLabel={(selectedResultNode.data as PluginNodeData).label}
                 executionState={selectedNodeExecutionState}
                 onSwitchToConfig={handleSwitchToConfig} // Pass handler
+                className={resultDrawerStyle}
               />
             )}
 
@@ -625,7 +632,7 @@ export function RoutineEditor({
               onSelectNode={(nodeId) => {
                 setSelectedResultNodeId(nodeId);
                 setResultDrawerOpen(true);
-                setConfigDrawerOpen(false);
+                // Don't close config drawer
               }}
               selectedNodeId={selectedResultNodeId}
             />

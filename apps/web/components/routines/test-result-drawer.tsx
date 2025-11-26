@@ -19,6 +19,7 @@ interface TestResultDrawerProps {
   nodeLabel: string;
   executionState: any; // Using any to match existing loose typing, ideally should be typed
   onSwitchToConfig: (nodeId: string) => void;
+  className?: string;
 }
 
 export function TestResultDrawer({
@@ -28,6 +29,7 @@ export function TestResultDrawer({
   nodeLabel,
   executionState,
   onSwitchToConfig,
+  className,
 }: TestResultDrawerProps) {
   if (!isOpen) return null;
 
@@ -40,7 +42,11 @@ export function TestResultDrawer({
   };
 
   return (
-    <div className="absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden">
+    <div
+      className={`absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 ${
+        className || ""
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="overflow-hidden">
@@ -161,8 +167,12 @@ export function TestResultDrawer({
 
       {/* Footer */}
       <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={() => onSwitchToConfig(nodeId)}>
-          Edit Configuration
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onSwitchToConfig(nodeId)}
+        >
+          Show Configuration
         </Button>
       </div>
     </div>

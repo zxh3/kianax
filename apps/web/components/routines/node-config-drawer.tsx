@@ -25,6 +25,7 @@ interface NodeConfigDrawerProps {
   // New props for switching to result drawer
   testExecution: any | null; // Full execution object to check for nodeStates
   onSwitchToResult: (nodeId: string) => void;
+  className?: string;
 }
 
 /**
@@ -44,6 +45,7 @@ export function NodeConfigDrawer({
   onSave,
   testExecution, // New
   onSwitchToResult, // New
+  className,
 }: NodeConfigDrawerProps) {
   const nodeLabelInputId = useId();
 
@@ -71,7 +73,11 @@ export function NodeConfigDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden">
+    <div
+      className={`absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 ${
+        className || ""
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div>
@@ -136,8 +142,12 @@ export function NodeConfigDrawer({
       {/* Footer */}
       <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
         {hasTestResults && (
-          <Button size="sm" variant="secondary" onClick={() => onSwitchToResult(nodeId)}>
-            View Last Result
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onSwitchToResult(nodeId)}
+          >
+            Show Last Result
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={onClose}>
