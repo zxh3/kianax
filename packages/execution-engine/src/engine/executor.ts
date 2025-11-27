@@ -28,6 +28,10 @@ import {
   getDefaultIterationStrategy,
   type IterationStrategy,
 } from "./iteration-strategy.js";
+import {
+  ExpressionResolver,
+  type ExpressionContext,
+} from "./expression-resolver.js";
 
 /**
  * Plugin interface (from @kianax/plugin-sdk)
@@ -98,6 +102,8 @@ export interface CredentialLoader {
 export class RoutineExecutor {
   private iterationStrategy: IterationStrategy;
   private credentialLoader?: CredentialLoader;
+  private executionId: string = "";
+  private startedAt: number = 0;
 
   constructor(
     private readonly pluginRegistry: PluginRegistry,
@@ -118,6 +124,10 @@ export class RoutineExecutor {
     routine: RoutineDefinition,
     callbacks: ExecutionCallbacks = {},
   ): Promise<ExecutionResult> {
+    // Initialize execution metadata
+    this.executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    this.startedAt = Date.now();
+
     // Validate graph structure
     const validation = validateGraph(routine);
     if (!validation.valid) {
@@ -178,9 +188,18 @@ export class RoutineExecutor {
       edgesBySource.get(edge.sourceNodeId)!.push(edge);
     }
 
+    // Convert routine variables array to a map for easy lookup
+    const variables: Record<string, unknown> = {};
+    if (routine.variables) {
+      for (const v of routine.variables) {
+        variables[v.name] = v.value;
+      }
+    }
+
     return {
       routineId: routine.id || "unknown",
       triggerData: routine.triggerData,
+      variables,
       nodes,
       edges: routine.connections,
       edgesByTarget,
@@ -221,6 +240,8 @@ export class RoutineExecutor {
         inputs,
         nodeState,
         runIndex,
+        graph,
+        state,
       );
 
       // Create result
@@ -270,6 +291,8 @@ export class RoutineExecutor {
     inputs: PortData[],
     nodeState: Record<string, unknown>,
     _runIndex: number,
+    graph: ExecutionGraph,
+    state: ExecutionState,
   ): Promise<PortData[]> {
     // Get plugin from registry
     const plugin = this.pluginRegistry.createPluginInstance(node.pluginId);
@@ -307,13 +330,30 @@ export class RoutineExecutor {
         try {
           const credentialData = await this.credentialLoader.load(mappedCredId);
           credentials[key] = credentialData;
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
           throw new Error(
-            `Failed to load credential '${key}' (${mappedCredId}): ${e.message}`,
+            `Failed to load credential '${key}' (${mappedCredId}): ${errorMessage}`,
           );
         }
       }
     }
+
+    // Build expression context for resolving variables
+    const expressionContext: ExpressionContext = {
+      nodes: state.nodeOutputs,
+      vars: graph.variables,
+      trigger: graph.triggerData,
+      execution: {
+        id: this.executionId,
+        routineId: graph.routineId,
+        startedAt: this.startedAt,
+      },
+    };
+
+    // Resolve expressions in node parameters
+    const resolver = new ExpressionResolver(expressionContext);
+    const resolvedParameters = resolver.resolve(node.parameters);
 
     // Transform inputs from PortData[] to Record<string, any>
     // For each port, we take the first item's data (plugins work with single items)
@@ -322,17 +362,17 @@ export class RoutineExecutor {
     // Create plugin context
     const context: PluginContext = {
       userId: "user-1", // TODO: Get from execution context
-      routineId: "routine-1", // TODO: Get from execution graph
-      executionId: "exec-1", // TODO: Generate execution ID
+      routineId: graph.routineId,
+      executionId: this.executionId,
       nodeId: node.id,
-      triggerData: undefined, // TODO: Pass from graph
+      triggerData: graph.triggerData,
       credentials,
     };
 
-    // Execute plugin
+    // Execute plugin with resolved parameters
     const pluginOutputs = await plugin.execute(
       pluginInputs,
-      node.parameters,
+      resolvedParameters,
       context,
       nodeState,
     );

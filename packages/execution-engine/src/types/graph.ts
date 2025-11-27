@@ -59,6 +59,22 @@ export interface Edge {
 }
 
 /**
+ * Routine variable definition
+ */
+export interface RoutineVariable {
+  /** Unique identifier */
+  id: string;
+  /** Variable name (alphanumeric + underscore) */
+  name: string;
+  /** Variable type */
+  type: "string" | "number" | "boolean" | "json";
+  /** The actual value */
+  value: unknown;
+  /** Optional description */
+  description?: string;
+}
+
+/**
  * Complete routine definition
  */
 export interface RoutineDefinition {
@@ -72,6 +88,8 @@ export interface RoutineDefinition {
   connections: Edge[];
   /** Trigger data (for manual/test executions) */
   triggerData?: unknown;
+  /** Routine-level variables */
+  variables?: RoutineVariable[];
 }
 
 /**
@@ -81,6 +99,8 @@ export interface ExecutionGraph {
   /** Routine metadata */
   routineId: string;
   triggerData?: unknown;
+  /** Routine-level variables as a map for easy lookup */
+  variables: Record<string, unknown>;
 
   /** Nodes indexed by ID for O(1) lookup */
   nodes: Map<string, Node>;

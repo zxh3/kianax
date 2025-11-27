@@ -123,7 +123,12 @@ export async function routineExecutor(input: RoutineInput): Promise<void> {
  * Build execution graph (adapted from execution-engine)
  */
 function buildExecutionGraph(
-  routine: { id?: string; nodes: Node[]; connections: Edge[] },
+  routine: {
+    id?: string;
+    nodes: Node[];
+    connections: Edge[];
+    variables?: Array<{ name: string; value: unknown }>;
+  },
   routineId: string,
   triggerData?: unknown,
 ): ExecutionGraph {
@@ -151,9 +156,18 @@ function buildExecutionGraph(
     edgesBySource.get(edge.sourceNodeId)!.push(edge);
   }
 
+  // Convert routine variables array to a map
+  const variables: Record<string, unknown> = {};
+  if (routine.variables) {
+    for (const v of routine.variables) {
+      variables[v.name] = v.value;
+    }
+  }
+
   return {
     routineId,
     triggerData,
+    variables,
     nodes,
     edges: routine.connections,
     edgesByTarget,
