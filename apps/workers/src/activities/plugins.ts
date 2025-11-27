@@ -43,6 +43,7 @@ export async function executePlugin(
   console.log(`Executing plugin: ${pluginId} for user: ${context.userId}`);
   console.log(`  Node ID: ${context.nodeId}`);
   console.log(`  Routine ID: ${context.routineId}`);
+  console.log(`  Config received: ${JSON.stringify(config, null, 2)}`);
 
   // 1. Create plugin instance
   const plugin = createPluginInstance(pluginId);
