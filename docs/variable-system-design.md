@@ -312,9 +312,12 @@ function validateNodeExpressions(
 
 ### Phase 4: UI Enhancements 🚧 IN PROGRESS
 - [x] Variable management panel
-- [ ] Expression input component with autocomplete
-- [ ] Syntax highlighting for expressions
-- [ ] Preview resolved values in editor
+- [x] Expression input component with autocomplete (CodeMirror 6)
+- [x] Syntax highlighting for expressions
+- [x] Preview resolved values in editor (debounced)
+- [x] ExpressionContextProvider with upstream node detection
+- [ ] Pass context through NodeConfigDrawer
+- [ ] Plugin config UI migration (ExpressionField wrapper)
 
 ---
 
@@ -917,44 +920,45 @@ function buildPreviewContext(
 
 ### Implementation Tasks
 
-#### Phase 4.1: ExpressionInput Core with CodeMirror (3-4 days)
+#### Phase 4.1: ExpressionInput Core with CodeMirror ✅ COMPLETE
 
-- [ ] Add CodeMirror 6 dependencies to `packages/ui`
-- [ ] Create `expression-language.ts` - StreamLanguage definition
-- [ ] Create `expression-highlight.ts` - syntax highlighting styles
-- [ ] Create `theme.ts` - shadcn/ui compatible CodeMirror theme
-- [ ] Create `editor.tsx` - EditorView wrapper component
-- [ ] Create `index.tsx` - main ExpressionInput component
-- [ ] Implement single-line mode (prevent Enter key)
-- [ ] Implement multi-line mode with configurable rows
-- [ ] Add unit tests for language tokenizer
+- [x] Add CodeMirror 6 dependencies to `packages/ui`
+- [x] Create `expression-language.ts` - StreamLanguage definition
+- [x] Create `expression-highlight.ts` - syntax highlighting styles
+- [x] Create `theme.ts` - shadcn/ui compatible CodeMirror theme
+- [x] Create `editor.tsx` - EditorView wrapper component
+- [x] Create `index.tsx` - main ExpressionInput component
+- [x] Implement single-line mode (prevent Enter key)
+- [x] Implement multi-line mode with configurable rows
+- [x] Add unit tests for language tokenizer (11 tests)
 - [ ] Add Storybook stories for visual testing
 
-#### Phase 4.2: Autocomplete (2-3 days)
+#### Phase 4.2: Autocomplete ✅ COMPLETE
 
-- [ ] Create `completions.ts` - completion source function
-- [ ] Trigger autocomplete on `{{` pattern detection
-- [ ] Build completion items from ExpressionContext
-- [ ] Group completions by category (Variables, Upstream Nodes, Context)
-- [ ] Show type badge and preview value in completion items
-- [ ] Insert completion with proper cursor positioning
-- [ ] Handle completion for nested paths (e.g., `nodes.http_1.` triggers port suggestions)
+- [x] Create `completions.ts` - completion source function
+- [x] Trigger autocomplete on `{{` pattern detection
+- [x] Build completion items from ExpressionContext
+- [x] Group completions by category (Variables, Upstream Nodes, Context)
+- [x] Show type badge and preview value in completion items
+- [x] Insert completion with proper cursor positioning
+- [x] Handle completion for nested paths (e.g., `nodes.http_1.` triggers port suggestions)
 
-#### Phase 4.3: Context Provider (1-2 days)
+#### Phase 4.3: Context Provider ✅ COMPLETE
 
-- [ ] Create `ExpressionContextProvider` component
-- [ ] Implement `getUpstreamNodes` helper using BFS
-- [ ] Add `useExpressionContext` hook
-- [ ] Integrate into RoutineEditor
+- [x] Create `ExpressionContextProvider` component
+- [x] Implement `getUpstreamNodes` helper using BFS
+- [x] Add `useExpressionContext` hook
+- [x] Integrate into RoutineEditor
 - [ ] Pass context through NodeConfigDrawer
 
-#### Phase 4.4: Live Preview (1-2 days)
+#### Phase 4.4: Live Preview ✅ COMPLETE
 
-- [ ] Port ExpressionResolver to browser (no Node.js deps)
-- [ ] Build preview context from editor state
-- [ ] Add debounced preview resolution
-- [ ] Display preview badge with type indicator
-- [ ] Handle resolution errors gracefully
+- [x] Port ExpressionResolver to browser (no Node.js deps)
+- [x] Build preview context from editor state
+- [x] Add debounced preview resolution (300ms)
+- [x] Display preview badge with type indicator
+- [x] Handle resolution errors gracefully
+- [x] Add unit tests for preview resolver (28 tests)
 
 #### Phase 4.5: Plugin Migration (2-3 days)
 
