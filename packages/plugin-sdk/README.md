@@ -177,10 +177,29 @@ Set the configuration schema. Configuration is plugin-level settings (like API k
 ```typescript
 builder.withConfig(
   z.object({
-    apiKey: z.string().describe("OpenWeather API key"),
     units: z.enum(["metric", "imperial"]).default("metric"),
   }),
 );
+```
+
+### `.requireCredential(credentialType, alias?, required?)`
+
+Specify a required credential for this plugin.
+
+**Parameters:**
+
+- `credentialType`: A `CredentialType` definition object.
+- `alias`: (Optional) Key to access this credential in `context.credentials`. Defaults to the credential ID.
+- `required`: (Optional) Whether to fail if missing. Defaults to `true`.
+
+```typescript
+import { openaiApi } from "@kianax/plugins";
+
+// Basic usage
+builder.requireCredential(openaiApi);
+
+// With alias
+builder.requireCredential(openaiApi, "openai");
 ```
 
 ### `.withConfigUI(component)`
@@ -266,15 +285,15 @@ createPlugin("example")
 
 ## Plugin Context
 
-The `context` object provides execution environment information:
+The `context` object provides execution environment information and is generic-typed based on your credential requirements:
 
 ```typescript
-interface PluginContext {
+interface PluginContext<TCredentials> {
   userId: string; // User executing the routine
   routineId: string; // Routine being executed
   executionId: string; // Unique execution ID
   nodeId: string; // This plugin node's ID
-  credentials?: Record<string, string>; // User's credentials
+  credentials?: TCredentials; // User's credentials (Strongly Typed!)
   triggerData?: unknown; // Data from trigger
 }
 ```
@@ -337,6 +356,16 @@ export const upperCasePlugin = createPlugin("uppercase")
 ### API Integration
 
 ```typescript
+import { z } from "zod";
+import { createPlugin } from "@kianax/plugin-sdk";
+
+// Define a credential type (usually imported from @kianax/plugins)
+const githubApi = {
+  id: "github-api",
+  displayName: "GitHub API",
+  schema: z.object({ token: z.string() }),
+};
+
 export const githubPlugin = createPlugin("github-stars")
   .withMetadata({
     name: "GitHub Stars",
@@ -344,6 +373,7 @@ export const githubPlugin = createPlugin("github-stars")
     version: "1.0.0",
     tags: ["api", "github", "input"],
   })
+  .requireCredential(githubApi, "github")
   .withInput("repo", {
     label: "Repository",
     schema: z.object({
@@ -360,7 +390,9 @@ export const githubPlugin = createPlugin("github-stars")
   })
   .execute(async ({ inputs, context }) => {
     const { owner, name } = inputs.repo;
-    const token = context.credentials?.githubToken;
+    
+    // Fully typed access to credential!
+    const token = context.credentials?.github?.token;
 
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${name}`,

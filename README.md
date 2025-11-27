@@ -6,7 +6,8 @@
 
 - **Visual Routine Editor:** Drag-and-drop interface built with ReactFlow to construct complex DAGs.
 - **Natural Language Creation:** Chat with an AI agent to generate, modify, and execute routines instantly.
-- **Plugin System:** Extensible builder pattern for creating Data Sources, Processors, Logic, and Actions.
+- **Plugin System:** Extensible builder pattern for creating Data Sources, Processors, Logic, and Actions with built-in schema validation.
+- **Secure Credential Management:** Centralized vault for API keys and OAuth2 tokens (e.g., OpenAI, Google), securely encrypted and injected into plugins at runtime.
 - **Execution Engine:** Powered by **Temporal**, supporting conditional branching, loops, and reliable retries.
 - **Real-Time Dashboard:** Live execution logs, node highlighting, and observability via **Convex**.
 - **Secure & Multi-Tenant:** Row-level security and isolated environments for every user.
@@ -29,6 +30,7 @@
 ### Quick Start
 
 1.  **Install dependencies:**
+
     ```bash
     bun install
     ```
@@ -37,15 +39,19 @@
     Open two separate terminal panes.
 
     **Pane 1 (Temporal Services):**
+
     ```bash
     bun run dev:temporal
     ```
+
     (This starts the Temporal Server on 7233 and Temporal UI on 8233.)
 
     **Pane 2 (Frontend & Backend Apps):**
+
     ```bash
     bun run dev:apps
     ```
+
     (This starts the Next.js app on 3000, Convex development server, and Temporal Workers.)
 
 3.  **Setup Environment:**
@@ -59,17 +65,19 @@ Create `.env.local` in `apps/web`, `apps/server`, and `apps/workers`:
 ```bash
 # apps/web/.env.local
 NEXT_PUBLIC_CONVEX_URL=...
-OPENAI_API_KEY=... # Required for Chat AI features
+OPENAI_API_KEY=... # Required for the "Chat with AI" feature (Routine generation)
 
 # apps/server/.env.local
 CONVEX_URL=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+GOOGLE_CLIENT_ID=...     # For User Authentication (Better Auth)
+GOOGLE_CLIENT_SECRET=... # For User Authentication (Better Auth)
 
 # apps/workers/.env.local
 TEMPORAL_ADDRESS=localhost:7233
 CONVEX_URL=...
 ```
+
+> **Note:** Credentials for plugins (e.g., your personal OpenAI API Key for routine nodes, Google Calendar tokens) are managed securely within the **Kianax Dashboard** under Settings > Credentials, not in `.env` files.
 
 ## Architecture
 
@@ -105,7 +113,3 @@ We use [Conventional Commits](https://www.conventionalcommits.org/).
 - `fix`: Bug fixes
 - `docs`: Documentation changes
 - `chore`: Maintenance tasks
-
----
-
-**License:** MIT
