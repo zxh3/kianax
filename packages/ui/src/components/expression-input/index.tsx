@@ -9,6 +9,7 @@
  * Features:
  * - Syntax highlighting for expressions ({{ vars.*, nodes.*, etc. }})
  * - Autocomplete suggestions when typing {{ (triggered by context)
+ * - Live preview of resolved expression values (debounced)
  * - Single-line and multi-line modes
  * - Matches shadcn/ui Input and Textarea styling
  * - Supports placeholder, disabled states
@@ -22,15 +23,25 @@
  *     variables: [{ name: "baseUrl", type: "string", value: "https://api.example.com" }],
  *     upstreamNodes: [{ id: "http_1", label: "HTTP Request", pluginId: "http-request", outputs: ["success", "error"] }],
  *   }}
+ *   showPreview
+ *   previewContext={{
+ *     vars: { baseUrl: "https://api.example.com" },
+ *   }}
  *   placeholder="Enter URL with {{ vars.baseUrl }}"
  * />
  * ```
  */
 
-import { forwardRef, useState, useCallback } from "react";
+import { forwardRef, useState, useCallback, useEffect, useRef } from "react";
 import type { Extension } from "@codemirror/state";
 import { cn } from "../../lib/utils";
 import { Editor } from "./editor";
+import {
+  resolvePreview,
+  containsExpression,
+  formatPreviewValue,
+  type PreviewResult,
+} from "../../lib/expression-preview";
 
 /**
  * Available variable context for autocomplete suggestions.
@@ -111,14 +122,17 @@ export interface ExpressionInputProps {
  * Drop-in replacement for Input or Textarea components when you need
  * to support {{ expression }} syntax with visual feedback.
  */
+/** Debounce delay for preview resolution in milliseconds */
+const PREVIEW_DEBOUNCE_MS = 300;
+
 export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
   function ExpressionInput(
     {
       value,
       onChange,
       context,
-      showPreview: _showPreview, // Reserved for Phase 4.4
-      previewContext: _previewContext, // Reserved for Phase 4.4
+      showPreview = false,
+      previewContext,
       multiline = false,
       rows,
       placeholder,
@@ -132,6 +146,9 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
     ref,
   ) {
     const [isFocused, setIsFocused] = useState(false);
+    const [preview, setPreview] = useState<PreviewResult | null>(null);
+    const [isResolvingPreview, setIsResolvingPreview] = useState(false);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleFocus = useCallback(() => {
       setIsFocused(true);
@@ -142,6 +159,47 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       setIsFocused(false);
       onBlur?.();
     }, [onBlur]);
+
+    // Debounced preview resolution
+    useEffect(() => {
+      // Clear any pending timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Skip preview if not enabled or no context
+      if (!showPreview || !previewContext) {
+        setPreview(null);
+        return;
+      }
+
+      // Skip if no expressions in value
+      if (!containsExpression(value)) {
+        setPreview(null);
+        return;
+      }
+
+      // Set resolving state
+      setIsResolvingPreview(true);
+
+      // Debounce the resolution
+      debounceTimerRef.current = setTimeout(() => {
+        const result = resolvePreview(value, {
+          vars: previewContext.vars ?? {},
+          nodes: previewContext.nodes ?? {},
+          trigger: previewContext.trigger,
+          execution: previewContext.execution,
+        });
+        setPreview(result);
+        setIsResolvingPreview(false);
+      }, PREVIEW_DEBOUNCE_MS);
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, [value, showPreview, previewContext]);
 
     // Calculate min-height for multiline based on rows
     const minHeight = multiline && rows ? `${rows * 24 + 16}px` : undefined;
@@ -190,12 +248,87 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
           />
         </div>
 
+        {/* Live preview display */}
+        {showPreview && preview && (
+          <PreviewBadge preview={preview} isResolving={isResolvingPreview} />
+        )}
+
         {/* Error message display */}
         {error && <p className="text-destructive mt-1.5 text-sm">{error}</p>}
       </div>
     );
   },
 );
+
+/**
+ * Preview badge component showing resolved value
+ */
+function PreviewBadge({
+  preview,
+  isResolving,
+}: {
+  preview: PreviewResult;
+  isResolving: boolean;
+}) {
+  // Type badge colors
+  const typeColors: Record<PreviewResult["type"], string> = {
+    string: "bg-green-500/10 text-green-600 dark:text-green-400",
+    number: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    boolean: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    object: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    array: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+    null: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+    undefined: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+  };
+
+  // Type labels
+  const typeLabels: Record<PreviewResult["type"], string> = {
+    string: "str",
+    number: "num",
+    boolean: "bool",
+    object: "obj",
+    array: "arr",
+    null: "null",
+    undefined: "?",
+  };
+
+  if (!preview.success) {
+    return (
+      <div className="mt-1 flex items-center gap-1.5">
+        <span className="bg-destructive/10 text-destructive rounded px-1.5 py-0.5 text-xs font-medium">
+          error
+        </span>
+        <span className="text-muted-foreground text-xs truncate">
+          {preview.error}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      {isResolving ? (
+        <span className="bg-muted text-muted-foreground animate-pulse rounded px-1.5 py-0.5 text-xs">
+          resolving...
+        </span>
+      ) : (
+        <>
+          <span
+            className={cn(
+              "rounded px-1.5 py-0.5 text-xs font-medium",
+              typeColors[preview.type],
+            )}
+          >
+            {typeLabels[preview.type]}
+          </span>
+          <span className="text-muted-foreground text-xs truncate font-mono">
+            {formatPreviewValue(preview.value)}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Re-export types for convenience
 export type { EditorProps } from "./editor";
