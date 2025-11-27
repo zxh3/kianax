@@ -152,6 +152,21 @@ If you are an AI coding assistant (Claude Code, Cursor, etc.) working on this re
 3. **Push and create PR** when done - never merge directly to main
 4. **Direct commits to main** are OK only for trivial fixes or when user explicitly requests
 
+### Creating Pull Requests
+
+When creating PRs, follow the template in `.github/pull_request_template.md`:
+
+```bash
+gh pr create --title "type: description" --body "$(cat <<'EOF'
+## Summary
+- What this PR does (1-3 bullets)
+
+## Test Plan (optional)
+- How you verified it works
+EOF
+)"
+```
+
 ### Code Quality
 
 1. **Run formatter** after making changes:
