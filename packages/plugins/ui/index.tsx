@@ -9,3 +9,4 @@ export { BaseConfigUI } from "./base-config-ui";
 export { ConfigSection } from "./config-section";
 export { ConfigCard } from "./config-card";
 export { InfoCard } from "./info-card";
+export { ExpressionField } from "./expression-field";

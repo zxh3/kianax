@@ -177,11 +177,42 @@ export function useExpressionContext(): ExpressionContextValue {
 }
 
 /**
+ * Hook to optionally access expression context.
+ *
+ * Returns null if not within an ExpressionContextProvider.
+ * Use this when the component might be rendered outside the provider.
+ */
+export function useOptionalExpressionContext(): ExpressionContextValue | null {
+  return useContext(ExpressionContext);
+}
+
+/**
+ * Expression context in the format expected by ExpressionInput component.
+ */
+export interface NodeExpressionContext {
+  variables: Array<{
+    name: string;
+    type: "string" | "number" | "boolean" | "json";
+    value?: unknown;
+    description?: string;
+  }>;
+  upstreamNodes: Array<{
+    id: string;
+    label: string;
+    pluginId: string;
+    outputs: string[];
+  }>;
+  hasTrigger: boolean;
+}
+
+/**
  * Hook to get expression context for a specific node.
  *
  * Returns the context in the format expected by ExpressionInput.
  */
-export function useNodeExpressionContext(nodeId: string) {
+export function useNodeExpressionContext(
+  nodeId: string,
+): NodeExpressionContext {
   const { variables, getUpstreamNodes } = useExpressionContext();
 
   return useMemo(() => {
@@ -203,4 +234,38 @@ export function useNodeExpressionContext(nodeId: string) {
       hasTrigger: true, // Assume trigger is always available
     };
   }, [nodeId, variables, getUpstreamNodes]);
+}
+
+/**
+ * Safe hook to get expression context for a specific node.
+ *
+ * Returns undefined if not within an ExpressionContextProvider.
+ * Use this when the component might be rendered outside the provider.
+ */
+export function useOptionalNodeExpressionContext(
+  nodeId: string,
+): NodeExpressionContext | undefined {
+  const context = useOptionalExpressionContext();
+
+  return useMemo(() => {
+    if (!context) return undefined;
+
+    const upstreamNodes = context.getUpstreamNodes(nodeId);
+
+    return {
+      variables: context.variables.map((v) => ({
+        name: v.name,
+        type: v.type,
+        value: v.value,
+        description: v.description,
+      })),
+      upstreamNodes: upstreamNodes.map((n) => ({
+        id: n.id,
+        label: n.label,
+        pluginId: n.pluginId,
+        outputs: n.outputs,
+      })),
+      hasTrigger: true,
+    };
+  }, [nodeId, context]);
 }
