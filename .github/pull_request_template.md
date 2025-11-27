@@ -5,5 +5,3 @@
 
 ## Test Plan (optional)
 <!-- How did you verify these changes work? Delete this section if not applicable -->
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
