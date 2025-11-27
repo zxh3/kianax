@@ -304,11 +304,11 @@ function validateNodeExpressions(
 - [x] Pass variables to execution engine
 - [x] Add expression syntax documentation to plugin config UIs
 
-### Phase 3: Validation & Tooling 🔲 TODO
-- [ ] Validate expressions at save time
-- [ ] Check for undefined variables
-- [ ] Verify upstream node references
-- [ ] Add validation errors to UI
+### Phase 3: Validation & Tooling ✅ COMPLETE
+- [x] Validate expressions at save time
+- [x] Check for undefined variables
+- [x] Verify upstream node references
+- [x] Add validation errors to UI (ValidationPanel component)
 
 ### Phase 4: UI Enhancements 🚧 IN PROGRESS
 - [x] Variable management panel
