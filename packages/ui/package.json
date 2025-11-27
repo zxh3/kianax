@@ -70,6 +70,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.14",
     "@tailwindcss/postcss": "^4.1.11",
     "@turbo/gen": "^2.5.5",
     "@types/node": "^22.15.3",
