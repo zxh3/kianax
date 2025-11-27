@@ -65,15 +65,20 @@ export type TemporalConfig = z.infer<typeof temporalSchema>;
 export type GoogleOAuthConfig = z.infer<typeof googleOAuthSchema>;
 
 // =============================================================================
-// Validation Utilities
+// Validation Utilities (memoized - env vars don't change at runtime)
 // =============================================================================
+
+let _webEnv: WebEnv | null = null;
+let _workerEnv: WorkerEnv | null = null;
+let _serverEnv: ServerEnv | null = null;
 
 /**
  * Parse and validate web app environment variables.
- * Call this after loading your .env.local file via dotenv.
+ * Results are memoized since env vars don't change at runtime.
  */
 export function parseWebEnv(): WebEnv {
-  return webEnvSchema.parse({
+  if (_webEnv) return _webEnv;
+  _webEnv = webEnvSchema.parse({
     convex: {
       publicUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
     },
@@ -86,14 +91,16 @@ export function parseWebEnv(): WebEnv {
     openaiKey: process.env.OPENAI_API_KEY,
     siteUrl: process.env.SITE_URL,
   });
+  return _webEnv;
 }
 
 /**
  * Parse and validate worker environment variables.
- * Call this after loading your .env.local file via dotenv.
+ * Results are memoized since env vars don't change at runtime.
  */
 export function parseWorkerEnv(): WorkerEnv {
-  return workerEnvSchema.parse({
+  if (_workerEnv) return _workerEnv;
+  _workerEnv = workerEnvSchema.parse({
     convex: {
       url: process.env.CONVEX_URL,
     },
@@ -105,14 +112,17 @@ export function parseWorkerEnv(): WorkerEnv {
     },
     taskQueue: process.env.TASK_QUEUE,
   });
+  return _workerEnv;
 }
 
 /**
  * Parse and validate server (Convex) environment variables.
+ * Results are memoized since env vars don't change at runtime.
  * Note: In Convex functions, env vars come from Convex dashboard.
  */
 export function parseServerEnv(): ServerEnv {
-  return serverEnvSchema.parse({
+  if (_serverEnv) return _serverEnv;
+  _serverEnv = serverEnvSchema.parse({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -120,6 +130,16 @@ export function parseServerEnv(): ServerEnv {
     siteUrl: process.env.SITE_URL,
     convexSiteUrl: process.env.CONVEX_SITE_URL,
   });
+  return _serverEnv;
+}
+
+/**
+ * Reset memoized env cache. Useful for testing.
+ */
+export function resetEnvCache(): void {
+  _webEnv = null;
+  _workerEnv = null;
+  _serverEnv = null;
 }
 
 /**
