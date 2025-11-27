@@ -1,69 +1,146 @@
 # OAuth2 Credential System Flow
 
-This document outlines the end-to-end flow of how OAuth2 credentials are configured, authorized, and used within the Kianax plugin system.
+This document outlines how OAuth2 credentials are configured, authorized, and used within the Kianax plugin system.
+
+## Overview
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant F as Frontend
+    participant C as Convex Backend
+    participant P as OAuth Provider
+    participant W as Temporal Worker
+
+    Note over U,W: Phase 1: Configuration
+    U->>F: Open "Add Credential"
+    F->>C: getProviderConfig(typeId)
+    C-->>F: {configured, clientId?}
+
+    Note over U,W: Phase 2: Authorization
+    U->>F: Click "Connect"
+    F->>C: credentials.create (pending)
+    C-->>F: credentialId
+    F->>F: Build auth URL with state=credentialId
+    F->>P: Redirect to authorization URL
+    U->>P: Grant permission
+    P->>F: Redirect to /api/auth/callback/google
+
+    Note over U,W: Phase 3: Token Exchange
+    F->>C: oauth.exchangeCode(code, credentialId)
+    C->>C: Resolve clientId/secret (env > user)
+    C->>P: POST /token (authorization_code)
+    P-->>C: {access_token, refresh_token}
+    C->>C: Store tokens, status=active
+    C-->>F: Success
+    F->>U: Redirect to credentials page
+
+    Note over U,W: Phase 4: Runtime Execution
+    W->>C: oauth.getAccessToken(credentialId)
+    C->>C: Check token expiry
+    alt Token expired
+        C->>C: Resolve clientId/secret
+        C->>P: POST /token (refresh_token)
+        P-->>C: New access_token
+        C->>C: Update stored tokens
+    end
+    C-->>W: access_token
+    W->>W: Inject into plugin context
+```
+
+## Detailed Flow
+
+### 1. Configuration Check
+
+When a user opens the credential dialog, the frontend queries the server to check if OAuth client credentials are pre-configured via environment variables.
+
+```mermaid
+flowchart LR
+    A[User selects credential type] --> B{Server configured?}
+    B -->|Yes| C[Show 'Sign in with Provider']
+    B -->|No| D[Show Client ID/Secret inputs]
+    C --> E[User clicks button]
+    D --> F[User enters credentials]
+    F --> E
+```
+
+**Code path:** `credentials/page.tsx` → `api.oauth.getProviderConfig`
+
+### 2. Authorization Flow
+
+The frontend creates a pending credential record, then redirects the user to the OAuth provider with a specially crafted URL.
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| `response_type` | `code` | Request authorization code |
+| `client_id` | From server or user | Identify the application |
+| `redirect_uri` | `/api/auth/callback/google` | Where to return after auth |
+| `scope` | Defined per credential type | Requested permissions |
+| `state` | `credentialId` | Link callback to pending record |
+| `access_type` | `offline` | Request refresh token |
+| `prompt` | `consent` | Force consent screen |
+
+### 3. Token Exchange
+
+After the user grants permission, the provider redirects back with an authorization code. The Next.js API route handles this callback server-side for security.
 
 ```mermaid
 flowchart TD
-    subgraph Configuration [1. User Configuration]
-        Start(User opens "Add Credential") --> FetchConfig[Frontend fetches Server Config]
-        FetchConfig --> CheckConfig{Server Configured?}
-        
-        CheckConfig -- Yes --> ShowSignIn[Show "Sign in with Provider"]
-        CheckConfig -- No --> ShowInputs[Show Client ID/Secret Inputs]
-        
-        ShowInputs --> UserInput[User Enters Credentials]
-        UserInput --> ClickConnect[User Clicks "Connect"]
-        ShowSignIn --> ClickConnect
-    end
-
-    subgraph Authorization [2. Authorization Flow]
-        ClickConnect --> ConstructURL[Frontend Constructs Auth URL]
-        ConstructURL --> Redirect[Redirect to Provider e.g. Google]
-        Redirect --> UserAuth[User Grants Permission]
-        UserAuth --> Callback[Redirect to /api/auth/callback/google]
-    end
-
-    subgraph Exchange [3. Token Exchange Backend]
-        Callback --> ExchangeAction[Call api.oauth.exchangeCode]
-        ExchangeAction --> ResolveConfig[Resolve Client ID/Secret]
-        
-        ResolveConfig -- Env Vars --> UseServerCreds[Use Server Env Vars]
-        ResolveConfig -- User Input --> UseUserCreds[Use User Provided Creds]
-        
-        UseServerCreds --> TokenRequest[Request Tokens from Provider]
-        UseUserCreds --> TokenRequest
-        
-        TokenRequest --> ReceiveTokens[Receive Access & Refresh Tokens]
-        ReceiveTokens --> EncryptStore[Encrypt & Store in DB]
-        EncryptStore --> RedirectSuccess[Redirect User to Settings]
-    end
-
-    subgraph Execution [4. Runtime Execution]
-        Workflow[Workflow Execution] --> ExecuteActivity[Activity: executePlugin]
-        ExecuteActivity --> CheckReqs[Check Credential Requirements]
-        CheckReqs --> FetchCred[Call api.credentials.getForExecution]
-        
-        FetchCred --> Decrypt[Decrypt Stored Credential]
-        Decrypt --> CheckExpiry{Token Expired?}
-        
-        CheckExpiry -- No --> ReturnToken[Return Access Token]
-        CheckExpiry -- Yes --> RefreshFlow[Refresh Logic]
-        
-        RefreshFlow --> ResolveRefreshConfig[Resolve Client ID/Secret for Refresh]
-        ResolveRefreshConfig --> RefreshRequest[Request New Token using Refresh Token]
-        RefreshRequest --> UpdateDB[Update DB with New Token]
-        UpdateDB --> ReturnToken
-        
-        ReturnToken --> Inject[Inject into Plugin Context]
-        Inject --> PluginCode[Execute Plugin Logic]
-    end
+    A[Callback received] --> B{Has error?}
+    B -->|Yes| C[Redirect with error]
+    B -->|No| D[Extract code + state]
+    D --> E[Call oauth.exchangeCode]
+    E --> F[Fetch pending credential]
+    F --> G{Resolve client config}
+    G -->|Env vars set| H[Use GOOGLE_CLIENT_ID/SECRET]
+    G -->|Not set| I[Use user-provided values]
+    H --> J[POST to token endpoint]
+    I --> J
+    J --> K[Store tokens in DB]
+    K --> L[Set status = active]
+    L --> M[Redirect to settings]
 ```
+
+**Code path:** `/api/auth/callback/google` → `api.oauth.exchangeCode` → `lib/oauth.ts`
+
+### 4. Runtime Token Retrieval
+
+When a workflow executes a plugin requiring OAuth credentials, the system automatically handles token refresh.
+
+```mermaid
+flowchart TD
+    A[Plugin needs credential] --> B[getAccessToken]
+    B --> C{Token valid?}
+    C -->|Yes| D[Return access_token]
+    C -->|No, expired| E{Has refresh_token?}
+    E -->|No| F[Return stale token]
+    E -->|Yes| G[Resolve client config]
+    G --> H[POST refresh request]
+    H --> I[Update DB with new tokens]
+    I --> D
+    D --> J[Inject into plugin context]
+```
+
+**Expiry buffer:** Tokens are refreshed 5 minutes before actual expiry to prevent mid-execution failures.
 
 ## Key Components
 
-1.  **Frontend (`CreateCredentialDialog`)**: Handles the initial setup UI. It adapts based on whether the server has pre-configured environment variables (`GOOGLE_CLIENT_ID`, etc.).
-2.  **Backend Callback (`/api/auth/callback/google`)**: A Next.js API route that bridges the gap between the OAuth provider redirect and the Convex backend.
-3.  **Convex Actions (`api.oauth.exchangeCode`, `api.oauth.getAccessToken`)**: 
-    *   `exchangeCode`: Swaps the temporary authorization code for persistent tokens.
-    *   `getAccessToken`: Retrieves and *automatically refreshes* tokens at runtime, ensuring plugins always have valid access.
-4.  **Worker Activity (`executePlugin`)**: The runtime component that orchestrates fetching the secure credential and passing it to the plugin code.
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| `CreateCredentialDialog` | `apps/web/.../credentials/page.tsx` | UI for adding credentials, adapts based on server config |
+| `/api/auth/callback/google` | `apps/web/app/api/auth/callback/google/route.ts` | Server-side OAuth callback handler |
+| `oauth.exchangeCode` | `apps/server/convex/oauth.ts` | Exchanges auth code for tokens |
+| `oauth.getAccessToken` | `apps/server/convex/oauth.ts` | Retrieves/refreshes tokens at runtime |
+| `resolveOAuth2Config` | `apps/server/convex/lib/oauth.ts` | Resolves client credentials (env > user) |
+| `fetchOAuth2Token` | `apps/server/convex/lib/oauth.ts` | Generic OAuth2 token endpoint caller |
+
+## Configuration Priority
+
+The system supports two modes for OAuth client credentials:
+
+1. **Server-managed** (recommended): Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in environment variables. Users only need to click "Sign in" without entering any credentials.
+
+2. **User-provided**: Users enter their own Client ID/Secret. Useful for self-hosted deployments or custom OAuth apps.
+
+Environment variables always take priority over user-provided values when both exist.
