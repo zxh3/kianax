@@ -11,6 +11,7 @@ import type { RoutineInput } from "@kianax/shared/temporal";
 import {
   BFSIterationStrategy,
   ExecutionState,
+  ExpressionResolver,
   type ExecutionGraph,
   type Node,
   type Edge,
@@ -208,10 +209,26 @@ async function executeNodeWithActivity(
 
     const startTime = Date.now();
 
+    // Build expression context for resolving variables
+    const expressionContext = {
+      nodes: state.nodeOutputs,
+      vars: graph.variables,
+      trigger: graph.triggerData,
+      execution: {
+        id: executionId,
+        routineId: graph.routineId,
+        startedAt: startTime,
+      },
+    };
+
+    // Resolve expressions in node config before execution
+    const resolver = new ExpressionResolver(expressionContext);
+    const resolvedConfig = resolver.resolve(node.parameters);
+
     // Execute plugin as Temporal Activity
     const result = await executePlugin({
       pluginId: node.pluginId,
-      config: node.parameters, // parameters = config in execution-engine
+      config: resolvedConfig,
       inputs,
       context: {
         userId: graph.routineId, // TODO: Pass userId from graph metadata
