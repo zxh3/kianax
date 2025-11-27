@@ -56,6 +56,7 @@ export async function POST(
         credentialMappings: node.credentialMappings,
       })),
       connections: routine.connections,
+      variables: routine.variables,
       triggerData: {
         timestamp: Date.now(),
         source: "manual-trigger",
