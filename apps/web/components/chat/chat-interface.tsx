@@ -26,6 +26,7 @@ import {
   Message,
   MessageContent,
   MessageResponse,
+  MessageAttachment,
 } from "@kianax/ui/components/ai-elements/message";
 
 const ChatInterface = () => {
@@ -51,62 +52,77 @@ const ChatInterface = () => {
     setText("");
   };
   return (
-    <div className="p-6 relative size-full">
-      <div className="flex flex-col h-full">
-        <Conversation>
-          <ConversationContent>
-            {messages.map((message) => (
-              <Message from={message.role} key={message.id}>
-                <MessageContent>
-                  {message.parts.map((part, i) => {
-                    switch (part.type) {
-                      case "text":
-                        return (
-                          <MessageResponse key={`${message.id}-${i}`}>
-                            {part.text}
-                          </MessageResponse>
-                        );
-                      default:
-                        return null;
-                    }
-                  })}
-                </MessageContent>
-              </Message>
-            ))}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-        <PromptInput
-          onSubmit={handleSubmit}
-          className="mt-4"
-          globalDrop
-          multiple
-        >
-          <PromptInputHeader>
-            <PromptInputAttachments>
-              {(attachment) => <PromptInputAttachment data={attachment} />}
-            </PromptInputAttachments>
-          </PromptInputHeader>
-          <PromptInputBody>
-            <PromptInputTextarea
-              onChange={(e) => setText(e.target.value)}
-              ref={textareaRef}
-              value={text}
-            />
-          </PromptInputBody>
-          <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
-            </PromptInputTools>
-            <PromptInputSubmit disabled={!text && !status} status={status} />
-          </PromptInputFooter>
-        </PromptInput>
-      </div>
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] p-6">
+      <Conversation className="flex-1 min-h-0 overflow-y-auto">
+        <ConversationContent>
+          {messages.map((message) => (
+            <Message from={message.role} key={message.id}>
+              <MessageContent>
+                {message.parts.map((part, i) => {
+                  switch (part.type) {
+                    case "text":
+                      return (
+                        <MessageResponse key={`${message.id}-${i}`}>
+                          {part.text}
+                        </MessageResponse>
+                      );
+                    case "file":
+                      return (
+                        <MessageAttachment
+                          key={`${message.id}-${i}-attachment`}
+                          data={{
+                            type: "file",
+                            filename: part.filename || "Attachment",
+                            url: part.url || "",
+                            mediaType: part.mediaType || "",
+                          }}
+                        />
+                      );
+                    default:
+                      return null;
+                  }
+                })}
+              </MessageContent>
+            </Message>
+          ))}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
+
+      <PromptInput
+        onSubmit={handleSubmit}
+        className="mt-4 shrink-0"
+        globalDrop
+        multiple
+        accept="image/*"
+      >
+        <PromptInputHeader>
+          <PromptInputAttachments>
+            {(attachment) => <PromptInputAttachment data={attachment} />}
+          </PromptInputAttachments>
+        </PromptInputHeader>
+        <PromptInputBody>
+          <PromptInputTextarea
+            onChange={(e) => setText(e.target.value)}
+            ref={textareaRef}
+            value={text}
+          />
+        </PromptInputBody>
+        <PromptInputFooter>
+          <PromptInputTools>
+            <PromptInputActionMenu>
+              <PromptInputActionMenuTrigger />
+              <PromptInputActionMenuContent>
+                <PromptInputActionAddAttachments label="Add photos" />
+              </PromptInputActionMenuContent>
+            </PromptInputActionMenu>
+          </PromptInputTools>
+          <PromptInputSubmit
+            disabled={!text || status !== "ready"}
+            status={status}
+          />
+        </PromptInputFooter>
+      </PromptInput>
     </div>
   );
 };
