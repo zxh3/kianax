@@ -1,4 +1,5 @@
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
+import type { ExpressionValidationError } from "@kianax/execution-engine";
 
 export interface RoutineNode {
   id: string;
@@ -30,6 +31,8 @@ export interface RoutineEditorProps {
   initialNodes: RoutineNode[];
   initialConnections: RoutineConnection[];
   initialVariables?: RoutineVariable[];
+  /** Expression validation errors from parent component */
+  validationErrors?: ExpressionValidationError[];
   onSave: (
     nodes: RoutineNode[],
     connections: RoutineConnection[],

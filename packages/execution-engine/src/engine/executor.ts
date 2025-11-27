@@ -14,24 +14,24 @@ import type {
   ExecutorOptions,
   NodeExecutionResult,
   PortData,
-} from "../types/execution.js";
+} from "../types/execution";
 import type {
   Edge,
   ExecutionGraph,
   Node,
   RoutineDefinition,
-} from "../types/graph.js";
-import { validateGraph } from "../validation/graph-validator.js";
-import { ExecutionState } from "./execution-state.js";
-import { gatherNodeInputs } from "./input-gatherer.js";
+} from "../types/graph";
+import { validateGraph } from "../validation/graph-validator";
+import { ExecutionState } from "./execution-state";
+import { gatherNodeInputs } from "./input-gatherer";
 import {
   getDefaultIterationStrategy,
   type IterationStrategy,
-} from "./iteration-strategy.js";
+} from "./iteration-strategy";
 import {
   ExpressionResolver,
   type ExpressionContext,
-} from "./expression-resolver.js";
+} from "./expression-resolver";
 
 /**
  * Plugin interface (from @kianax/plugin-sdk)

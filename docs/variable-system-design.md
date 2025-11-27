@@ -289,33 +289,35 @@ function validateNodeExpressions(
 
 ## Implementation Phases
 
-### Phase 1: Core Expression System
-- [ ] Implement `ExpressionResolver` class
-- [ ] Add expression parsing (regex-based initially)
-- [ ] Support basic path resolution
-- [ ] Integrate into node execution flow
-- [ ] Add unit tests
+### Phase 1: Core Expression System ✅ COMPLETE
+- [x] Implement `ExpressionResolver` class
+- [x] Add expression parsing (regex-based)
+- [x] Support basic path resolution (dot notation)
+- [x] Integrate into node execution flow (Temporal workflow)
+- [x] Add unit tests (51 tests)
+- [x] Add integration tests for workflow flow
 
-### Phase 2: Routine Variables
-- [ ] Update Convex schema for `variables` field
-- [ ] Add CRUD mutations for routine variables
-- [ ] Update routine editor to manage variables
-- [ ] Pass variables to execution engine
+### Phase 2: Routine Variables ✅ COMPLETE
+- [x] Update Convex schema for `variables` field
+- [x] Add CRUD mutations for routine variables
+- [x] Update routine editor to manage variables (VariablesPanel component)
+- [x] Pass variables to execution engine
+- [x] Add expression syntax documentation to plugin config UIs
 
-### Phase 3: Validation & Tooling
-- [ ] Validate expressions at save time
-- [ ] Check for undefined variables
-- [ ] Verify upstream node references
-- [ ] Add validation errors to UI
+### Phase 3: Validation & Tooling ✅ COMPLETE
+- [x] Validate expressions at save time
+- [x] Check for undefined variables
+- [x] Verify upstream node references
+- [x] Add validation errors to UI (ValidationPanel component)
 
-### Phase 4: UI Enhancements
-- [ ] Variable management panel
+### Phase 4: UI Enhancements 🚧 IN PROGRESS
+- [x] Variable management panel
 - [ ] Expression input component with autocomplete
 - [ ] Syntax highlighting for expressions
 - [ ] Preview resolved values in editor
 
 ### Phase 5: Advanced Features (Future)
-- [ ] Array indexing in paths
+- [x] Array indexing in paths
 - [ ] Filter functions (json, uppercase, etc.)
 - [ ] Conditional expressions
 - [ ] Default values: `{{ vars.timeout ?? 30000 }}`
