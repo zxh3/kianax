@@ -95,27 +95,74 @@ The project is a monorepo managed by Turbo:
 - **`packages/plugins`**: The core plugin registry and definitions.
 - **`packages/plugin-sdk`**: The builder SDK for creating new plugins.
 
-## For Coding Agents
+## Development Workflow
 
-If you are an AI coding assistant (Claude Code, Gemini CLI, etc.) working on this repository:
+We use a **feature branch workflow** to maintain code quality and enable easy review/rollback.
 
-1.  **Do not commit changes automatically.** Only commit when explicitly instructed by the user.
-2.  **After making changes:** Run the formatter to ensure consistent style.
-    ```bash
-    bun run format
-    ```
-3.  **Before proposing a commit:** Run linting and type checking to catch errors.
-    ```bash
-    bun run lint
-    bun run typecheck
-    ```
-4.  **Fixing issues:** If linting fails, try running `bunx @biomejs/biome check --write .` to automatically fix supported issues.
+### Branch Naming
 
-## Contributing
+```
+feat/short-description      # New features
+fix/short-description       # Bug fixes
+refactor/short-description  # Code refactoring
+docs/short-description      # Documentation
+chore/short-description     # Maintenance tasks
+```
 
-We use [Conventional Commits](https://www.conventionalcommits.org/).
+### When to Use Feature Branches
+
+| Change Type | Feature Branch? |
+|-------------|-----------------|
+| New feature | Yes |
+| Bug fix (multi-file) | Yes |
+| Refactoring | Yes |
+| Simple typo fix | No (direct to main OK) |
+
+### Workflow
+
+1. Create a branch: `git checkout -b feat/my-feature`
+2. Make changes and commit as you work
+3. Run checks: `bun run format && bun run typecheck`
+4. Push: `git push -u origin feat/my-feature`
+5. Create PR for review
+6. Squash merge to main
+
+### Commit Conventions
+
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 - `feat`: New features
 - `fix`: Bug fixes
 - `docs`: Documentation changes
+- `refactor`: Code refactoring
 - `chore`: Maintenance tasks
+- `perf`: Performance improvements
+
+## For Coding Agents
+
+If you are an AI coding assistant (Claude Code, Cursor, etc.) working on this repository:
+
+### Git Workflow
+
+1. **Use feature branches** for non-trivial tasks:
+   ```bash
+   git checkout -b feat/task-name
+   ```
+2. **Commit as you work** on the feature branch
+3. **Push and create PR** when done - never merge directly to main
+4. **Direct commits to main** are OK only for trivial fixes or when user explicitly requests
+
+### Code Quality
+
+1. **Run formatter** after making changes:
+   ```bash
+   bun run format
+   ```
+2. **Run checks** before pushing:
+   ```bash
+   bun run typecheck
+   ```
+3. **Auto-fix lint issues** if needed:
+   ```bash
+   bunx @biomejs/biome check --write .
+   ```
