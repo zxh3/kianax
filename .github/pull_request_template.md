@@ -3,19 +3,7 @@
 
 -
 
-## Type of Change
-<!-- Check the relevant option -->
+## Test Plan (optional)
+<!-- How did you verify these changes work? Delete this section if not applicable -->
 
-- [ ] `feat` - New feature
-- [ ] `fix` - Bug fix
-- [ ] `refactor` - Code refactoring
-- [ ] `docs` - Documentation
-- [ ] `chore` - Maintenance
-
-## Test Plan
-<!-- How did you verify these changes work? -->
-
--
-
----
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

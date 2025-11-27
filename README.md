@@ -161,13 +161,9 @@ gh pr create --title "type: description" --body "$(cat <<'EOF'
 ## Summary
 - What this PR does (1-3 bullets)
 
-## Type of Change
-- [x] `feat` / `fix` / `refactor` / `docs` / `chore`
-
 ## Test Plan
 - How you verified it works
 
----
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
