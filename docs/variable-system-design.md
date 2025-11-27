@@ -316,6 +316,765 @@ function validateNodeExpressions(
 - [ ] Syntax highlighting for expressions
 - [ ] Preview resolved values in editor
 
+---
+
+## Phase 4: UI Enhancements - Detailed Design
+
+### Problem Statement
+
+Currently, users must manually type expression syntax (`{{ vars.name }}`, `{{ nodes.id.port }}`) without any assistance. This creates friction:
+
+1. **Discovery** - Users don't know what variables/nodes are available
+2. **Accuracy** - Typos in variable names or node IDs cause runtime failures
+3. **Feedback** - No indication if an expression is valid until execution
+4. **Context switching** - Must reference Variables panel or node labels while typing
+
+### Goals
+
+1. **Zero-friction expression authoring** - Autocomplete suggests valid references
+2. **Immediate validation feedback** - Visual indication of expression validity
+3. **Live preview** - See resolved values before execution
+4. **Progressive enhancement** - Existing plugin UIs work unchanged; opt-in for new features
+
+### Non-Goals
+
+- Full IDE-like editing experience (code folding, multi-cursor, etc.)
+- Expression debugging/stepping
+- Complex expression builder UI (drag-drop)
+
+---
+
+### Technology Choice: CodeMirror 6
+
+**Why CodeMirror 6 over custom overlay:**
+
+| Consideration | Custom Overlay | CodeMirror 6 |
+|---------------|----------------|--------------|
+| Multi-line support | Complex scroll sync | Built-in |
+| Cursor-aware highlighting | Manual implementation | Built-in |
+| Autocomplete positioning | Manual calculation | Built-in |
+| IME/composition handling | Edge cases | Handled |
+| Accessibility | Manual ARIA | Built-in |
+| Bundle size | ~0KB | ~100KB (lazy-loaded) |
+
+Given the need for multi-line support (e.g., JSON fields in Static Data plugin), CodeMirror 6 is the right choice. The bundle cost is mitigated by lazy-loading the component.
+
+**Key CodeMirror 6 packages:**
+- `codemirror` - Core editor
+- `@codemirror/autocomplete` - Autocomplete system
+- `@codemirror/language` - Syntax highlighting infrastructure
+- `@codemirror/view` - Editor view and theming
+
+---
+
+### Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ExpressionInput                               │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ CodeMirror EditorView                                          │  │
+│  │  ┌─────────────────────────────────────────────────────────┐  │  │
+│  │  │ Content with syntax highlighting                        │  │  │
+│  │  │                                                         │  │  │
+│  │  │  Static text {{ vars.apiUrl }}/users/{{ nodes.id }}    │  │  │
+│  │  │              ↑_______________↑       ↑____________↑      │  │  │
+│  │  │              highlighted      highlighted               │  │  │
+│  │  └─────────────────────────────────────────────────────────┘  │  │
+│  │                                                                │  │
+│  │  Extensions:                                                   │  │
+│  │   • expressionLanguage() - custom language for {{ }} syntax   │  │
+│  │   • autocompletion() - triggered by {{ with context-aware     │  │
+│  │   • editorTheme - matches shadcn/ui design system             │  │
+│  │   • singleLine (optional) - restricts to one line             │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                              ↓                                       │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ Autocomplete dropdown (CodeMirror built-in positioning)        │  │
+│  │  ┌─────────────────────────────────────────────────────────┐  │  │
+│  │  │  § Variables                                            │  │  │
+│  │  │    vars.apiUrl         string   "https://..."           │  │  │
+│  │  │    vars.maxRetries     number   3                       │  │  │
+│  │  │  § Upstream Nodes                                       │  │  │
+│  │  │    nodes.http_1.success   object                        │  │  │
+│  │  │    nodes.static_data.data object                        │  │  │
+│  │  │  § Context                                              │  │  │
+│  │  │    trigger.payload        object                        │  │  │
+│  │  │    execution.id           string                        │  │  │
+│  │  └─────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 4.1 ExpressionInput Component
+
+**Location:** `packages/ui/src/components/expression-input.tsx`
+
+**Purpose:** Drop-in replacement for Input/Textarea that provides expression-aware editing with autocomplete, syntax highlighting, and live preview.
+
+#### API Design
+
+```typescript
+interface ExpressionInputProps {
+  /** Current value (may contain {{ expressions }}) */
+  value: string;
+  /** Called when value changes */
+  onChange: (value: string) => void;
+
+  /** Expression context for autocomplete suggestions */
+  context?: ExpressionContext;
+
+  /** Show live preview of resolved value */
+  showPreview?: boolean;
+  /** Context for resolving preview (subset of runtime context) */
+  previewContext?: PreviewContext;
+
+  /** Multi-line mode (renders as textarea) */
+  multiline?: boolean;
+  /** Number of rows for multiline */
+  rows?: number;
+
+  /** Standard input props */
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+
+  /** Validation error message */
+  error?: string;
+}
+
+interface ExpressionContext {
+  /** Available routine variables */
+  variables: Array<{
+    name: string;
+    type: "string" | "number" | "boolean" | "json";
+    value: unknown;
+    description?: string;
+  }>;
+
+  /** Upstream nodes with their output ports */
+  upstreamNodes: Array<{
+    id: string;
+    label: string;
+    pluginId: string;
+    /** Output port names (e.g., ["success", "error"]) */
+    outputs: string[];
+  }>;
+
+  /** Whether trigger context is available */
+  hasTrigger?: boolean;
+}
+
+interface PreviewContext {
+  vars: Record<string, unknown>;
+  nodes: Record<string, Record<string, unknown>>;
+  trigger?: unknown;
+  execution?: { id: string; routineId: string; startedAt: number };
+}
+```
+
+#### Behavior Specification
+
+| Trigger | Action |
+|---------|--------|
+| Type `{{` | Open autocomplete popover |
+| Type `{{` then space/letter | Filter suggestions by typed text |
+| Arrow keys in popover | Navigate suggestions |
+| Enter/Tab on suggestion | Insert selected reference, close popover |
+| Escape | Close popover without inserting |
+| Click outside | Close popover |
+| Blur input | Close popover, validate expression |
+| Type `}}` | Close any open expression, validate |
+
+#### Visual States
+
+| State | Appearance |
+|-------|------------|
+| Empty | Placeholder text, no decoration |
+| Static text only | Normal input appearance |
+| Valid expression | Expression highlighted in primary color |
+| Invalid expression | Expression highlighted in destructive color |
+| Resolving preview | Spinner in preview badge |
+| Preview available | Truncated value in muted badge |
+| Preview error | "Error" badge in destructive color |
+
+#### Implementation Notes
+
+1. **CodeMirror 6 Setup:**
+   ```typescript
+   import { EditorView, minimalSetup } from "codemirror";
+   import { autocompletion } from "@codemirror/autocomplete";
+   import { LanguageSupport, StreamLanguage } from "@codemirror/language";
+
+   // Custom language for expression highlighting
+   const expressionLanguage = StreamLanguage.define({
+     token(stream) {
+       if (stream.match("{{")) return "brace";
+       if (stream.match("}}")) return "brace";
+       if (stream.match(/vars|nodes|trigger|execution/)) return "keyword";
+       if (stream.match(/\./)) return "punctuation";
+       if (stream.match(/[a-zA-Z_][a-zA-Z0-9_]*/)) return "variableName";
+       stream.next();
+       return null;
+     }
+   });
+   ```
+
+2. **Autocomplete trigger detection:**
+   - CodeMirror's `autocompletion` extension handles cursor position
+   - Custom `completionSource` function triggers on `{{` pattern
+   - Returns grouped completions (Variables, Upstream Nodes, Context)
+
+3. **Single-line mode:**
+   ```typescript
+   // Prevent Enter key from inserting newlines
+   const singleLineExtension = EditorView.domEventHandlers({
+     keydown(event) {
+       if (event.key === "Enter") {
+         event.preventDefault();
+         return true;
+       }
+       return false;
+     }
+   });
+   ```
+
+4. **Theming to match shadcn/ui:**
+   ```typescript
+   const shadcnTheme = EditorView.theme({
+     "&": {
+       fontSize: "14px",
+       border: "1px solid hsl(var(--input))",
+       borderRadius: "calc(var(--radius) - 2px)",
+       backgroundColor: "hsl(var(--background))",
+     },
+     "&.cm-focused": {
+       outline: "2px solid hsl(var(--ring))",
+       outlineOffset: "2px",
+     },
+     ".cm-content": {
+       padding: "8px 12px",
+       fontFamily: "inherit",
+     },
+     ".cm-line": {
+       padding: "0",
+     },
+   });
+   ```
+
+5. **Preview debouncing:**
+   - 300ms debounce on value changes
+   - Cancel pending preview on new input
+   - Show resolved value in footer or tooltip
+
+6. **Lazy loading:**
+   ```typescript
+   // In consuming components
+   const ExpressionInput = lazy(() =>
+     import("@kianax/ui/components/expression-input")
+   );
+
+   <Suspense fallback={<Textarea ... />}>
+     <ExpressionInput ... />
+   </Suspense>
+   ```
+
+---
+
+### 4.2 ExpressionContext Provider
+
+**Location:** `apps/web/components/routines/routine-editor/expression-context.tsx`
+
+**Purpose:** React context that provides expression metadata to all descendant components, eliminating prop drilling.
+
+#### API Design
+
+```typescript
+interface ExpressionContextValue {
+  /** All routine variables */
+  variables: RoutineVariable[];
+
+  /** All nodes in the routine */
+  allNodes: Array<{
+    id: string;
+    label: string;
+    pluginId: string;
+    outputs: string[];
+  }>;
+
+  /** Get upstream nodes for a specific node */
+  getUpstreamNodes: (nodeId: string) => ExpressionContext["upstreamNodes"];
+
+  /** Get preview context for a specific node */
+  getPreviewContext: (nodeId: string) => PreviewContext | null;
+
+  /** Validate an expression for a specific node */
+  validateExpression: (nodeId: string, expression: string) => ValidationResult;
+}
+
+const ExpressionContextProvider: React.FC<{
+  routineId: string;
+  nodes: RoutineNode[];
+  connections: RoutineConnection[];
+  variables: RoutineVariable[];
+  children: React.ReactNode;
+}>;
+
+const useExpressionContext: () => ExpressionContextValue;
+```
+
+#### Integration Point
+
+```tsx
+// In RoutineEditor
+<ExpressionContextProvider
+  routineId={routineId}
+  nodes={nodes}
+  connections={connections}
+  variables={variables}
+>
+  <ReactFlow ... />
+  <NodeConfigDrawer ... />
+</ExpressionContextProvider>
+```
+
+---
+
+### 4.3 Enhanced NodeConfigDrawer
+
+**Location:** `apps/web/components/routines/node-config-drawer.tsx`
+
+**Changes:**
+
+1. **Pass expression context to plugin config UI:**
+
+```typescript
+interface PluginConfigProps<T = unknown> {
+  value?: T;
+  onChange: (value: T) => void;
+
+  // NEW: Expression context for this node
+  expressionContext?: {
+    variables: RoutineVariable[];
+    upstreamNodes: UpstreamNode[];
+  };
+}
+```
+
+2. **Compute upstream nodes from connections:**
+
+```typescript
+const upstreamNodes = useMemo(() => {
+  return computeUpstreamNodes(nodeId, allNodes, connections);
+}, [nodeId, allNodes, connections]);
+```
+
+3. **Pass context to config component:**
+
+```tsx
+const ConfigComponent = getPluginConfigComponent(pluginId);
+return (
+  <ConfigComponent
+    value={localConfig}
+    onChange={setLocalConfig}
+    expressionContext={{
+      variables,
+      upstreamNodes,
+    }}
+  />
+);
+```
+
+---
+
+### 4.4 Plugin Config UI Migration
+
+**Strategy:** Progressive enhancement - plugins opt-in to expression support.
+
+#### Option A: ExpressionInput wrapper (Recommended)
+
+Create `ExpressionField` component in `packages/plugins/ui/`:
+
+```tsx
+// packages/plugins/ui/expression-field.tsx
+
+interface ExpressionFieldProps {
+  label: string;
+  description?: string;
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+  placeholder?: string;
+  error?: string;
+}
+
+export function ExpressionField({
+  label,
+  description,
+  value,
+  onChange,
+  multiline,
+  placeholder,
+  error,
+}: ExpressionFieldProps) {
+  // Get context from provider (if available)
+  const expressionContext = useExpressionContext();
+
+  return (
+    <ConfigSection label={label} description={description} error={error}>
+      <ExpressionInput
+        value={value}
+        onChange={onChange}
+        context={expressionContext}
+        multiline={multiline}
+        placeholder={placeholder}
+        showPreview
+      />
+    </ConfigSection>
+  );
+}
+```
+
+#### Plugin Migration Example
+
+Before:
+```tsx
+<ConfigSection label="URL" description="API endpoint">
+  <Input
+    value={config.url}
+    onChange={(e) => handleChange({ url: e.target.value })}
+    placeholder="https://api.example.com"
+  />
+</ConfigSection>
+```
+
+After:
+```tsx
+<ExpressionField
+  label="URL"
+  description="API endpoint. Supports {{ vars.* }} and {{ nodes.* }}"
+  value={config.url}
+  onChange={(url) => handleChange({ url })}
+  placeholder="https://api.example.com"
+/>
+```
+
+---
+
+### 4.5 Syntax Highlighting Implementation
+
+**Approach:** CodeMirror 6 StreamLanguage with custom tokenizer
+
+#### Token Types & Styles
+
+| Token | CM Tag | CSS Variable | Example |
+|-------|--------|--------------|---------|
+| Expression delimiters | `brace` | `--expr-brace` | `{{`, `}}` |
+| Source keyword | `keyword` | `--expr-keyword` | `vars`, `nodes` |
+| Identifier | `variableName` | `--expr-variable` | `apiUrl`, `http_1` |
+| Dot separator | `punctuation` | `--expr-punctuation` | `.` |
+| Array bracket | `squareBracket` | `--expr-bracket` | `[`, `]` |
+| Array index | `number` | `--expr-number` | `0`, `42` |
+| Plain text | (none) | inherited | Everything outside `{{ }}` |
+
+#### CodeMirror Language Definition
+
+```typescript
+// packages/ui/src/lib/expression-language.ts
+
+import { StreamLanguage } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
+
+export const expressionLanguage = StreamLanguage.define({
+  name: "expression",
+
+  token(stream, state) {
+    // Match expression delimiters
+    if (stream.match("{{")) {
+      state.inExpression = true;
+      return "brace";
+    }
+    if (stream.match("}}")) {
+      state.inExpression = false;
+      return "brace";
+    }
+
+    // Inside expression: highlight tokens
+    if (state.inExpression) {
+      // Source keywords
+      if (stream.match(/vars|nodes|trigger|execution/)) {
+        return "keyword";
+      }
+      // Dot separator
+      if (stream.match(".")) {
+        return "punctuation";
+      }
+      // Array access
+      if (stream.match("[")) {
+        return "squareBracket";
+      }
+      if (stream.match("]")) {
+        return "squareBracket";
+      }
+      if (stream.match(/\d+/)) {
+        return "number";
+      }
+      // Identifiers (variable names, node IDs, port names)
+      if (stream.match(/[a-zA-Z_][a-zA-Z0-9_-]*/)) {
+        return "variableName";
+      }
+      // Skip whitespace inside expression
+      if (stream.match(/\s+/)) {
+        return null;
+      }
+    }
+
+    // Outside expression: plain text (no highlighting)
+    stream.next();
+    return null;
+  },
+
+  startState() {
+    return { inExpression: false };
+  },
+});
+```
+
+#### Highlight Style
+
+```typescript
+// packages/ui/src/lib/expression-highlight.ts
+
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
+
+export const expressionHighlightStyle = HighlightStyle.define([
+  { tag: tags.brace, color: "hsl(var(--primary))", fontWeight: "600" },
+  { tag: tags.keyword, color: "hsl(var(--chart-1))", fontWeight: "500" },
+  { tag: tags.variableName, color: "hsl(var(--foreground))" },
+  { tag: tags.punctuation, color: "hsl(var(--muted-foreground))" },
+  { tag: tags.squareBracket, color: "hsl(var(--primary))" },
+  { tag: tags.number, color: "hsl(var(--chart-4))" },
+]);
+
+export const expressionHighlight = syntaxHighlighting(expressionHighlightStyle);
+```
+
+---
+
+### 4.6 Live Preview Implementation
+
+**Approach:** Client-side expression resolution with mock context
+
+#### Preview Context Construction
+
+```typescript
+function buildPreviewContext(
+  nodeId: string,
+  variables: RoutineVariable[],
+  upstreamNodes: UpstreamNode[],
+  lastExecutionResults?: ExecutionResults
+): PreviewContext {
+  return {
+    vars: Object.fromEntries(
+      variables.map(v => [v.name, v.value])
+    ),
+    nodes: Object.fromEntries(
+      upstreamNodes.map(node => [
+        node.id,
+        // Use last execution results if available, else mock
+        lastExecutionResults?.[node.id] ?? {
+          success: { /* mock based on plugin output schema */ },
+          error: null
+        }
+      ])
+    ),
+    trigger: { payload: { /* sample */ } },
+    execution: {
+      id: "preview-exec-id",
+      routineId: "preview-routine-id",
+      startedAt: Date.now(),
+    },
+  };
+}
+```
+
+#### Preview Display
+
+| Resolved Type | Display |
+|---------------|---------|
+| `string` | Truncated to 30 chars with ellipsis |
+| `number` | Formatted number |
+| `boolean` | "true" or "false" badge |
+| `object/array` | "{...}" or "[...]" with item count |
+| `undefined` | "undefined" in muted text |
+| `null` | "null" in muted text |
+| Error | Error icon with tooltip |
+
+---
+
+### Implementation Tasks
+
+#### Phase 4.1: ExpressionInput Core with CodeMirror (3-4 days)
+
+- [ ] Add CodeMirror 6 dependencies to `packages/ui`
+- [ ] Create `expression-language.ts` - StreamLanguage definition
+- [ ] Create `expression-highlight.ts` - syntax highlighting styles
+- [ ] Create `theme.ts` - shadcn/ui compatible CodeMirror theme
+- [ ] Create `editor.tsx` - EditorView wrapper component
+- [ ] Create `index.tsx` - main ExpressionInput component
+- [ ] Implement single-line mode (prevent Enter key)
+- [ ] Implement multi-line mode with configurable rows
+- [ ] Add unit tests for language tokenizer
+- [ ] Add Storybook stories for visual testing
+
+#### Phase 4.2: Autocomplete (2-3 days)
+
+- [ ] Create `completions.ts` - completion source function
+- [ ] Trigger autocomplete on `{{` pattern detection
+- [ ] Build completion items from ExpressionContext
+- [ ] Group completions by category (Variables, Upstream Nodes, Context)
+- [ ] Show type badge and preview value in completion items
+- [ ] Insert completion with proper cursor positioning
+- [ ] Handle completion for nested paths (e.g., `nodes.http_1.` triggers port suggestions)
+
+#### Phase 4.3: Context Provider (1-2 days)
+
+- [ ] Create `ExpressionContextProvider` component
+- [ ] Implement `getUpstreamNodes` helper using BFS
+- [ ] Add `useExpressionContext` hook
+- [ ] Integrate into RoutineEditor
+- [ ] Pass context through NodeConfigDrawer
+
+#### Phase 4.4: Live Preview (1-2 days)
+
+- [ ] Port ExpressionResolver to browser (no Node.js deps)
+- [ ] Build preview context from editor state
+- [ ] Add debounced preview resolution
+- [ ] Display preview badge with type indicator
+- [ ] Handle resolution errors gracefully
+
+#### Phase 4.5: Plugin Migration (2-3 days)
+
+- [ ] Create `ExpressionField` wrapper component
+- [ ] Update HTTP Request plugin config UI
+- [ ] Update Static Data plugin config UI
+- [ ] Update OpenAI Chat plugin config UI
+- [ ] Add expression syntax hints to all plugins
+- [ ] Document migration guide for plugin authors
+
+#### Phase 4.6: Testing & Polish (1-2 days)
+
+- [ ] End-to-end test: create variable, use in expression, execute
+- [ ] Test autocomplete with many variables (performance)
+- [ ] Test with deeply nested expressions
+- [ ] Accessibility audit (keyboard nav, screen reader)
+- [ ] Dark mode styling verification
+
+---
+
+### File Structure
+
+```
+packages/ui/
+├── src/
+│   ├── components/
+│   │   └── expression-input/
+│   │       ├── index.tsx              # Main component (lazy-loadable)
+│   │       ├── editor.tsx             # CodeMirror EditorView wrapper
+│   │       ├── completions.ts         # Autocomplete completion source
+│   │       └── theme.ts               # shadcn/ui theme for CodeMirror
+│   └── lib/
+│       ├── expression-language.ts     # CodeMirror StreamLanguage definition
+│       └── expression-highlight.ts    # Syntax highlighting styles
+├── package.json                       # Add codemirror dependencies
+
+apps/web/components/routines/
+├── routine-editor/
+│   ├── expression-context.tsx         # React context provider
+│   ├── use-upstream-nodes.ts          # Hook to compute upstream nodes
+│   └── ...
+├── node-config-drawer.tsx             # Updated to pass context
+
+packages/plugins/ui/
+├── expression-field.tsx               # Plugin-friendly wrapper
+└── ...
+```
+
+### Dependencies to Add
+
+```json
+// packages/ui/package.json
+{
+  "dependencies": {
+    "codemirror": "^6.0.1",
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.34.0",
+    "@lezer/highlight": "^1.2.0"
+  }
+}
+```
+
+---
+
+### Testing Strategy
+
+#### Unit Tests
+
+```typescript
+// expression-tokenizer.test.ts
+describe("tokenize", () => {
+  it("tokenizes plain text", () => { ... });
+  it("tokenizes single expression", () => { ... });
+  it("tokenizes multiple expressions", () => { ... });
+  it("handles nested brackets", () => { ... });
+  it("marks unclosed expressions as invalid", () => { ... });
+});
+
+// expression-input.test.tsx
+describe("ExpressionInput", () => {
+  it("renders plain text without decoration", () => { ... });
+  it("highlights valid expressions", () => { ... });
+  it("shows autocomplete on {{ trigger", () => { ... });
+  it("filters suggestions as user types", () => { ... });
+  it("inserts selected suggestion", () => { ... });
+});
+```
+
+#### Integration Tests
+
+```typescript
+// expression-workflow.test.tsx
+describe("Expression workflow", () => {
+  it("creates variable and uses in node config", async () => {
+    // 1. Open Variables panel
+    // 2. Add variable "apiUrl" = "https://test.com"
+    // 3. Open node config
+    // 4. Type "{{ vars." in URL field
+    // 5. Verify "apiUrl" appears in suggestions
+    // 6. Select suggestion
+    // 7. Verify field value is "{{ vars.apiUrl }}"
+    // 8. Verify preview shows "https://test.com"
+  });
+});
+```
+
+---
+
+### Future Considerations
+
+1. **Schema-aware autocomplete:** Show expected type based on field schema
+2. **Expression builder modal:** Visual drag-drop for complex expressions
+3. **Expression history:** Recently used expressions for quick access
+4. **Snippets:** Pre-defined expression patterns (e.g., "HTTP response body")
+5. **Multi-expression fields:** Support multiple expressions in one field with visual chips
+
+---
+
 ### Phase 5: Advanced Features (Future)
 - [x] Array indexing in paths
 - [ ] Filter functions (json, uppercase, etc.)
