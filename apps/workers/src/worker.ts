@@ -4,34 +4,27 @@
  * Creates and configures Temporal Workers that execute workflows and activities.
  */
 
-/**
- * Load environment variables BEFORE importing activities
- * Activities use lazy initialization and need env vars available when they execute
- */
-import dotenv from "dotenv";
+import { getWorkerConfig } from "@kianax/config";
+import { NativeConnection, Worker } from "@temporalio/worker";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
+import * as activities from "./activities";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from the workers directory (one level up from src/)
-const envPath = resolve(__dirname, "../.env");
-dotenv.config({ path: envPath });
-
-import { NativeConnection, Worker } from "@temporalio/worker";
-import * as activities from "./activities";
-
 export async function createWorker(taskQueue: string): Promise<Worker> {
+  const config = getWorkerConfig();
+
   // Connect to Temporal server
   const connection = await NativeConnection.connect({
-    address: process.env.TEMPORAL_ADDRESS || "localhost:7233",
+    address: config.temporal.address,
   });
 
   // Create worker
   return await Worker.create({
     connection,
-    namespace: process.env.TEMPORAL_NAMESPACE || "default",
+    namespace: config.temporal.namespace,
     taskQueue,
     workflowsPath: join(__dirname, "workflows"),
     activities,
@@ -41,12 +34,12 @@ export async function createWorker(taskQueue: string): Promise<Worker> {
 export async function runWorker(
   taskQueue: string = "kianax-default",
 ): Promise<void> {
+  const config = getWorkerConfig();
   const worker = await createWorker(taskQueue);
+
   console.log(`✅ Worker started on task queue: ${taskQueue}`);
-  console.log(
-    `📍 Temporal server: ${process.env.TEMPORAL_ADDRESS || "localhost:7233"}`,
-  );
-  console.log(`🔧 Namespace: ${process.env.TEMPORAL_NAMESPACE || "default"}`);
+  console.log(`📍 Temporal server: ${config.temporal.address}`);
+  console.log(`🔧 Namespace: ${config.temporal.namespace}`);
 
   await worker.run();
 }

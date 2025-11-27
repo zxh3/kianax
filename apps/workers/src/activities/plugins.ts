@@ -10,12 +10,18 @@ import type { ExecutePluginInput } from "@kianax/shared/temporal";
 import { createPluginInstance, getPluginMetadata } from "@kianax/plugins";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@kianax/server/convex/_generated/api";
-import dotenv from "dotenv";
+import { getWorkerConfig } from "@kianax/config";
 
-// Ensure env vars are loaded
-dotenv.config();
+// Lazy-initialize convex client to ensure config is loaded
+let convex: ConvexHttpClient | null = null;
 
-const convex = new ConvexHttpClient(process.env.CONVEX_URL!);
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    const config = getWorkerConfig();
+    convex = new ConvexHttpClient(config.convex.url);
+  }
+  return convex;
+}
 
 export async function executePlugin(
   input: ExecutePluginInput,
@@ -98,9 +104,12 @@ export async function executePlugin(
       }
 
       // Fetch the full credential (including secrets) securely
-      const credData = await convex.action(api.credentials.getForExecution, {
-        credentialId: mappedId as any,
-      });
+      const credData = await getConvex().action(
+        api.credentials.getForExecution,
+        {
+          credentialId: mappedId as any,
+        },
+      );
       credentials[key] = credData;
     }
   }

@@ -14,6 +14,7 @@
  */
 
 import { Client, Connection } from "@temporalio/client";
+import { getWebConfig } from "@kianax/config";
 
 let client: Client | null = null;
 let connection: Connection | null = null;
@@ -26,34 +27,34 @@ export async function getTemporalClient(): Promise<Client> {
     return client;
   }
 
-  // Create connection
-  const address = process.env.TEMPORAL_ADDRESS || "localhost:7233";
+  const config = getWebConfig();
+  const { temporal } = config;
 
   // For Temporal Cloud (production)
-  if (process.env.TEMPORAL_CLIENT_CERT && process.env.TEMPORAL_CLIENT_KEY) {
+  if (temporal.clientCert && temporal.clientKey) {
     connection = await Connection.connect({
-      address,
+      address: temporal.address,
       tls: {
         clientCertPair: {
-          crt: Buffer.from(process.env.TEMPORAL_CLIENT_CERT, "base64"),
-          key: Buffer.from(process.env.TEMPORAL_CLIENT_KEY, "base64"),
+          crt: Buffer.from(temporal.clientCert, "base64"),
+          key: Buffer.from(temporal.clientKey, "base64"),
         },
       },
     });
   } else {
     // Local development
-    connection = await Connection.connect({ address });
+    connection = await Connection.connect({ address: temporal.address });
   }
 
   // Create client
   client = new Client({
     connection,
-    namespace: process.env.TEMPORAL_NAMESPACE || "default",
+    namespace: temporal.namespace,
   });
 
   console.log("✅ Temporal client initialized");
-  console.log(`   Address: ${address}`);
-  console.log(`   Namespace: ${process.env.TEMPORAL_NAMESPACE || "default"}`);
+  console.log(`   Address: ${temporal.address}`);
+  console.log(`   Namespace: ${temporal.namespace}`);
 
   return client;
 }

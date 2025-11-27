@@ -60,24 +60,33 @@
 
 ### Environment Variables
 
-Create `.env.local` in `apps/web`, `apps/server`, and `apps/workers`:
+All apps load from a single `.env.local` file at the **monorepo root**:
 
 ```bash
-# apps/web/.env.local
-NEXT_PUBLIC_CONVEX_URL=...
-OPENAI_API_KEY=... # Required for the "Chat with AI" feature (Routine generation)
-
-# apps/server/.env.local
-CONVEX_URL=...
-GOOGLE_CLIENT_ID=...     # For User Authentication (Better Auth)
-GOOGLE_CLIENT_SECRET=... # For User Authentication (Better Auth)
-
-# apps/workers/.env.local
-TEMPORAL_ADDRESS=localhost:7233
-CONVEX_URL=...
+cp .env.example .env.local
+# Edit .env.local with your values
 ```
 
-> **Note:** Credentials for plugins (e.g., your personal OpenAI API Key for routine nodes, Google Calendar tokens) are managed securely within the **Kianax Dashboard** under Settings > Credentials, not in `.env` files.
+Key variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CONVEX_URL` | Yes | Convex deployment URL (for workers) |
+| `NEXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL (for web client) |
+| `TEMPORAL_ADDRESS` | Yes | Temporal server address (default: `localhost:7233`) |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
+| `SITE_URL` | Yes | Your app's public URL |
+| `OPENAI_API_KEY` | No | For AI chat features |
+
+See `.env.example` for the complete list with documentation.
+
+> **Note:** For Convex server functions, you must also set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `SITE_URL` in the Convex dashboard:
+> ```bash
+> npx convex env set GOOGLE_CLIENT_ID <value>
+> ```
+
+> **Note:** Plugin credentials (e.g., Google Calendar tokens) are managed in the **Kianax Dashboard** under Settings > Credentials.
 
 ## Architecture
 
@@ -86,6 +95,7 @@ The project is a monorepo managed by Turbo:
 - **`apps/web`**: Next.js frontend app.
 - **`apps/server`**: Convex backend functions and database schema.
 - **`apps/workers`**: Temporal workers that execute the routine logic.
+- **`packages/config`**: Centralized env var loading and validation.
 - **`packages/plugins`**: The core plugin registry and definitions.
 - **`packages/plugin-sdk`**: The builder SDK for creating new plugins.
 
