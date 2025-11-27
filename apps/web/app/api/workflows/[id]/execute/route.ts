@@ -45,6 +45,12 @@ export async function POST(
       namespace: env.temporal.namespace,
     });
 
+    // Debug: Log routine variables
+    console.log(
+      "[Execute API] Routine variables:",
+      JSON.stringify(routine.variables, null, 2),
+    );
+
     // Convert routine to workflow input
     const routineInput = {
       routineId: routine._id,
@@ -56,12 +62,18 @@ export async function POST(
         credentialMappings: node.credentialMappings,
       })),
       connections: routine.connections,
+      variables: routine.variables,
       triggerData: {
         timestamp: Date.now(),
         source: "manual-trigger",
         triggerType: routine.triggerType,
       },
     };
+
+    console.log(
+      "[Execute API] Routine input variables:",
+      JSON.stringify(routineInput.variables, null, 2),
+    );
 
     // Generate workflow ID
     const workflowId = `manual-${routine._id}-${Date.now()}`;

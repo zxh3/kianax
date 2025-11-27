@@ -247,6 +247,7 @@ async function run() {
       config: node.config || {},
     })),
     connections: savedRoutine.connections,
+    variables: savedRoutine.variables,
     triggerData: {
       timestamp: Date.now(),
       source: "test-script-e2e",

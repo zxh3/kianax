@@ -8,6 +8,16 @@
 export { RoutineExecutor } from "./engine/executor.js";
 export type { PluginRegistry } from "./engine/executor.js";
 
+// Expression resolver for variable system
+export {
+  ExpressionResolver,
+  createEmptyContext,
+} from "./engine/expression-resolver.js";
+export type {
+  ExpressionContext,
+  VariableReference,
+} from "./engine/expression-resolver.js";
+
 // Iteration strategies
 export {
   BFSIterationStrategy,
@@ -40,6 +50,7 @@ export type {
   Node,
   Edge,
   RoutineDefinition,
+  RoutineVariable,
   ExecutionGraph,
   GraphValidationResult,
   GraphValidationError,

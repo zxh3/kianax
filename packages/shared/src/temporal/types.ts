@@ -3,11 +3,20 @@
  * Shared type definitions for Temporal workflows and activities
  */
 
+export interface RoutineVariable {
+  id: string;
+  name: string;
+  type: "string" | "number" | "boolean" | "json";
+  value: unknown;
+  description?: string;
+}
+
 export interface RoutineInput {
   routineId: string;
   userId: string;
   nodes: Node[];
   connections: Connection[];
+  variables?: RoutineVariable[];
   triggerData?: unknown;
 }
 

@@ -23,16 +23,28 @@ export default function RoutineEditorPage({ params }: PageProps) {
   // Fetch routine data
   const routine = useQuery(api.routines.get, { id: routineId });
 
-  // Mutation to update routine
+  // Mutations to update routine
   const updateRoutine = useMutation(api.routines.update);
+  const setVariables = useMutation(api.routines.setVariables);
 
-  const handleSave = async (nodes: any[], connections: any[]) => {
+  const handleSave = async (
+    nodes: any[],
+    connections: any[],
+    variables?: any[],
+  ) => {
     try {
       await updateRoutine({
         id: routineId,
         nodes,
         connections,
       });
+      // If variables are provided, also update them
+      if (variables !== undefined) {
+        await setVariables({
+          routineId,
+          variables,
+        });
+      }
       toast.success("Routine saved successfully!");
     } catch (error) {
       toast.error("Failed to save routine");
@@ -110,6 +122,7 @@ export default function RoutineEditorPage({ params }: PageProps) {
           routineId={routineId}
           initialNodes={routine.nodes || []}
           initialConnections={routine.connections || []}
+          initialVariables={routine.variables || []}
           onSave={handleSave}
           onTest={handleTest}
         />

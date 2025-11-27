@@ -17,7 +17,7 @@ import type {
  * Convert Temporal RoutineInput to execution-engine RoutineDefinition
  */
 export function adaptRoutineInput(input: RoutineInput): RoutineDefinition {
-  const { routineId, nodes, connections, triggerData } = input;
+  const { routineId, nodes, connections, variables, triggerData } = input;
 
   // Convert nodes
   const adaptedNodes: Node[] = nodes.map((node) => ({
@@ -43,6 +43,7 @@ export function adaptRoutineInput(input: RoutineInput): RoutineDefinition {
     name: `Routine ${routineId}`, // Generate a name (could be enhanced with user-provided name)
     nodes: adaptedNodes,
     connections: adaptedEdges,
+    variables,
     triggerData,
   };
 }

@@ -48,6 +48,23 @@ export default defineSchema({
         targetHandle: v.optional(v.string()),
       }),
     ),
+    // Routine-level variables accessible via {{ vars.name }} expressions
+    variables: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          type: v.union(
+            v.literal("string"),
+            v.literal("number"),
+            v.literal("boolean"),
+            v.literal("json"),
+          ),
+          value: v.any(),
+          description: v.optional(v.string()),
+        }),
+      ),
+    ),
     tags: v.optional(v.array(v.string())),
     version: v.number(),
     lastExecutedAt: v.optional(v.number()),
