@@ -1,6 +1,13 @@
 {
   "name": "Variable System for Routine Executor",
   "description": "Enable nodes to access variables from upstream node outputs and routine-level globals",
+  "phases": {
+    "1": { "name": "Core Expression System", "status": "complete" },
+    "2": { "name": "Routine Variables", "status": "complete" },
+    "3": { "name": "Validation & Tooling", "status": "todo" },
+    "4": { "name": "UI Enhancements", "status": "in-progress" },
+    "5": { "name": "Advanced Features", "status": "todo" }
+  },
   "tasks": [
     {
       "feature": "Implement ExpressionResolver class",
@@ -28,6 +35,11 @@
       "phase": 1
     },
     {
+      "feature": "Add integration tests for workflow expression resolution",
+      "status": "done",
+      "phase": 1
+    },
+    {
       "feature": "Update Convex schema with variables field on routines",
       "status": "done",
       "phase": 2
@@ -44,6 +56,11 @@
     },
     {
       "feature": "Pass routine variables to execution engine",
+      "status": "done",
+      "phase": 2
+    },
+    {
+      "feature": "Add expression syntax documentation to plugin configs",
       "status": "done",
       "phase": 2
     },
