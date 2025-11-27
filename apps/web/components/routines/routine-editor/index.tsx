@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { Toolbar } from "./toolbar";
 import { NodeSelector } from "./sidebar";
 import { VariablesPanel, type RoutineVariable } from "./variables-panel";
+import { ValidationPanel } from "./validation-panel";
 import { TopBar } from "./topbar";
 import { useTheme } from "next-themes";
 import { getPluginMetadata } from "@/lib/plugins";
@@ -49,6 +50,7 @@ export function RoutineEditor({
   initialNodes,
   initialConnections,
   initialVariables = [],
+  validationErrors = [],
   onSave,
   onTest,
 }: RoutineEditorProps) {
@@ -66,6 +68,8 @@ export function RoutineEditor({
     null,
   );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [validationPanelDismissed, setValidationPanelDismissed] =
+    useState(false);
 
   // Variables state
   const [variables, setVariables] =
@@ -184,6 +188,27 @@ export function RoutineEditor({
       setIsStartingTest(false);
     }
   };
+  // Reset validation panel dismissed state when errors change
+  useEffect(() => {
+    if (validationErrors.length > 0) {
+      setValidationPanelDismissed(false);
+    }
+  }, [validationErrors]);
+
+  // Handler for clicking on a node in the validation panel
+  const handleValidationNodeClick = useCallback((nodeId: string) => {
+    // Select the node by updating its selection state
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        selected: node.id === nodeId,
+      })),
+    );
+    // Optionally open the config drawer for the node
+    setConfiguringNodeId(nodeId);
+    setConfigDrawerOpen(true);
+  }, []);
+
   // Handler for opening node configuration
   const handleConfigureNode = useCallback((nodeId: string) => {
     setConfiguringNodeId(nodeId);
@@ -561,6 +586,15 @@ export function RoutineEditor({
               variables={variables}
               onVariablesChange={handleVariablesChange}
             />
+
+            {/* Validation Panel - shows expression errors */}
+            {!validationPanelDismissed && (
+              <ValidationPanel
+                errors={validationErrors}
+                onClose={() => setValidationPanelDismissed(true)}
+                onNodeClick={handleValidationNodeClick}
+              />
+            )}
 
             <ReactFlow
               colorMode={theme === "dark" ? "dark" : "light"}

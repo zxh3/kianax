@@ -9,6 +9,11 @@ import { RoutineEditor } from "@kianax/web/components/routines/routine-editor";
 import { Button } from "@kianax/ui/components/button";
 import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import {
+  validateExpressions,
+  PortType,
+  type ExpressionValidationError,
+} from "@kianax/execution-engine";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -27,12 +32,58 @@ export default function RoutineEditorPage({ params }: PageProps) {
   const updateRoutine = useMutation(api.routines.update);
   const setVariables = useMutation(api.routines.setVariables);
 
+  // State for validation errors
+  const [validationErrors, setValidationErrors] = useState<
+    ExpressionValidationError[]
+  >([]);
+
+  // Validate routine expressions
+  const validateRoutine = (
+    nodes: any[],
+    connections: any[],
+    variables: any[] = [],
+  ): ExpressionValidationError[] => {
+    // Convert to execution-engine format
+    const routineDefinition = {
+      name: routine?.name || "Routine",
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        pluginId: n.pluginId,
+        label: n.label || n.pluginId,
+        parameters: n.config || {},
+        credentialMappings: n.credentialMappings,
+      })),
+      connections: connections.map((c) => ({
+        id: c.id,
+        sourceNodeId: c.sourceNodeId,
+        targetNodeId: c.targetNodeId,
+        sourcePort: c.sourceHandle || "output",
+        targetPort: c.targetHandle || "input",
+        type: PortType.Main,
+      })),
+      variables: variables.map((v) => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        value: v.value,
+      })),
+    };
+
+    const result = validateExpressions(routineDefinition);
+    return result.errors;
+  };
+
   const handleSave = async (
     nodes: any[],
     connections: any[],
     variables?: any[],
   ) => {
     try {
+      // Run validation (non-blocking - just update state)
+      const errors = validateRoutine(nodes, connections, variables || []);
+      setValidationErrors(errors);
+
+      // Save regardless of validation errors (allow drafts)
       await updateRoutine({
         id: routineId,
         nodes,
@@ -45,7 +96,15 @@ export default function RoutineEditorPage({ params }: PageProps) {
           variables,
         });
       }
-      toast.success("Routine saved successfully!");
+
+      // Show appropriate message
+      if (errors.length > 0) {
+        toast.warning(
+          `Saved with ${errors.length} expression warning${errors.length > 1 ? "s" : ""}`,
+        );
+      } else {
+        toast.success("Routine saved successfully!");
+      }
     } catch (error) {
       toast.error("Failed to save routine");
       throw error;
@@ -54,6 +113,21 @@ export default function RoutineEditorPage({ params }: PageProps) {
 
   const handleTest = async () => {
     if (isExecuting) return;
+
+    // Block execution if there are validation errors
+    if (validationErrors.length > 0) {
+      toast.error(
+        `Cannot run: ${validationErrors.length} expression error${validationErrors.length > 1 ? "s" : ""} must be fixed first`,
+      );
+      // Show the first error details
+      const firstError = validationErrors[0];
+      if (firstError) {
+        toast.error(`${firstError.message}`, {
+          description: `Node: ${firstError.nodeLabel || firstError.nodeId}`,
+        });
+      }
+      return;
+    }
 
     setIsExecuting(true);
     try {
@@ -123,6 +197,7 @@ export default function RoutineEditorPage({ params }: PageProps) {
           initialNodes={routine.nodes || []}
           initialConnections={routine.connections || []}
           initialVariables={routine.variables || []}
+          validationErrors={validationErrors}
           onSave={handleSave}
           onTest={handleTest}
         />

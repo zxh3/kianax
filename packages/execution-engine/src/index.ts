@@ -55,8 +55,10 @@ export type {
   GraphValidationResult,
   GraphValidationError,
   GraphValidationWarning,
-  PortType,
 } from "./types/graph.js";
+
+// PortType enum (value export)
+export { PortType } from "./types/graph.js";
 
 // Execution state
 export { ExecutionState } from "./engine/execution-state.js";
@@ -64,3 +66,13 @@ export { ExecutionState } from "./engine/execution-state.js";
 // Validation
 export { validateGraph } from "./validation/graph-validator.js";
 export { validateConnection } from "./validation/connection-validator.js";
+export {
+  validateExpressions,
+  getExpressionErrors,
+  hasValidExpressions,
+} from "./validation/expression-validator.js";
+export type {
+  ExpressionValidationError,
+  ExpressionValidationWarning,
+  ExpressionValidationResult,
+} from "./validation/expression-validator.js";
