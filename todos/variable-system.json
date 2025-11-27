@@ -90,17 +90,53 @@
       "phase": 4
     },
     {
-      "feature": "Build expression input component with autocomplete",
-      "status": "todo",
-      "phase": 4
+      "feature": "Build ExpressionInput component with CodeMirror 6",
+      "status": "done",
+      "phase": 4,
+      "notes": "Includes single/multi-line modes, 11 unit tests"
     },
     {
       "feature": "Add syntax highlighting for expressions",
+      "status": "done",
+      "phase": 4,
+      "notes": "StreamLanguage tokenizer with shadcn/ui theme"
+    },
+    {
+      "feature": "Build autocomplete completion source",
+      "status": "done",
+      "phase": 4,
+      "notes": "Triggers on {{ pattern, groups by category"
+    },
+    {
+      "feature": "Create ExpressionContextProvider",
+      "status": "done",
+      "phase": 4,
+      "notes": "BFS upstream node detection, useExpressionContext hook"
+    },
+    {
+      "feature": "Add live preview with debounced resolution",
+      "status": "done",
+      "phase": 4,
+      "notes": "300ms debounce, type badges, 28 unit tests"
+    },
+    {
+      "feature": "Pass context through NodeConfigDrawer",
       "status": "todo",
       "phase": 4
     },
     {
-      "feature": "Preview resolved values in editor",
+      "feature": "Create ExpressionField wrapper component",
+      "status": "todo",
+      "phase": 4
+    },
+    {
+      "feature": "Migrate plugin config UIs to use ExpressionField",
+      "status": "todo",
+      "phase": 4,
+      "notes": "HTTP Request, Static Data, OpenAI Chat plugins"
+    },
+    {
+      "feature": "Add Storybook stories for ExpressionInput",
       "status": "todo",
       "phase": 4
     },
