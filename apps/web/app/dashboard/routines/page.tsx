@@ -7,7 +7,8 @@ import type { Id } from "@kianax/server/convex/_generated/dataModel";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@kianax/ui/components/tabs";
-import { IconPlus, IconSearch, IconLoader2 } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
+import { Skeleton } from "@kianax/ui/components/skeleton";
 import { RoutinesTable } from "@kianax/web/components/routines/routines-table";
 import { CreateRoutineWizard } from "@kianax/web/components/routines/create-routine-wizard";
 import { EditRoutineModal } from "@kianax/web/components/routines/edit-routine-modal";
@@ -28,10 +29,8 @@ export default function RoutinesPage() {
   const [_routineToDelete, _setRoutineToDelete] =
     useState<Id<"routines"> | null>(null);
 
-  // Fetch routines
-  const allRoutines = useQuery(api.routines.listByUser, {
-    status: statusFilter === "all" ? undefined : statusFilter,
-  });
+  // Fetch all routines (filter client-side to avoid loading flash on filter change)
+  const allRoutines = useQuery(api.routines.listByUser, {});
 
   // Mutations
   const deleteRoutine = useMutation(api.routines.deleteRoutine);
@@ -109,13 +108,7 @@ export default function RoutinesPage() {
   };
 
   // Loading state
-  if (allRoutines === undefined) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <IconLoader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const isLoading = allRoutines === undefined;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -128,7 +121,6 @@ export default function RoutinesPage() {
           </p>
         </div>
         <Button onClick={() => setShowCreateWizard(true)}>
-          <IconPlus className="mr-2 size-4" />
           Create Routine
         </Button>
       </div>
@@ -170,13 +162,22 @@ export default function RoutinesPage() {
       </div>
 
       {/* Routines Table */}
-      <RoutinesTable
-        routines={filteredRoutines}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onViewHistory={handleViewHistory}
-        onRunNow={handleRunNow}
-      />
+      {isLoading ? (
+        <div className="rounded-md border">
+          <Skeleton className="h-10 w-full rounded-b-none" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-none border-t" />
+          ))}
+        </div>
+      ) : (
+        <RoutinesTable
+          routines={filteredRoutines}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onViewHistory={handleViewHistory}
+          onRunNow={handleRunNow}
+        />
+      )}
 
       {/* Create Routine Wizard */}
       <CreateRoutineWizard

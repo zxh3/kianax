@@ -13,20 +13,19 @@ import {
 } from "@kianax/ui/components/table";
 import { Button } from "@kianax/ui/components/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@kianax/ui/components/dropdown-menu";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@kianax/ui/components/tooltip";
 import {
-  IconDots,
   IconEdit,
   IconTrash,
   IconPlayerPlay,
-  IconEye,
+  IconHistory,
   IconClock,
-  IconGitBranch,
+  IconLoader2,
+  IconSettingsAutomation,
 } from "@tabler/icons-react";
 import { StatusBadge } from "./status-badge";
 import { formatDistanceToNow } from "date-fns";
@@ -108,7 +107,7 @@ export function RoutinesTable({
             <TableHead>Trigger</TableHead>
             <TableHead>Nodes</TableHead>
             <TableHead>Last Run</TableHead>
-            <TableHead className="w-[70px]">Actions</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -135,58 +134,94 @@ export function RoutinesTable({
               <TableCell className="text-sm text-muted-foreground">
                 {formatLastRun(routine.lastExecutedAt)}
               </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="size-8">
-                      <IconDots className="size-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => onViewHistory(routine)}
-                      className="cursor-pointer"
-                    >
-                      <IconEye className="mr-2 size-4" />
-                      View History
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleRunNow(routine._id)}
-                      disabled={runningRoutines.has(routine._id)}
-                      className="cursor-pointer"
-                    >
-                      <IconPlayerPlay className="mr-2 size-4" />
-                      {runningRoutines.has(routine._id)
-                        ? "Running..."
-                        : "Run Now"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() =>
-                        router.push(`/dashboard/routines/${routine._id}/edit`)
-                      }
-                      className="cursor-pointer"
-                    >
-                      <IconGitBranch className="mr-2 size-4" />
-                      Edit Routine
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onEdit(routine)}
-                      className="cursor-pointer"
-                    >
-                      <IconEdit className="mr-2 size-4" />
-                      Edit Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onDelete(routine._id)}
-                      className="cursor-pointer text-destructive"
-                    >
-                      <IconTrash className="mr-2 size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <TableCell className="text-right">
+                <TooltipProvider delayDuration={300}>
+                  <div className="flex items-center justify-end gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => handleRunNow(routine._id)}
+                          disabled={runningRoutines.has(routine._id)}
+                        >
+                          {runningRoutines.has(routine._id) ? (
+                            <IconLoader2 className="size-4 animate-spin" />
+                          ) : (
+                            <IconPlayerPlay className="size-4" />
+                          )}
+                          <span className="sr-only">Run now</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Run now</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => onViewHistory(routine)}
+                        >
+                          <IconHistory className="size-4" />
+                          <span className="sr-only">View history</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View history</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/routines/${routine._id}/edit`,
+                            )
+                          }
+                        >
+                          <IconSettingsAutomation className="size-4" />
+                          <span className="sr-only">Edit routine</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit routine</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => onEdit(routine)}
+                        >
+                          <IconEdit className="size-4" />
+                          <span className="sr-only">Edit details</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit details</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-destructive hover:text-destructive"
+                          onClick={() => onDelete(routine._id)}
+                        >
+                          <IconTrash className="size-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </TableCell>
             </TableRow>
           ))}
