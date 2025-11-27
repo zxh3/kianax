@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as credentials from "../credentials.js";
 import type * as executions from "../executions.js";
 import type * as http from "../http.js";
+import type * as lib_oauth from "../lib/oauth.js";
 import type * as messages from "../messages.js";
 import type * as oauth from "../oauth.js";
 import type * as routines from "../routines.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   credentials: typeof credentials;
   executions: typeof executions;
   http: typeof http;
+  "lib/oauth": typeof lib_oauth;
   messages: typeof messages;
   oauth: typeof oauth;
   routines: typeof routines;

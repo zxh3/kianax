@@ -21,6 +21,8 @@ export function getAllCredentialTypes(): CredentialType[] {
 
 import { openaiApi } from "./definitions/openai-api";
 import { googleCalendarOAuth } from "./definitions/google-calendar";
+import { googleSheetsOAuth } from "./definitions/google-sheets";
 
 registerCredential(openaiApi);
 registerCredential(googleCalendarOAuth);
+registerCredential(googleSheetsOAuth);

@@ -16,12 +16,14 @@ import { staticDataPlugin } from "./static-data";
 import { ifElsePlugin } from "./if-else";
 import { httpRequestPlugin } from "./http";
 import { openaiMessagePlugin } from "./openai";
+import { googleSheetsPlugin } from "./google-sheets";
 
 const PLUGINS: Plugin<any, any>[] = [
   staticDataPlugin,
   ifElsePlugin,
   httpRequestPlugin,
   openaiMessagePlugin,
+  googleSheetsPlugin,
 ];
 
 /**

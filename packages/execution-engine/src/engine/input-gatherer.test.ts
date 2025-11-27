@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { gatherNodeInputs } from "./input-gatherer.js";
 import { ExecutionState } from "./execution-state.js";
 import type { ExecutionGraph, Node, Edge } from "../types/graph.js";
-import type { NodeExecutionResult, PortData } from "../types/execution.js";
+import type { NodeExecutionResult } from "../types/execution.js";
 import { PortType } from "@kianax/plugin-sdk";
 
 describe("gatherNodeInputs", () => {

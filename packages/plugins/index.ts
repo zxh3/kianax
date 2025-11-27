@@ -37,5 +37,6 @@ export type { CredentialType } from "@kianax/plugin-sdk";
 // Export all builder-based plugins
 export { staticDataPlugin } from "./static-data";
 export { openaiMessagePlugin } from "./openai";
+export { googleSheetsPlugin } from "./google-sheets";
 export { ifElsePlugin } from "./if-else";
 export { httpRequestPlugin } from "./http";

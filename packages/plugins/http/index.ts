@@ -18,7 +18,6 @@ import { HttpRequestConfigUI } from "./config-ui";
  * HTTP methods enum
  */
 const HttpMethod = z.enum(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]);
-type HttpMethod = z.infer<typeof HttpMethod>;
 
 /**
  * Input schema - request parameters
@@ -117,7 +116,7 @@ export const httpRequestPlugin = createPlugin("http-request")
         .describe("Automatically follow HTTP 3xx redirects"),
     }),
   )
-  .withConfigUI(HttpRequestConfigUI as any)
+  .withConfigUI(HttpRequestConfigUI)
   .execute(async ({ inputs, config }) => {
     const { url: baseUrl, method, headers, body, queryParams } = inputs.request;
 

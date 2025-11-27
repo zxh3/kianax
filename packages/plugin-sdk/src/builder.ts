@@ -94,7 +94,10 @@ export class PluginBuilder<
     z.ZodType<any, any, any>
   >,
   TConfig = unknown,
-  TCredentialSchemas extends CredentialSchemasRecord = {}, // New: Accumulates credential schemas
+  TCredentialSchemas extends CredentialSchemasRecord = Record<
+    string,
+    z.ZodType
+  >, // New: Accumulates credential schemas
   TCredentialsData extends Record<
     string,
     unknown
@@ -203,7 +206,7 @@ export class PluginBuilder<
    * @param required - Whether this credential is strictly required (default: true)
    */
   requireCredential<
-    TCred extends CredentialType<any>,
+    TCred extends CredentialType<any, any>,
     TAlias extends string | undefined = undefined,
   >(
     credentialType: TCred,
@@ -214,19 +217,37 @@ export class PluginBuilder<
     TOutputSchemas,
     TConfig,
     TCredentialSchemas & {
-      [_ in TAlias extends string ? TAlias : TCred["id"]]: TCred["schema"];
+      [_ in TAlias extends string
+        ? TAlias
+        : TCred["id"]]: TCred["runtimeSchema"] extends z.ZodType
+        ? TCred["runtimeSchema"]
+        : TCred["schema"];
     },
     InferCredentialsData<
       TCredentialSchemas & {
-        [_ in TAlias extends string ? TAlias : TCred["id"]]: TCred["schema"];
+        [_ in TAlias extends string
+          ? TAlias
+          : TCred["id"]]: TCred["runtimeSchema"] extends z.ZodType
+          ? TCred["runtimeSchema"]
+          : TCred["schema"];
       }
     >
   > {
     const key = (alias || credentialType.id) as string;
 
+    // Use runtimeSchema for context typing, but we still store the input schema for validation?
+    // Actually, for execution context typing we want the runtime schema.
+    // The builder stores schemas in `_credentialSchemas`.
+    // This stored schema is used for validation?
+    // If we use `runtimeSchema` here, we are saying "Context will have data matching this schema".
+    // This is correct for `execute`.
+
+    const effectiveSchema =
+      credentialType.runtimeSchema || credentialType.schema;
+
     this._credentialSchemas = {
       ...this._credentialSchemas,
-      [key]: credentialType.schema,
+      [key]: effectiveSchema,
     };
 
     if (!this._metadata.credentialRequirements) {

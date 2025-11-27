@@ -175,9 +175,10 @@ export const storeNodeResult = mutation({
 
       if (existingIndex >= 0) {
         // Update the running entry with final status
-        const existingEntry = execution.nodeStates[existingIndex];
-        // biome-ignore lint/style/noNonNullAssertion: index was just checked
-        const startedAt = existingEntry!.startedAt;
+        const existingEntry = execution.nodeStates[existingIndex] as {
+          startedAt?: number | undefined;
+        };
+        const startedAt = existingEntry.startedAt;
 
         const nodeState = {
           ...existingEntry,

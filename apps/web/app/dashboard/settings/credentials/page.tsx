@@ -46,7 +46,7 @@ export default function CredentialsPage() {
     try {
       await removeCredential({ id: id as any });
       toast.success("Credential removed");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to remove credential");
     }
   };
@@ -158,6 +158,12 @@ function CreateCredentialDialog({
 
   const selectedType = credentialTypes.find((t) => t.id === selectedTypeId);
 
+  // Fetch provider config (e.g. Google Client ID) from server
+  const providerConfig = useQuery(
+    api.oauth.getProviderConfig,
+    selectedTypeId ? { typeId: selectedTypeId } : "skip",
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedType) return;
@@ -178,7 +184,7 @@ function CreateCredentialDialog({
 
         // 2. Construct Auth URL
         // Note: We use the current origin for the callback
-        const redirectUri = `${window.location.origin}/dashboard/settings/credentials/callback`;
+        const redirectUri = `${window.location.origin}/api/auth/callback/google`;
         const authUrl = new URL(
           selectedType.oauthConfig.authorizationUrl || "",
         );
@@ -188,8 +194,19 @@ function CreateCredentialDialog({
         // Map known fields or expect strict naming in schema
         // Cast validData to any to access potential clientId property
         const data = validData as any;
-        if (data.clientId) {
-          authUrl.searchParams.set("client_id", data.clientId as string);
+
+        // Use server-provided Client ID if available, otherwise use user input
+        const clientId =
+          providerConfig?.configured && providerConfig?.clientId
+            ? providerConfig.clientId
+            : data.clientId;
+
+        if (clientId) {
+          authUrl.searchParams.set("client_id", clientId as string);
+        } else {
+          throw new Error(
+            "Client ID is missing. Please provide it or configure it on the server.",
+          );
         }
 
         authUrl.searchParams.set("redirect_uri", redirectUri);
@@ -225,10 +242,10 @@ function CreateCredentialDialog({
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(
-          "Validation failed: " + (error.issues?.[0]?.message || error.message),
+          `Validation failed: ${error.issues?.[0]?.message || error.message}`,
         );
       } else {
-        toast.error("Failed to create credential: " + error.message);
+        toast.error(`Failed to create credential: ${error.message}`);
       }
     } finally {
       // Only stop submitting if we didn't redirect (which returns early)
@@ -286,7 +303,12 @@ function CreateCredentialDialog({
               </div>
 
               {/* Dynamic Form Fields */}
-              {generateFormFields(selectedType, formData, setFormData)}
+              {generateFormFields(
+                selectedType,
+                formData,
+                setFormData,
+                providerConfig,
+              )}
             </>
           )}
 
@@ -295,7 +317,11 @@ function CreateCredentialDialog({
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {selectedType?.type === "oauth2" ? "Connect" : "Save"}
+              {selectedType?.type === "oauth2"
+                ? providerConfig?.configured
+                  ? "Sign in with Provider"
+                  : "Connect"
+                : "Save"}
             </Button>
           </SheetFooter>
         </form>
@@ -308,6 +334,7 @@ function generateFormFields(
   type: CredentialType,
   formData: Record<string, string>,
   setFormData: (data: Record<string, string>) => void,
+  providerConfig?: { configured: boolean; clientId?: string } | null,
 ) {
   // Introspect Zod schema to generate inputs
 
@@ -320,6 +347,18 @@ function generateFormFields(
   }
 
   const shape = type.schema.shape;
+
+  // If configured by server, skip rendering Client ID/Secret inputs
+  const isConfigured = providerConfig?.configured;
+
+  if (isConfigured && type.type === "oauth2") {
+    return (
+      <div className="p-4 bg-muted/50 rounded-lg border border-dashed text-sm text-muted-foreground text-center">
+        <p>Configuration provided by server.</p>
+        <p>Click below to authenticate.</p>
+      </div>
+    );
+  }
 
   return Object.entries(shape).map(([key, schema]: [string, any]) => {
     const isPassword = type.maskedFields?.includes(key);

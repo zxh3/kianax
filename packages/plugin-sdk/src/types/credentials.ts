@@ -28,7 +28,10 @@ export interface OAuth2Config {
  * Definition of a Credential Type.
  * This defines the shape of the data required for authentication.
  */
-export interface CredentialType<TSchema extends z.ZodType = z.ZodType> {
+export interface CredentialType<
+  TSchema extends z.ZodType = z.ZodType,
+  TRuntimeSchema extends z.ZodType = TSchema,
+> {
   /** Unique identifier for this credential type (e.g. "openai-api") */
   id: string;
 
@@ -52,6 +55,13 @@ export interface CredentialType<TSchema extends z.ZodType = z.ZodType> {
    * For 'oauth2': clientId, clientSecret, etc. (The tokens are stored separately).
    */
   schema: TSchema;
+
+  /**
+   * Zod schema defining the data injected at runtime.
+   * Defaults to `schema` if not provided.
+   * For OAuth2, this typically includes `access_token`.
+   */
+  runtimeSchema?: TRuntimeSchema;
 
   /**
    * Optional: Fields to mask in the UI (passwords, tokens).

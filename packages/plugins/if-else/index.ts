@@ -203,7 +203,7 @@ export const ifElsePlugin = createPlugin("if-else")
         ),
     }),
   )
-  .withConfigUI(IfElseConfigUI as any)
+  .withConfigUI(IfElseConfigUI)
   .execute(async ({ inputs, config }) => {
     const data = inputs.data;
 

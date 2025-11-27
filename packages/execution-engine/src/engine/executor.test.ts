@@ -270,8 +270,8 @@ describe("RoutineExecutor", () => {
       );
 
       try {
-        const result = await executor.execute(routine);
-      } catch (error) {
+        const _result = await executor.execute(routine);
+      } catch (_error) {
         // Expected to fail (plugin not implemented)
         // In a real implementation, we would check the execution path
       }
@@ -379,7 +379,7 @@ describe("RoutineExecutor", () => {
       );
 
       try {
-        const result = await executor.execute(routine);
+        const _result = await executor.execute(routine);
         // This won't execute due to stub
       } catch (error) {
         // Plugin execution fails, which is expected
@@ -398,7 +398,7 @@ describe("RoutineExecutor", () => {
 
       try {
         await executor.execute(routine);
-      } catch (error) {
+      } catch (_error) {
         // Expected
       }
     });

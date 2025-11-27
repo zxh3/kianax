@@ -24,7 +24,10 @@ export type PluginTag =
   | "llm"
   | "ai"
   | "text"
-  | "openai";
+  | "openai"
+  | "api"
+  | "google"
+  | "sheets";
 
 /**
  * A record mapping credential keys (alias or ID) to their Zod schemas.

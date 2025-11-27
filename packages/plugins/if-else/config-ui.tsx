@@ -199,70 +199,86 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
 
               {/* Conditions in this group */}
               <div className="space-y-2">
-                {group.conditions.map((condition, conditionIndex) => (
-                  <ConfigCard
-                    key={conditionIndex}
-                    title={
-                      group.conditions.length > 1
-                        ? `Condition ${conditionIndex + 1}`
-                        : undefined
-                    }
-                    removable={group.conditions.length > 1}
-                    onRemove={() => removeCondition(groupIndex, conditionIndex)}
-                    className="bg-card"
-                  >
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5 min-w-0">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          Operator
-                        </label>
-                        <Select
-                          value={condition.operator}
-                          onValueChange={(value) =>
-                            updateCondition(
-                              groupIndex,
-                              conditionIndex,
-                              "operator",
-                              value,
-                            )
-                          }
-                        >
-                          <SelectTrigger className="h-9 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {OPERATORS.map((op) => (
-                              <SelectItem key={op.value} value={op.value}>
-                                {op.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {!["exists", "empty"].includes(condition.operator) && (
+                {group.conditions.map((condition, conditionIndex) => {
+                  const operatorId = `operator-${groupIndex}-${conditionIndex}`;
+                  const compareValueId = `compare-value-${groupIndex}-${conditionIndex}`;
+                  return (
+                    <ConfigCard
+                      key={conditionIndex}
+                      title={
+                        group.conditions.length > 1
+                          ? `Condition ${conditionIndex + 1}`
+                          : undefined
+                      }
+                      removable={group.conditions.length > 1}
+                      onRemove={() =>
+                        removeCondition(groupIndex, conditionIndex)
+                      }
+                      className="bg-card"
+                    >
+                      <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5 min-w-0">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Compare Value
+                          <label
+                            htmlFor={operatorId}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Operator
                           </label>
-                          <Input
-                            value={String(condition.compareValue || "")}
-                            onChange={(e) =>
+                          <Select
+                            value={condition.operator}
+                            onValueChange={(value) =>
                               updateCondition(
                                 groupIndex,
                                 conditionIndex,
-                                "compareValue",
-                                e.target.value,
+                                "operator",
+                                value,
                               )
                             }
-                            placeholder="Value to compare..."
-                            className="h-9"
-                          />
+                          >
+                            <SelectTrigger
+                              id={operatorId}
+                              className="h-9 w-full"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {OPERATORS.map((op) => (
+                                <SelectItem key={op.value} value={op.value}>
+                                  {op.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
-                    </div>
-                  </ConfigCard>
-                ))}
+
+                        {!["exists", "empty"].includes(condition.operator) && (
+                          <div className="space-y-1.5 min-w-0">
+                            <label
+                              htmlFor={compareValueId}
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              Compare Value
+                            </label>
+                            <Input
+                              id={compareValueId}
+                              value={String(condition.compareValue || "")}
+                              onChange={(e) =>
+                                updateCondition(
+                                  groupIndex,
+                                  conditionIndex,
+                                  "compareValue",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Value to compare..."
+                              className="h-9"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </ConfigCard>
+                  );
+                })}
               </div>
 
               {/* Add condition button */}
