@@ -150,7 +150,7 @@ describe("Integration Tests with Real Plugins", () => {
           sourceNodeId: "static1",
           sourcePort: "data",
           targetNodeId: "if1",
-          targetPort: "value",
+          targetPort: "data",
           type: PortType.Main,
         },
         {
