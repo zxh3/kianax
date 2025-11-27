@@ -53,16 +53,14 @@ sequenceDiagram
 
 ### 1. Configuration Check
 
-When a user opens the credential dialog, the frontend queries the server to check if OAuth client credentials are pre-configured via environment variables.
+When a user opens the credential dialog, the frontend queries the server to check if OAuth client credentials are configured via environment variables.
 
 ```mermaid
 flowchart LR
     A[User selects credential type] --> B{Server configured?}
     B -->|Yes| C[Show 'Sign in with Provider']
-    B -->|No| D[Show Client ID/Secret inputs]
+    B -->|No| D[Show error message]
     C --> E[User clicks button]
-    D --> F[User enters credentials]
-    F --> E
 ```
 
 **Code path:** `credentials/page.tsx` → `api.oauth.getProviderConfig`
@@ -92,14 +90,11 @@ flowchart TD
     B -->|No| D[Extract code + state]
     D --> E[Call oauth.exchangeCode]
     E --> F[Fetch pending credential]
-    F --> G{Resolve client config}
-    G -->|Env vars set| H[Use GOOGLE_CLIENT_ID/SECRET]
-    G -->|Not set| I[Use user-provided values]
-    H --> J[POST to token endpoint]
-    I --> J
-    J --> K[Store tokens in DB]
-    K --> L[Set status = active]
-    L --> M[Redirect to settings]
+    F --> G[Load client config from env vars]
+    G --> H[POST to token endpoint]
+    H --> I[Store tokens in DB]
+    I --> J[Set status = active]
+    J --> K[Redirect to settings]
 ```
 
 **Code path:** `/api/auth/callback/google` → `api.oauth.exchangeCode` → `lib/oauth.ts`
@@ -132,15 +127,20 @@ flowchart TD
 | `/api/auth/callback/google` | `apps/web/app/api/auth/callback/google/route.ts` | Server-side OAuth callback handler |
 | `oauth.exchangeCode` | `apps/server/convex/oauth.ts` | Exchanges auth code for tokens |
 | `oauth.getAccessToken` | `apps/server/convex/oauth.ts` | Retrieves/refreshes tokens at runtime |
-| `resolveOAuth2Config` | `apps/server/convex/lib/oauth.ts` | Resolves client credentials (env > user) |
+| `resolveOAuth2Config` | `apps/server/convex/lib/oauth.ts` | Loads client credentials from env vars |
 | `fetchOAuth2Token` | `apps/server/convex/lib/oauth.ts` | Generic OAuth2 token endpoint caller |
 
-## Configuration Priority
+## Configuration
 
-The system supports two modes for OAuth client credentials:
+OAuth client credentials must be configured via environment variables:
 
-1. **Server-managed** (recommended): Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in environment variables. Users only need to click "Sign in" without entering any credentials.
+| Provider | Environment Variables |
+|----------|----------------------|
+| Google (Calendar, Sheets, etc.) | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 
-2. **User-provided**: Users enter their own Client ID/Secret. Useful for self-hosted deployments or custom OAuth apps.
+If the required environment variables are not set, users will see an error message and cannot add OAuth credentials.
 
-Environment variables always take priority over user-provided values when both exist.
+For self-hosted deployments, administrators must:
+1. Create an OAuth app in the provider's developer console (e.g., Google Cloud Console)
+2. Set the redirect URI to `https://your-domain.com/api/auth/callback/google`
+3. Add the client credentials to the server environment variables

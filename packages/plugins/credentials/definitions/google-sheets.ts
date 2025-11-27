@@ -7,20 +7,10 @@ export const googleSheetsOAuth = {
   type: "oauth2",
   documentationUrl:
     "https://developers.google.com/sheets/api/guides/authorizing",
-  schema: z.object({
-    clientId: z
-      .string()
-      .describe("Client ID from Google Cloud Console")
-      .optional(),
-    clientSecret: z
-      .string()
-      .describe("Client Secret from Google Cloud Console")
-      .optional(),
-  }),
+  schema: z.object({}),
   runtimeSchema: z.object({
     access_token: z.string(),
   }),
-  maskedFields: ["clientSecret"],
   oauthConfig: {
     grantType: "authorization_code",
     authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",

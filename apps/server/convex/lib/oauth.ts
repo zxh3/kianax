@@ -1,27 +1,22 @@
 /**
- * resolving OAuth2 client configuration.
- *
- * Prioritizes environment variables (server-managed) over user-provided values.
+ * Resolves OAuth2 client configuration from environment variables.
+ * Throws if the required environment variables are not configured.
  */
-export function resolveOAuth2Config(
-  typeId: string,
-  userData: { clientId?: string; clientSecret?: string } = {},
-) {
+export function resolveOAuth2Config(typeId: string) {
   const isGoogle = typeId.startsWith("google-");
 
-  let clientId = userData.clientId;
-  let clientSecret = userData.clientSecret;
+  let clientId: string | undefined;
+  let clientSecret: string | undefined;
 
-  // Fallback to environment variables for known providers
-  if (isGoogle && (!clientId || !clientSecret)) {
-    clientId = process.env.GOOGLE_CLIENT_ID || clientId;
-    clientSecret = process.env.GOOGLE_CLIENT_SECRET || clientSecret;
+  if (isGoogle) {
+    clientId = process.env.GOOGLE_CLIENT_ID;
+    clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   }
 
   if (!clientId || !clientSecret) {
     throw new Error(
-      `Missing Client ID or Client Secret for credential type '${typeId}'. ` +
-        "These must be provided either by the user or configured in server environment variables.",
+      `OAuth not configured for '${typeId}'. ` +
+        "Please set the required environment variables (e.g., GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).",
     );
   }
 

@@ -11,10 +11,8 @@ import { resolveOAuth2Config, fetchOAuth2Token } from "./lib/oauth";
 export const getProviderConfig = query({
   args: { typeId: v.string() },
   handler: async (_ctx, { typeId }) => {
-    // Check simply by attempting resolution without user data
-    // We catch the error since resolve throws if missing
     try {
-      const config = resolveOAuth2Config(typeId, {});
+      const config = resolveOAuth2Config(typeId);
       return {
         configured: true,
         clientId: config.clientId,
@@ -49,11 +47,8 @@ export const exchangeCode = action({
       throw new Error("Invalid credential type for OAuth exchange");
     }
 
-    // 3. Resolve Config (Env vs User)
-    const { clientId, clientSecret } = resolveOAuth2Config(credential.typeId, {
-      clientId: data.clientId,
-      clientSecret: data.clientSecret,
-    });
+    // 3. Resolve Config from environment variables
+    const { clientId, clientSecret } = resolveOAuth2Config(credential.typeId);
 
     const { tokenUrl, authMethod } = typeDef.oauthConfig;
 
@@ -131,11 +126,8 @@ export const getAccessToken = action({
       throw new Error("Invalid credential type definition");
     }
 
-    // Resolve Config
-    const { clientId, clientSecret } = resolveOAuth2Config(credential.typeId, {
-      clientId: data.clientId,
-      clientSecret: data.clientSecret,
-    });
+    // Resolve Config from environment variables
+    const { clientId, clientSecret } = resolveOAuth2Config(credential.typeId);
 
     // Perform Refresh
     const tokens = await fetchOAuth2Token({

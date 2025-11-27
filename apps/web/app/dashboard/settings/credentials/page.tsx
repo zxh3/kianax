@@ -191,23 +191,14 @@ function CreateCredentialDialog({
 
         authUrl.searchParams.set("response_type", "code");
 
-        // Map known fields or expect strict naming in schema
-        // Cast validData to any to access potential clientId property
-        const data = validData as any;
-
-        // Use server-provided Client ID if available, otherwise use user input
-        const clientId =
-          providerConfig?.configured && providerConfig?.clientId
-            ? providerConfig.clientId
-            : data.clientId;
-
-        if (clientId) {
-          authUrl.searchParams.set("client_id", clientId as string);
-        } else {
+        // Use server-provided Client ID
+        if (!providerConfig?.configured || !providerConfig?.clientId) {
           throw new Error(
-            "Client ID is missing. Please provide it or configure it on the server.",
+            "OAuth not configured. Please contact your administrator.",
           );
         }
+
+        authUrl.searchParams.set("client_id", providerConfig.clientId);
 
         authUrl.searchParams.set("redirect_uri", redirectUri);
         authUrl.searchParams.set(
@@ -313,14 +304,19 @@ function CreateCredentialDialog({
           )}
 
           <SheetFooter>
-            <Button type="submit" disabled={isSubmitting || !selectedType}>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                !selectedType ||
+                (selectedType?.type === "oauth2" && !providerConfig?.configured)
+              }
+            >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               {selectedType?.type === "oauth2"
-                ? providerConfig?.configured
-                  ? "Sign in with Provider"
-                  : "Connect"
+                ? `Sign in with ${selectedType.displayName}`
                 : "Save"}
             </Button>
           </SheetFooter>
@@ -348,14 +344,19 @@ function generateFormFields(
 
   const shape = type.schema.shape;
 
-  // If configured by server, skip rendering Client ID/Secret inputs
-  const isConfigured = providerConfig?.configured;
-
-  if (isConfigured && type.type === "oauth2") {
+  // For OAuth2 types, check if server is configured
+  if (type.type === "oauth2") {
+    if (providerConfig?.configured) {
+      return (
+        <div className="p-4 bg-muted/50 rounded-lg border border-dashed text-sm text-muted-foreground text-center">
+          <p>Click below to sign in with {type.displayName}.</p>
+        </div>
+      );
+    }
     return (
-      <div className="p-4 bg-muted/50 rounded-lg border border-dashed text-sm text-muted-foreground text-center">
-        <p>Configuration provided by server.</p>
-        <p>Click below to authenticate.</p>
+      <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/30 text-sm text-destructive text-center">
+        <p>OAuth not configured.</p>
+        <p>Please contact your administrator.</p>
       </div>
     );
   }
