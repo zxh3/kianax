@@ -233,6 +233,37 @@ export function StaticDataConfigUI({
         )}
       </ConfigSection>
 
+      <InfoCard title="Using Variables">
+        <p className="mb-2">
+          You can use expressions to reference routine variables or upstream
+          node outputs:
+        </p>
+        <div className="space-y-1.5 font-mono text-xs">
+          <div>
+            <code className="bg-background px-1.5 py-0.5 rounded">
+              {"{{ vars.variableName }}"}
+            </code>
+            <span className="text-muted-foreground ml-2">
+              - routine variable
+            </span>
+          </div>
+          <div>
+            <code className="bg-background px-1.5 py-0.5 rounded">
+              {"{{ nodes.nodeId.portName }}"}
+            </code>
+            <span className="text-muted-foreground ml-2">
+              - upstream output
+            </span>
+          </div>
+          <div>
+            <code className="bg-background px-1.5 py-0.5 rounded">
+              {"{{ trigger.data }}"}
+            </code>
+            <span className="text-muted-foreground ml-2">- trigger data</span>
+          </div>
+        </div>
+      </InfoCard>
+
       <InfoCard title="Usage Tip">
         <p>
           Use this node to provide constant values, mock API responses, or test
@@ -244,15 +275,18 @@ export function StaticDataConfigUI({
         <InfoCard title="JSON Examples" variant="info">
           <div className="space-y-2">
             <div>
-              <strong className="text-foreground">Object:</strong>
+              <strong className="text-foreground">Static Object:</strong>
               <code className="block text-xs mt-1 p-2 bg-background rounded">
                 {`{ "name": "John", "age": 30 }`}
               </code>
             </div>
             <div>
-              <strong className="text-foreground">Array:</strong>
-              <code className="block text-xs mt-1 p-2 bg-background rounded">
-                {`["apple", "banana", "orange"]`}
+              <strong className="text-foreground">With Variables:</strong>
+              <code className="block text-xs mt-1 p-2 bg-background rounded whitespace-pre">
+                {`{
+  "city": "{{ vars.city }}",
+  "apiKey": "{{ vars.apiKey }}"
+}`}
               </code>
             </div>
           </div>
