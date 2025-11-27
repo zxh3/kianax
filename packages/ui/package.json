@@ -85,6 +85,7 @@
     "./postcss.config": "./postcss.config.mjs",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
+    "./components/expression-input": "./src/components/expression-input/index.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   }
 }
