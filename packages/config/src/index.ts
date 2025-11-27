@@ -51,7 +51,6 @@ export const workerEnvSchema = z.object({
 export const serverEnvSchema = z.object({
   google: googleOAuthSchema,
   siteUrl: z.string().url("SITE_URL must be a valid URL"),
-  convexSiteUrl: z.string().url("CONVEX_SITE_URL must be a valid URL"),
 });
 
 // =============================================================================
@@ -128,7 +127,6 @@ export function parseServerEnv(): ServerEnv {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
     siteUrl: process.env.SITE_URL,
-    convexSiteUrl: process.env.CONVEX_SITE_URL,
   });
   return _serverEnv;
 }

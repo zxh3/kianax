@@ -332,19 +332,7 @@ function generateFormFields(
   setFormData: (data: Record<string, string>) => void,
   providerConfig?: { configured: boolean; clientId?: string } | null,
 ) {
-  // Introspect Zod schema to generate inputs
-
-  if (!(type.schema instanceof z.ZodObject)) {
-    return (
-      <p className="text-destructive">
-        Unsupported schema type (must be ZodObject)
-      </p>
-    );
-  }
-
-  const shape = type.schema.shape;
-
-  // For OAuth2 types, check if server is configured
+  // For OAuth2 types, no form fields needed - just show sign-in prompt
   if (type.type === "oauth2") {
     if (providerConfig?.configured) {
       return (
@@ -360,6 +348,17 @@ function generateFormFields(
       </div>
     );
   }
+
+  // For non-OAuth types, introspect Zod schema to generate form inputs
+  if (!(type.schema instanceof z.ZodObject)) {
+    return (
+      <p className="text-destructive">
+        Unsupported schema type (must be ZodObject)
+      </p>
+    );
+  }
+
+  const shape = type.schema.shape;
 
   return Object.entries(shape).map(([key, schema]: [string, any]) => {
     const isPassword = type.maskedFields?.includes(key);
