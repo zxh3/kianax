@@ -3,7 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@kianax/server/convex/_generated/api";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
 import { getToken } from "@kianax/web/lib/auth-server";
-import { getWebConfig } from "@kianax/config";
+import { parseWebEnv } from "@kianax/config";
 
 export async function POST(
   _request: NextRequest,
@@ -19,11 +19,11 @@ export async function POST(
     const { id } = await params;
     const routineId = id as Id<"routines">;
 
-    // Get config
-    const config = getWebConfig();
+    // Get env config
+    const env = parseWebEnv();
 
     // Initialize Convex client
-    const convex = new ConvexHttpClient(config.convex.publicUrl);
+    const convex = new ConvexHttpClient(env.convex.publicUrl);
     convex.setAuth(token);
 
     // Fetch routine
@@ -37,12 +37,12 @@ export async function POST(
 
     // Connect to Temporal
     const connection = await Connection.connect({
-      address: config.temporal.address,
+      address: env.temporal.address,
     });
 
     const client = new Client({
       connection,
-      namespace: config.temporal.namespace,
+      namespace: env.temporal.namespace,
     });
 
     // Convert routine to workflow input

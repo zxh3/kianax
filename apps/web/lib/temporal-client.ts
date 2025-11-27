@@ -14,7 +14,7 @@
  */
 
 import { Client, Connection } from "@temporalio/client";
-import { getWebConfig } from "@kianax/config";
+import { parseWebEnv } from "@kianax/config";
 
 let client: Client | null = null;
 let connection: Connection | null = null;
@@ -27,8 +27,8 @@ export async function getTemporalClient(): Promise<Client> {
     return client;
   }
 
-  const config = getWebConfig();
-  const { temporal } = config;
+  const env = parseWebEnv();
+  const { temporal } = env;
 
   // For Temporal Cloud (production)
   if (temporal.clientCert && temporal.clientKey) {

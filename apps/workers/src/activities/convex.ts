@@ -12,19 +12,19 @@ import type {
   StoreNodeResultInput,
 } from "@kianax/shared/temporal";
 import { api } from "../../../server/convex/_generated/api";
-import { getWorkerConfig } from "@kianax/config";
+import { parseWorkerEnv } from "@kianax/config";
 
 /**
  * Lazy initialization of Convex client
- * This ensures config is loaded before the client is created
+ * (env vars already loaded by entry point)
  */
 let convexClient: ConvexHttpClient | null = null;
 
 function getConvexClient(): ConvexHttpClient {
   if (!convexClient) {
-    const config = getWorkerConfig();
-    console.log(`✅ Convex client initialized: ${config.convex.url}`);
-    convexClient = new ConvexHttpClient(config.convex.url);
+    const env = parseWorkerEnv();
+    console.log(`✅ Convex client initialized: ${env.convex.url}`);
+    convexClient = new ConvexHttpClient(env.convex.url);
   }
 
   return convexClient;

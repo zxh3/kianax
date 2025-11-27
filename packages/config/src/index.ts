@@ -1,34 +1,79 @@
-import { loadEnv, getMonorepoRoot } from "./load";
-import {
-  webConfigSchema,
-  workerConfigSchema,
-  serverConfigSchema,
-  type WebConfig,
-  type WorkerConfig,
-  type ServerConfig,
-  type TemporalConfig,
-  type GoogleConfig,
-} from "./schemas";
+/**
+ * @kianax/config
+ *
+ * Shared environment variable schemas and validation utilities.
+ * Each app loads its own .env.local file and uses these schemas to validate.
+ */
 
-export { loadEnv, getMonorepoRoot };
-export type {
-  WebConfig,
-  WorkerConfig,
-  ServerConfig,
-  TemporalConfig,
-  GoogleConfig,
-};
+import { z } from "zod";
+
+// =============================================================================
+// Shared Schemas
+// =============================================================================
+
+export const convexSchema = z.object({
+  url: z.string().url("CONVEX_URL must be a valid URL"),
+});
+
+export const convexPublicSchema = z.object({
+  publicUrl: z.string().url("NEXT_PUBLIC_CONVEX_URL must be a valid URL"),
+});
+
+export const temporalSchema = z.object({
+  address: z.string().default("localhost:7233"),
+  namespace: z.string().default("default"),
+  clientCert: z.string().optional(),
+  clientKey: z.string().optional(),
+});
+
+export const googleOAuthSchema = z.object({
+  clientId: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
+  clientSecret: z.string().min(1, "GOOGLE_CLIENT_SECRET is required"),
+});
+
+// =============================================================================
+// App-specific Schemas
+// =============================================================================
+
+export const webEnvSchema = z.object({
+  convex: convexPublicSchema,
+  temporal: temporalSchema,
+  openaiKey: z.string().optional(),
+  siteUrl: z.string().url().default("http://localhost:3000"),
+});
+
+export const workerEnvSchema = z.object({
+  convex: convexSchema,
+  temporal: temporalSchema,
+  taskQueue: z.string().default("default"),
+});
+
+export const serverEnvSchema = z.object({
+  google: googleOAuthSchema,
+  siteUrl: z.string().url("SITE_URL must be a valid URL"),
+  convexSiteUrl: z.string().url("CONVEX_SITE_URL must be a valid URL"),
+});
+
+// =============================================================================
+// Type Exports
+// =============================================================================
+
+export type WebEnv = z.infer<typeof webEnvSchema>;
+export type WorkerEnv = z.infer<typeof workerEnvSchema>;
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
+export type TemporalConfig = z.infer<typeof temporalSchema>;
+export type GoogleOAuthConfig = z.infer<typeof googleOAuthSchema>;
+
+// =============================================================================
+// Validation Utilities
+// =============================================================================
 
 /**
- * Get configuration for the Next.js web app.
- * Loads env vars from root .env.local and validates them.
- *
- * @throws {ZodError} if required env vars are missing or invalid
+ * Parse and validate web app environment variables.
+ * Call this after loading your .env.local file via dotenv.
  */
-export function getWebConfig(): WebConfig {
-  loadEnv();
-
-  return webConfigSchema.parse({
+export function parseWebEnv(): WebEnv {
+  return webEnvSchema.parse({
     convex: {
       publicUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
     },
@@ -44,15 +89,11 @@ export function getWebConfig(): WebConfig {
 }
 
 /**
- * Get configuration for Temporal workers.
- * Loads env vars from root .env.local and validates them.
- *
- * @throws {ZodError} if required env vars are missing or invalid
+ * Parse and validate worker environment variables.
+ * Call this after loading your .env.local file via dotenv.
  */
-export function getWorkerConfig(): WorkerConfig {
-  loadEnv();
-
-  return workerConfigSchema.parse({
+export function parseWorkerEnv(): WorkerEnv {
+  return workerEnvSchema.parse({
     convex: {
       url: process.env.CONVEX_URL,
     },
@@ -67,16 +108,11 @@ export function getWorkerConfig(): WorkerConfig {
 }
 
 /**
- * Get configuration for Convex server functions.
- * Note: In actual Convex functions, env vars are loaded from Convex dashboard.
- * This is primarily useful for local scripts and tests.
- *
- * @throws {ZodError} if required env vars are missing or invalid
+ * Parse and validate server (Convex) environment variables.
+ * Note: In Convex functions, env vars come from Convex dashboard.
  */
-export function getServerConfig(): ServerConfig {
-  loadEnv();
-
-  return serverConfigSchema.parse({
+export function parseServerEnv(): ServerEnv {
+  return serverEnvSchema.parse({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -87,33 +123,19 @@ export function getServerConfig(): ServerConfig {
 }
 
 /**
- * Validates that all required env vars for an app are set.
- * Returns a list of missing or invalid vars.
+ * Validate environment variables and return errors if any.
+ * Useful for startup checks.
  */
-export function validateEnv(app: "web" | "worker" | "server"): {
+export function validateEnv(parser: () => unknown): {
   valid: boolean;
   errors: string[];
 } {
-  loadEnv();
-
-  const errors: string[] = [];
-
   try {
-    switch (app) {
-      case "web":
-        getWebConfig();
-        break;
-      case "worker":
-        getWorkerConfig();
-        break;
-      case "server":
-        getServerConfig();
-        break;
-    }
+    parser();
     return { valid: true, errors: [] };
   } catch (error: any) {
+    const errors: string[] = [];
     if (error.errors) {
-      // Zod error
       for (const issue of error.errors) {
         errors.push(`${issue.path.join(".")}: ${issue.message}`);
       }

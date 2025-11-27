@@ -60,31 +60,27 @@
 
 ### Environment Variables
 
-All apps load from a single `.env.local` file at the **monorepo root**:
+Each app has its own `.env.local` file:
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local with your values
+# Web app
+cp apps/web/.env.example apps/web/.env.local
+
+# Workers
+cp apps/workers/.env.example apps/workers/.env.local
 ```
 
-Key variables:
+| App | File | Key Variables |
+|-----|------|---------------|
+| **web** | `apps/web/.env.local` | `NEXT_PUBLIC_CONVEX_URL`, `TEMPORAL_*`, `SITE_URL`, `OPENAI_API_KEY` |
+| **workers** | `apps/workers/.env.local` | `CONVEX_URL`, `TEMPORAL_*`, `TASK_QUEUE` |
+| **server** | Convex dashboard | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SITE_URL` |
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `CONVEX_URL` | Yes | Convex deployment URL (for workers) |
-| `NEXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL (for web client) |
-| `TEMPORAL_ADDRESS` | Yes | Temporal server address (default: `localhost:7233`) |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
-| `SITE_URL` | Yes | Your app's public URL |
-| `OPENAI_API_KEY` | No | For AI chat features |
-
-See `.env.example` for the complete list with documentation.
-
-> **Note:** For Convex server functions, you must also set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `SITE_URL` in the Convex dashboard:
-> ```bash
-> npx convex env set GOOGLE_CLIENT_ID <value>
-> ```
+For Convex server functions, set env vars via CLI:
+```bash
+npx convex env set GOOGLE_CLIENT_ID <value>
+npx convex env set GOOGLE_CLIENT_SECRET <value>
+```
 
 > **Note:** Plugin credentials (e.g., Google Calendar tokens) are managed in the **Kianax Dashboard** under Settings > Credentials.
 

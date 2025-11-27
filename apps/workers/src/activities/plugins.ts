@@ -10,15 +10,15 @@ import type { ExecutePluginInput } from "@kianax/shared/temporal";
 import { createPluginInstance, getPluginMetadata } from "@kianax/plugins";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@kianax/server/convex/_generated/api";
-import { getWorkerConfig } from "@kianax/config";
+import { parseWorkerEnv } from "@kianax/config";
 
-// Lazy-initialize convex client to ensure config is loaded
+// Lazy-initialize convex client (env vars already loaded by entry point)
 let convex: ConvexHttpClient | null = null;
 
 function getConvex(): ConvexHttpClient {
   if (!convex) {
-    const config = getWorkerConfig();
-    convex = new ConvexHttpClient(config.convex.url);
+    const env = parseWorkerEnv();
+    convex = new ConvexHttpClient(env.convex.url);
   }
   return convex;
 }
