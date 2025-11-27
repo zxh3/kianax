@@ -29,6 +29,7 @@ import { Textarea } from "@kianax/ui/components/textarea";
 import { toast } from "sonner";
 import { Toolbar } from "./toolbar";
 import { NodeSelector } from "./sidebar";
+import { VariablesPanel, type RoutineVariable } from "./variables-panel";
 import { TopBar } from "./topbar";
 import { useTheme } from "next-themes";
 import { getPluginMetadata } from "@/lib/plugins";
@@ -47,12 +48,14 @@ export function RoutineEditor({
   routineId,
   initialNodes,
   initialConnections,
+  initialVariables = [],
   onSave,
   onTest,
 }: RoutineEditorProps) {
   const { theme } = useTheme();
   // State definitions
   const [nodeSelectorOpen, setNodeSelectorOpen] = useState(false);
+  const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<"select" | "hand" | null>(
     "hand",
   );
@@ -63,6 +66,10 @@ export function RoutineEditor({
     null,
   );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Variables state
+  const [variables, setVariables] =
+    useState<RoutineVariable[]>(initialVariables);
 
   // Test Execution State
   const [testWorkflowId, setTestWorkflowId] = useState<string | null>(null);
@@ -89,11 +96,12 @@ export function RoutineEditor({
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
-  // Refs to track latest nodes and edges for auto-save
+  // Refs to track latest nodes, edges, and variables for auto-save
   const nodesRef = useRef<Node[]>([]);
   const edgesRef = useRef<Edge[]>([]);
+  const variablesRef = useRef<RoutineVariable[]>([]);
 
-  // Update refs whenever nodes or edges change
+  // Update refs whenever nodes, edges, or variables change
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -101,6 +109,10 @@ export function RoutineEditor({
   useEffect(() => {
     edgesRef.current = edges;
   }, [edges]);
+
+  useEffect(() => {
+    variablesRef.current = variables;
+  }, [variables]);
 
   // Update nodes with execution status
   useEffect(() => {
@@ -146,7 +158,7 @@ export function RoutineEditor({
       // Let's auto-save for safety.
       const routineNodes = convertFromReactFlowNodes(nodes);
       const routineConnections = convertFromReactFlowEdges(edges);
-      await onSave(routineNodes, routineConnections);
+      await onSave(routineNodes, routineConnections, variables);
 
       // 2. Trigger execution via API
       const response = await fetch(`/api/workflows/${routineId}/execute`, {
@@ -293,7 +305,7 @@ export function RoutineEditor({
         // Use refs to get the latest values
         const routineNodes = convertFromReactFlowNodes(nodesRef.current);
         const routineConnections = convertFromReactFlowEdges(edgesRef.current);
-        await onSave(routineNodes, routineConnections);
+        await onSave(routineNodes, routineConnections, variablesRef.current);
         setHasUnsavedChanges(false);
       } catch (error) {
         console.error("Auto-save failed:", error);
@@ -301,6 +313,15 @@ export function RoutineEditor({
       }
     }, 1000); // 1 second debounce
   }, [convertFromReactFlowNodes, convertFromReactFlowEdges, onSave]);
+
+  // Handle variables change - triggers auto-save
+  const handleVariablesChange = useCallback(
+    (newVariables: RoutineVariable[]) => {
+      setVariables(newVariables);
+      triggerAutoSave();
+    },
+    [triggerAutoSave],
+  );
 
   // Cleanup auto-save timer on unmount
   useEffect(() => {
@@ -522,6 +543,8 @@ export function RoutineEditor({
               activeTool={activeTool}
               onToolChange={setActiveTool}
               onAddNode={() => setNodeSelectorOpen(true)}
+              onToggleVariables={() => setVariablesPanelOpen((prev) => !prev)}
+              variablesPanelOpen={variablesPanelOpen}
             />
 
             {/* Node Selector */}
@@ -529,6 +552,14 @@ export function RoutineEditor({
               isOpen={nodeSelectorOpen}
               onClose={() => setNodeSelectorOpen(false)}
               onAddNode={handleAddNode}
+            />
+
+            {/* Variables Panel */}
+            <VariablesPanel
+              isOpen={variablesPanelOpen}
+              onClose={() => setVariablesPanelOpen(false)}
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
             />
 
             <ReactFlow

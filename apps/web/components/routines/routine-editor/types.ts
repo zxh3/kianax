@@ -17,13 +17,23 @@ export interface RoutineConnection {
   targetHandle?: string;
 }
 
+export interface RoutineVariable {
+  id: string;
+  name: string;
+  type: "string" | "number" | "boolean" | "json";
+  value: unknown;
+  description?: string;
+}
+
 export interface RoutineEditorProps {
   routineId: Id<"routines">;
   initialNodes: RoutineNode[];
   initialConnections: RoutineConnection[];
+  initialVariables?: RoutineVariable[];
   onSave: (
     nodes: RoutineNode[],
     connections: RoutineConnection[],
+    variables?: RoutineVariable[],
   ) => Promise<void>;
   onTest?: () => void;
 }
