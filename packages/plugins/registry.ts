@@ -123,3 +123,18 @@ export function createPluginInstance(
 ): Plugin<any, any> | undefined {
   return getPlugin(pluginId);
 }
+
+/**
+ * Get output port names for a plugin
+ */
+export function getPluginOutputs(pluginId: string): string[] {
+  const plugin = getPlugin(pluginId);
+  if (!plugin) return ["data"]; // Default fallback
+
+  try {
+    const schemas = plugin.defineSchemas();
+    return Object.keys(schemas.outputs);
+  } catch {
+    return ["data"]; // Default fallback if defineSchemas fails
+  }
+}
