@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@kianax/ui/components/input";
 import {
   Select,
   SelectContent,
@@ -9,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@kianax/ui/components/select";
-import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
+import { BaseConfigUI, ConfigSection, InfoCard, ExpressionField } from "../ui";
+import type { ExpressionContext } from "../config-registry";
 
 export interface GoogleSheetsConfig {
   operation: "read" | "append" | "clear";
@@ -20,11 +20,14 @@ export interface GoogleSheetsConfig {
 interface GoogleSheetsConfigUIProps {
   value?: GoogleSheetsConfig;
   onChange: (value: GoogleSheetsConfig) => void;
+  /** Expression context for autocomplete (from routine editor) */
+  expressionContext?: ExpressionContext;
 }
 
 export function GoogleSheetsConfigUI({
   value,
   onChange,
+  expressionContext,
 }: GoogleSheetsConfigUIProps) {
   const defaultConfig: GoogleSheetsConfig = {
     operation: "read",
@@ -65,27 +68,23 @@ export function GoogleSheetsConfigUI({
         </Select>
       </ConfigSection>
 
-      <ConfigSection
+      <ExpressionField
         label="Spreadsheet ID"
-        description="The ID of the spreadsheet (from the URL)."
-      >
-        <Input
-          value={config.spreadsheetId}
-          onChange={(e) => handleChange({ spreadsheetId: e.target.value })}
-          placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        />
-      </ConfigSection>
+        description="The ID of the spreadsheet (from the URL). Supports {{ expressions }}."
+        value={config.spreadsheetId}
+        onChange={(val) => handleChange({ spreadsheetId: val })}
+        expressionContext={expressionContext}
+        placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+      />
 
-      <ConfigSection
+      <ExpressionField
         label="Range"
-        description="The A1 notation of the range (e.g., Sheet1!A1:B2)."
-      >
-        <Input
-          value={config.range}
-          onChange={(e) => handleChange({ range: e.target.value })}
-          placeholder="Sheet1!A1"
-        />
-      </ConfigSection>
+        description="The A1 notation of the range. Supports {{ expressions }}."
+        value={config.range}
+        onChange={(val) => handleChange({ range: val })}
+        expressionContext={expressionContext}
+        placeholder="Sheet1!A1:B10"
+      />
 
       <InfoCard title="Credential Required" variant="warning">
         <p>

@@ -23,6 +23,8 @@ export {
 export {
   getPluginConfigComponent,
   hasPluginConfigUI,
+  type PluginConfigProps,
+  type ExpressionContext as PluginExpressionContext,
 } from "./config-registry";
 
 // Export credential registry

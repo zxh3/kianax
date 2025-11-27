@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
-import { Textarea } from "@kianax/ui/components/textarea";
 import {
   Select,
   SelectContent,
@@ -12,7 +11,9 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { toast } from "sonner";
+import { ExpressionInput } from "@kianax/ui/components/expression-input";
 import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
+import type { ExpressionContext } from "../config-registry";
 
 export interface StaticDataConfig {
   data: unknown;
@@ -21,6 +22,8 @@ export interface StaticDataConfig {
 interface StaticDataConfigUIProps {
   value?: StaticDataConfig;
   onChange: (value: StaticDataConfig) => void;
+  /** Expression context for autocomplete (from routine editor) */
+  expressionContext?: ExpressionContext;
 }
 
 type DataType = "json" | "string" | "number" | "boolean";
@@ -33,6 +36,7 @@ type DataType = "json" | "string" | "number" | "boolean";
 export function StaticDataConfigUI({
   value,
   onChange,
+  expressionContext,
 }: StaticDataConfigUIProps) {
   // Helper to determine initial type
   const getInitialType = (data: unknown): DataType => {
@@ -190,11 +194,15 @@ export function StaticDataConfigUI({
       >
         {dataType === "json" && (
           <div className="relative">
-            <Textarea
+            <ExpressionInput
               value={jsonString}
-              onChange={(e) => handleJsonChange(e.target.value)}
+              onChange={handleJsonChange}
+              context={expressionContext}
+              showPreview={false}
+              multiline
+              rows={12}
               placeholder='{ "key": "value" }'
-              className={`font-mono text-xs min-h-[300px] resize-y ${
+              className={`font-mono text-xs ${
                 jsonError
                   ? "border-destructive focus-visible:ring-destructive"
                   : ""
@@ -204,9 +212,11 @@ export function StaticDataConfigUI({
         )}
 
         {dataType === "string" && (
-          <Input
+          <ExpressionInput
             value={stringValue}
-            onChange={(e) => handleStringChange(e.target.value)}
+            onChange={handleStringChange}
+            context={expressionContext}
+            showPreview
             placeholder="Enter text value..."
           />
         )}

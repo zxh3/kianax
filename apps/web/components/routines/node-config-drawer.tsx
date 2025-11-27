@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useQuery } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import Link from "next/link";
+import { useOptionalNodeExpressionContext } from "./routine-editor/expression-context";
 
 interface NodeConfigDrawerProps {
   isOpen: boolean;
@@ -83,6 +84,10 @@ export function NodeConfigDrawer({
 
   // Get the plugin's config component from the registry
   const ConfigComponent = getPluginConfigComponent(pluginId);
+
+  // Get expression context for this node (variables + upstream nodes)
+  // Returns undefined if not within ExpressionContextProvider
+  const expressionContext = useOptionalNodeExpressionContext(nodeId);
 
   const handleSave = () => {
     onSave(nodeId, localConfig, localLabel, localCredentialMappings);
@@ -220,6 +225,7 @@ export function NodeConfigDrawer({
             <ConfigComponent
               value={localConfig}
               onChange={handleConfigChange}
+              expressionContext={expressionContext}
             />
           ) : (
             <div className="text-sm text-muted-foreground py-8 text-center italic bg-muted/50 rounded-lg border border-dashed border-border">
