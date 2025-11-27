@@ -55,6 +55,34 @@ export const create = mutation({
 });
 
 /**
+ * Update a credential.
+ */
+export const update = mutation({
+  args: {
+    id: v.id("user_credentials"),
+    name: v.string(),
+    data: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+
+    const credential = await ctx.db.get(args.id);
+    if (!credential) {
+      throw new Error("Credential not found");
+    }
+
+    if (credential.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      ...(args.data !== undefined && { data: args.data }),
+    });
+  },
+});
+
+/**
  * Delete a credential.
  */
 export const remove = mutation({
