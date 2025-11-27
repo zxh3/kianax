@@ -39,7 +39,7 @@
     },
     {
       "feature": "Update routine editor UI to manage variables",
-      "status": "todo",
+      "status": "done",
       "phase": 2
     },
     {
@@ -69,7 +69,7 @@
     },
     {
       "feature": "Build variable management panel component",
-      "status": "todo",
+      "status": "done",
       "phase": 4
     },
     {
