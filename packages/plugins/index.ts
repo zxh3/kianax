@@ -16,6 +16,7 @@ export {
   getPluginMetadata,
   getAllPluginMetadata,
   createPluginInstance,
+  getPluginOutputs,
 } from "./registry";
 
 // Export config registry

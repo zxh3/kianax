@@ -40,6 +40,7 @@ import type {
   RoutineConnection,
   EditorMode,
 } from "./types";
+import { ExpressionContextProvider } from "./expression-context";
 
 const nodeTypes = {
   pluginNode: PluginNode,
@@ -548,152 +549,162 @@ export function RoutineEditor({
     configDrawerOpen && configuringNode ? "right-[350px]" : "";
 
   return (
-    <div className="flex h-full w-full flex-col">
-      {/* Top Toolbar */}
-      <TopBar
-        editorMode={editorMode}
-        onEditorModeChange={setEditorMode}
-        hasUnsavedChanges={hasUnsavedChanges}
-        isStartingTest={isStartingTest}
-        onRunTest={handleRunTest}
-        onApplyJson={editorMode === "json" ? handleApplyJson : undefined}
-      />
+    <ExpressionContextProvider
+      nodes={nodes}
+      edges={edges}
+      variables={variables}
+    >
+      <div className="flex h-full w-full flex-col">
+        {/* Top Toolbar */}
+        <TopBar
+          editorMode={editorMode}
+          onEditorModeChange={setEditorMode}
+          hasUnsavedChanges={hasUnsavedChanges}
+          isStartingTest={isStartingTest}
+          onRunTest={handleRunTest}
+          onApplyJson={editorMode === "json" ? handleApplyJson : undefined}
+        />
 
-      {/* Canvas / Editor Area */}
-      <div className="relative flex-1">
-        {editorMode === "visual" ? (
-          <>
-            {/* Floating Toolbar */}
-            <Toolbar
-              activeTool={activeTool}
-              onToolChange={setActiveTool}
-              onAddNode={() => setNodeSelectorOpen(true)}
-              onToggleVariables={() => setVariablesPanelOpen((prev) => !prev)}
-              variablesPanelOpen={variablesPanelOpen}
-            />
-
-            {/* Node Selector */}
-            <NodeSelector
-              isOpen={nodeSelectorOpen}
-              onClose={() => setNodeSelectorOpen(false)}
-              onAddNode={handleAddNode}
-            />
-
-            {/* Variables Panel */}
-            <VariablesPanel
-              isOpen={variablesPanelOpen}
-              onClose={() => setVariablesPanelOpen(false)}
-              variables={variables}
-              onVariablesChange={handleVariablesChange}
-            />
-
-            {/* Validation Panel - shows expression errors */}
-            {!validationPanelDismissed && (
-              <ValidationPanel
-                errors={validationErrors}
-                onClose={() => setValidationPanelDismissed(true)}
-                onNodeClick={handleValidationNodeClick}
+        {/* Canvas / Editor Area */}
+        <div className="relative flex-1">
+          {editorMode === "visual" ? (
+            <>
+              {/* Floating Toolbar */}
+              <Toolbar
+                activeTool={activeTool}
+                onToolChange={setActiveTool}
+                onAddNode={() => setNodeSelectorOpen(true)}
+                onToggleVariables={() => setVariablesPanelOpen((prev) => !prev)}
+                variablesPanelOpen={variablesPanelOpen}
               />
-            )}
 
-            <ReactFlow
-              colorMode={theme === "dark" ? "dark" : "light"}
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onNodeClick={onNodeClick}
-              nodeTypes={nodeTypes}
-              fitView={false}
-              className="bg-background"
-              deleteKeyCode={["Delete", "Backspace"]}
-              panOnDrag={activeTool === "hand" ? true : [1, 2]}
-              selectionOnDrag={activeTool === "select"}
-              panOnScroll={activeTool === "hand"}
-              selectionKeyCode={null}
-              multiSelectionKeyCode="Shift"
-              connectionLineStyle={{
-                stroke: "#6366f1",
-                strokeWidth: 2,
-                strokeDasharray: "5 5",
-              }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={30} size={1} />
-              <Controls
-                position="bottom-left"
-                showZoom={true}
-                showFitView={true}
-                showInteractive={false}
-                style={{ left: 16, bottom: 16 }}
+              {/* Node Selector */}
+              <NodeSelector
+                isOpen={nodeSelectorOpen}
+                onClose={() => setNodeSelectorOpen(false)}
+                onAddNode={handleAddNode}
               />
-              <MiniMap
-                nodeColor="#64748b"
-                nodeStrokeColor="#94a3b8"
-                nodeBorderRadius={2}
-                maskColor="rgba(100, 116, 139, 0.2)"
-                position="bottom-right"
-                style={{ right: 16, bottom: 16 }}
-              />
-            </ReactFlow>
 
-            {/* Node Configuration Drawer (Always right-aligned) */}
-            {configuringNode && (
-              <NodeConfigDrawer
-                key={configuringNode.id}
-                isOpen={configDrawerOpen}
-                onClose={() => {
-                  setConfigDrawerOpen(false);
-                  setConfiguringNodeId(null);
+              {/* Variables Panel */}
+              <VariablesPanel
+                isOpen={variablesPanelOpen}
+                onClose={() => setVariablesPanelOpen(false)}
+                variables={variables}
+                onVariablesChange={handleVariablesChange}
+              />
+
+              {/* Validation Panel - shows expression errors */}
+              {!validationPanelDismissed && (
+                <ValidationPanel
+                  errors={validationErrors}
+                  onClose={() => setValidationPanelDismissed(true)}
+                  onNodeClick={handleValidationNodeClick}
+                />
+              )}
+
+              <ReactFlow
+                colorMode={theme === "dark" ? "dark" : "light"}
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                nodeTypes={nodeTypes}
+                fitView={false}
+                className="bg-background"
+                deleteKeyCode={["Delete", "Backspace"]}
+                panOnDrag={activeTool === "hand" ? true : [1, 2]}
+                selectionOnDrag={activeTool === "select"}
+                panOnScroll={activeTool === "hand"}
+                selectionKeyCode={null}
+                multiSelectionKeyCode="Shift"
+                connectionLineStyle={{
+                  stroke: "#6366f1",
+                  strokeWidth: 2,
+                  strokeDasharray: "5 5",
                 }}
-                nodeId={configuringNode.id}
-                pluginId={(configuringNode.data as PluginNodeData).pluginId}
-                pluginName={
-                  getPluginMetadata(
-                    (configuringNode.data as PluginNodeData).pluginId,
-                  )?.name || "Plugin"
-                }
-                nodeLabel={(configuringNode.data as PluginNodeData).label}
-                config={
-                  (
-                    configuringNode.data as PluginNodeData & {
-                      config?: Record<string, unknown>;
-                    }
-                  ).config
-                }
-                credentialMappings={
-                  (configuringNode.data as PluginNodeData).credentialMappings
-                }
-                onSave={handleSaveNodeConfig}
-              />
-            )}
+              >
+                <Background
+                  variant={BackgroundVariant.Dots}
+                  gap={30}
+                  size={1}
+                />
+                <Controls
+                  position="bottom-left"
+                  showZoom={true}
+                  showFitView={true}
+                  showInteractive={false}
+                  style={{ left: 16, bottom: 16 }}
+                />
+                <MiniMap
+                  nodeColor="#64748b"
+                  nodeStrokeColor="#94a3b8"
+                  nodeBorderRadius={2}
+                  maskColor="rgba(100, 116, 139, 0.2)"
+                  position="bottom-right"
+                  style={{ right: 16, bottom: 16 }}
+                />
+              </ReactFlow>
 
-            {/* Test Result Drawer (Shifts left if config is open) */}
-            {selectedResultNode && (
-              <TestResultDrawer
-                isOpen={resultDrawerOpen}
-                onClose={() => {
-                  setResultDrawerOpen(false);
-                  setSelectedResultNodeId(null);
-                }}
-                nodeId={selectedResultNode.id}
-                nodeLabel={(selectedResultNode.data as PluginNodeData).label}
-                executionState={selectedNodeExecutionState}
-                className={resultDrawerStyle}
+              {/* Node Configuration Drawer (Always right-aligned) */}
+              {configuringNode && (
+                <NodeConfigDrawer
+                  key={configuringNode.id}
+                  isOpen={configDrawerOpen}
+                  onClose={() => {
+                    setConfigDrawerOpen(false);
+                    setConfiguringNodeId(null);
+                  }}
+                  nodeId={configuringNode.id}
+                  pluginId={(configuringNode.data as PluginNodeData).pluginId}
+                  pluginName={
+                    getPluginMetadata(
+                      (configuringNode.data as PluginNodeData).pluginId,
+                    )?.name || "Plugin"
+                  }
+                  nodeLabel={(configuringNode.data as PluginNodeData).label}
+                  config={
+                    (
+                      configuringNode.data as PluginNodeData & {
+                        config?: Record<string, unknown>;
+                      }
+                    ).config
+                  }
+                  credentialMappings={
+                    (configuringNode.data as PluginNodeData).credentialMappings
+                  }
+                  onSave={handleSaveNodeConfig}
+                />
+              )}
+
+              {/* Test Result Drawer (Shifts left if config is open) */}
+              {selectedResultNode && (
+                <TestResultDrawer
+                  isOpen={resultDrawerOpen}
+                  onClose={() => {
+                    setResultDrawerOpen(false);
+                    setSelectedResultNodeId(null);
+                  }}
+                  nodeId={selectedResultNode.id}
+                  nodeLabel={(selectedResultNode.data as PluginNodeData).label}
+                  executionState={selectedNodeExecutionState}
+                  className={resultDrawerStyle}
+                />
+              )}
+            </>
+          ) : (
+            <div className="h-full p-4">
+              <Textarea
+                value={jsonValue}
+                onChange={(e) => setJsonValue(e.target.value)}
+                className="h-full font-mono text-sm"
+                placeholder="Edit workflow JSON here..."
               />
-            )}
-          </>
-        ) : (
-          <div className="h-full p-4">
-            <Textarea
-              value={jsonValue}
-              onChange={(e) => setJsonValue(e.target.value)}
-              className="h-full font-mono text-sm"
-              placeholder="Edit workflow JSON here..."
-            />
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ExpressionContextProvider>
   );
 }
