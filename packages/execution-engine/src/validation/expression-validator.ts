@@ -11,8 +11,8 @@ import {
   ExpressionResolver,
   createEmptyContext,
   type VariableReference,
-} from "../engine/expression-resolver.js";
-import type { Node, Edge, RoutineDefinition } from "../types/graph.js";
+} from "../engine/expression-resolver";
+import type { Node, Edge, RoutineDefinition } from "../types/graph";
 
 /**
  * Expression validation error

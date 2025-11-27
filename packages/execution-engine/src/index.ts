@@ -5,18 +5,18 @@
  */
 
 // Main executor
-export { RoutineExecutor } from "./engine/executor.js";
-export type { PluginRegistry } from "./engine/executor.js";
+export { RoutineExecutor } from "./engine/executor";
+export type { PluginRegistry } from "./engine/executor";
 
 // Expression resolver for variable system
 export {
   ExpressionResolver,
   createEmptyContext,
-} from "./engine/expression-resolver.js";
+} from "./engine/expression-resolver";
 export type {
   ExpressionContext,
   VariableReference,
-} from "./engine/expression-resolver.js";
+} from "./engine/expression-resolver";
 
 // Iteration strategies
 export {
@@ -26,7 +26,7 @@ export {
   type IterationStrategy,
   type IterationOptions,
   type NodeExecutor,
-} from "./engine/iteration-strategy.js";
+} from "./engine/iteration-strategy";
 
 // Types
 export type {
@@ -44,7 +44,7 @@ export type {
   RoutineContext,
   ExecutionMetadata,
   LoopState,
-} from "./types/execution.js";
+} from "./types/execution";
 
 export type {
   Node,
@@ -55,24 +55,24 @@ export type {
   GraphValidationResult,
   GraphValidationError,
   GraphValidationWarning,
-} from "./types/graph.js";
+} from "./types/graph";
 
 // PortType enum (value export)
-export { PortType } from "./types/graph.js";
+export { PortType } from "./types/graph";
 
 // Execution state
-export { ExecutionState } from "./engine/execution-state.js";
+export { ExecutionState } from "./engine/execution-state";
 
 // Validation
-export { validateGraph } from "./validation/graph-validator.js";
-export { validateConnection } from "./validation/connection-validator.js";
+export { validateGraph } from "./validation/graph-validator";
+export { validateConnection } from "./validation/connection-validator";
 export {
   validateExpressions,
   getExpressionErrors,
   hasValidExpressions,
-} from "./validation/expression-validator.js";
+} from "./validation/expression-validator";
 export type {
   ExpressionValidationError,
   ExpressionValidationWarning,
   ExpressionValidationResult,
-} from "./validation/expression-validator.js";
+} from "./validation/expression-validator";
