@@ -8,16 +8,20 @@
  *
  * Features:
  * - Syntax highlighting for expressions ({{ vars.*, nodes.*, etc. }})
+ * - Autocomplete suggestions when typing {{ (triggered by context)
  * - Single-line and multi-line modes
  * - Matches shadcn/ui Input and Textarea styling
  * - Supports placeholder, disabled states
- * - Future: autocomplete, live preview
  *
  * Usage:
  * ```tsx
  * <ExpressionInput
  *   value={url}
  *   onChange={setUrl}
+ *   context={{
+ *     variables: [{ name: "baseUrl", type: "string", value: "https://api.example.com" }],
+ *     upstreamNodes: [{ id: "http_1", label: "HTTP Request", pluginId: "http-request", outputs: ["success", "error"] }],
+ *   }}
  *   placeholder="Enter URL with {{ vars.baseUrl }}"
  * />
  * ```
@@ -30,7 +34,6 @@ import { Editor } from "./editor";
 
 /**
  * Available variable context for autocomplete suggestions.
- * This will be expanded in Phase 4.2 for autocomplete functionality.
  */
 export interface ExpressionContext {
   /** Available routine variables */
@@ -70,7 +73,7 @@ export interface ExpressionInputProps {
   /** Called when value changes */
   onChange: (value: string) => void;
 
-  /** Expression context for autocomplete suggestions (Phase 4.2) */
+  /** Expression context for autocomplete suggestions */
   context?: ExpressionContext;
 
   /** Show live preview of resolved value (Phase 4.4) */
@@ -113,7 +116,7 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
     {
       value,
       onChange,
-      context: _context, // Reserved for Phase 4.2
+      context,
       showPreview: _showPreview, // Reserved for Phase 4.4
       previewContext: _previewContext, // Reserved for Phase 4.4
       multiline = false,
@@ -177,6 +180,7 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
           <Editor
             value={value}
             onChange={onChange}
+            expressionContext={context}
             placeholder={placeholder}
             disabled={disabled}
             multiline={multiline}

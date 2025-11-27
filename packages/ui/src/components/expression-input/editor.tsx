@@ -7,20 +7,26 @@
  * - Creates and destroys EditorView on mount/unmount
  * - Syncs value changes between React state and editor
  * - Applies extensions and configuration
+ * - Provides autocomplete for expressions
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
+import { autocompletion } from "@codemirror/autocomplete";
 import { expressionLanguage } from "../../lib/expression-language";
 import { expressionHighlight } from "../../lib/expression-highlight";
 import { getExpressionInputTheme } from "./theme";
+import { createExpressionCompletionSource } from "./completions";
+import type { ExpressionContext } from "./index";
 
 export interface EditorProps {
   /** Current value */
   value: string;
   /** Called when value changes */
   onChange: (value: string) => void;
+  /** Expression context for autocomplete suggestions */
+  expressionContext?: ExpressionContext;
   /** Placeholder text when empty */
   placeholder?: string;
   /** Whether the editor is disabled */
@@ -47,6 +53,7 @@ export interface EditorProps {
 export function Editor({
   value,
   onChange,
+  expressionContext,
   placeholder,
   disabled = false,
   multiline = false,
@@ -59,9 +66,24 @@ export function Editor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const isInternalUpdate = useRef(false);
+  const expressionContextRef = useRef(expressionContext);
 
-  // Keep onChange ref updated
+  // Keep refs updated
   onChangeRef.current = onChange;
+  expressionContextRef.current = expressionContext;
+
+  // Create autocomplete extension with context-aware completions
+  const autocompleteExtension = useMemo(
+    () =>
+      autocompletion({
+        override: [
+          createExpressionCompletionSource(() => expressionContextRef.current),
+        ],
+        activateOnTyping: true,
+        maxRenderedOptions: 20,
+      }),
+    [],
+  );
 
   // Create update listener extension
   const updateListener = useCallback(
@@ -120,6 +142,9 @@ export function Editor({
       // Core language support
       expressionLanguage,
       expressionHighlight,
+
+      // Autocomplete
+      autocompleteExtension,
 
       // Theme
       ...getExpressionInputTheme(multiline),
