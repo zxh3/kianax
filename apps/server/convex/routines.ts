@@ -301,3 +301,175 @@ export const updateLastExecuted = mutation({
     });
   },
 });
+
+// Variable validators (reusable)
+const variableValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  type: v.union(
+    v.literal("string"),
+    v.literal("number"),
+    v.literal("boolean"),
+    v.literal("json"),
+  ),
+  value: v.any(),
+  description: v.optional(v.string()),
+});
+
+/**
+ * Set all variables for a routine (replaces existing)
+ */
+export const setVariables = mutation({
+  args: {
+    routineId: v.id("routines"),
+    variables: v.array(variableValidator),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
+    }
+
+    await ctx.db.patch(args.routineId, {
+      variables: args.variables,
+    });
+  },
+});
+
+/**
+ * Add a single variable to a routine
+ */
+export const addVariable = mutation({
+  args: {
+    routineId: v.id("routines"),
+    variable: variableValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
+    }
+
+    // Check for duplicate name
+    const existingVars = routine.variables || [];
+    if (existingVars.some((v) => v.name === args.variable.name)) {
+      throw new Error(`Variable "${args.variable.name}" already exists`);
+    }
+
+    await ctx.db.patch(args.routineId, {
+      variables: [...existingVars, args.variable],
+    });
+
+    return args.variable.id;
+  },
+});
+
+/**
+ * Update a single variable in a routine
+ */
+export const updateVariable = mutation({
+  args: {
+    routineId: v.id("routines"),
+    variableId: v.string(),
+    updates: v.object({
+      name: v.optional(v.string()),
+      type: v.optional(
+        v.union(
+          v.literal("string"),
+          v.literal("number"),
+          v.literal("boolean"),
+          v.literal("json"),
+        ),
+      ),
+      value: v.optional(v.any()),
+      description: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
+    }
+
+    const existingVars = routine.variables || [];
+    const varIndex = existingVars.findIndex((v) => v.id === args.variableId);
+    if (varIndex === -1) {
+      throw new Error(`Variable ${args.variableId} not found`);
+    }
+
+    // Check for duplicate name if renaming
+    if (
+      args.updates.name &&
+      existingVars.some(
+        (v) => v.name === args.updates.name && v.id !== args.variableId,
+      )
+    ) {
+      throw new Error(`Variable "${args.updates.name}" already exists`);
+    }
+
+    const updatedVars = [...existingVars];
+    const currentVar = updatedVars[varIndex]!;
+    updatedVars[varIndex] = {
+      id: currentVar.id,
+      name: args.updates.name ?? currentVar.name,
+      type: args.updates.type ?? currentVar.type,
+      value:
+        args.updates.value !== undefined
+          ? args.updates.value
+          : currentVar.value,
+      description: args.updates.description ?? currentVar.description,
+    };
+
+    await ctx.db.patch(args.routineId, {
+      variables: updatedVars,
+    });
+  },
+});
+
+/**
+ * Remove a variable from a routine
+ */
+export const removeVariable = mutation({
+  args: {
+    routineId: v.id("routines"),
+    variableId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error(`Routine ${args.routineId} not found or unauthorized`);
+    }
+
+    const existingVars = routine.variables || [];
+    const updatedVars = existingVars.filter((v) => v.id !== args.variableId);
+
+    if (updatedVars.length === existingVars.length) {
+      throw new Error(`Variable ${args.variableId} not found`);
+    }
+
+    await ctx.db.patch(args.routineId, {
+      variables: updatedVars,
+    });
+  },
+});
+
+/**
+ * Get variables for a routine
+ */
+export const getVariables = query({
+  args: {
+    routineId: v.id("routines"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      return [];
+    }
+    return routine.variables || [];
+  },
+});
