@@ -1,0 +1,106 @@
+{
+  "name": "Variable System for Routine Executor",
+  "description": "Enable nodes to access variables from upstream node outputs and routine-level globals",
+  "tasks": [
+    {
+      "feature": "Implement ExpressionResolver class",
+      "status": "done",
+      "phase": 1
+    },
+    {
+      "feature": "Add expression parsing with regex",
+      "status": "done",
+      "phase": 1
+    },
+    {
+      "feature": "Support dot notation path resolution",
+      "status": "done",
+      "phase": 1
+    },
+    {
+      "feature": "Integrate expression resolver into node execution flow",
+      "status": "done",
+      "phase": 1
+    },
+    {
+      "feature": "Add unit tests for expression resolver",
+      "status": "done",
+      "phase": 1
+    },
+    {
+      "feature": "Update Convex schema with variables field on routines",
+      "status": "done",
+      "phase": 2
+    },
+    {
+      "feature": "Add CRUD mutations for routine variables",
+      "status": "done",
+      "phase": 2
+    },
+    {
+      "feature": "Update routine editor UI to manage variables",
+      "status": "todo",
+      "phase": 2
+    },
+    {
+      "feature": "Pass routine variables to execution engine",
+      "status": "done",
+      "phase": 2
+    },
+    {
+      "feature": "Validate expressions at routine save time",
+      "status": "todo",
+      "phase": 3
+    },
+    {
+      "feature": "Check for undefined variable references",
+      "status": "todo",
+      "phase": 3
+    },
+    {
+      "feature": "Verify upstream node references are valid",
+      "status": "todo",
+      "phase": 3
+    },
+    {
+      "feature": "Display validation errors in UI",
+      "status": "todo",
+      "phase": 3
+    },
+    {
+      "feature": "Build variable management panel component",
+      "status": "todo",
+      "phase": 4
+    },
+    {
+      "feature": "Build expression input component with autocomplete",
+      "status": "todo",
+      "phase": 4
+    },
+    {
+      "feature": "Add syntax highlighting for expressions",
+      "status": "todo",
+      "phase": 4
+    },
+    {
+      "feature": "Preview resolved values in editor",
+      "status": "todo",
+      "phase": 4
+    },
+    {
+      "feature": "Support array indexing in paths",
+      "status": "done",
+      "phase": 5
+    },
+    {
+      "feature": "Add filter functions (json, uppercase, length)",
+      "status": "todo",
+      "phase": 5
+    },
+    {
+      "feature": "Support default values syntax",
+      "status": "todo",
+      "phase": 5
+    }
+  ]
+}
