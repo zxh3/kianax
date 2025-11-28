@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { motion } from "motion/react";
+import { IconLoader2, IconCheck, IconAlertTriangle } from "@tabler/icons-react";
 import {
   getPluginInputs,
   getPluginOutputs,
@@ -40,10 +41,9 @@ function PluginNode({ data, selected }: NodeProps) {
 
   // --- Styles ---
 
-  // Outer wrapper: Position relative for crosshairs, static border/shadow for shape
+  // Outer wrapper: Position relative for crosshairs
   const wrapperClasses = cn(
     "relative min-w-[280px] group rounded-xl transition-all duration-200",
-    // Hover effect on the card itself
     !selected && "hover:-translate-y-0.5",
   );
 
@@ -52,42 +52,25 @@ function PluginNode({ data, selected }: NodeProps) {
     "relative bg-card border border-border rounded-xl shadow-sm overflow-hidden h-full w-full",
   );
 
-  // Status Spine: Left colored bar
-  const statusSpineClasses = cn(
-    "absolute left-0 top-0 bottom-0 w-1.5 z-10",
-    nodeData.executionStatus === "running"
-      ? "bg-blue-500 animate-pulse"
-      : nodeData.executionStatus === "completed"
-        ? "bg-emerald-500"
-        : nodeData.executionStatus === "failed"
-          ? "bg-destructive"
-          : "bg-transparent border-r border-border/50", // Subtle border for pending
-  );
-
-  // Header: Dynamic background and border
+  // Header: Cleaner, subtle background
   const headerClasses = cn(
-    "flex items-center justify-between px-4 py-3 border-b pl-5", // Extra pl for spine
+    "relative flex items-center justify-between px-4 py-3",
+    // Very subtle tint for active states to differentiate slightly
     nodeData.executionStatus === "running"
-      ? "bg-blue-500/5 border-blue-500/10"
+      ? "bg-blue-500/[0.02]"
       : nodeData.executionStatus === "completed"
-        ? "bg-emerald-500/5 border-emerald-500/10"
+        ? "bg-emerald-500/[0.02]"
         : nodeData.executionStatus === "failed"
-          ? "bg-destructive/5 border-destructive/10"
-          : "bg-linear-to-b from-card to-muted/20 border-border",
+          ? "bg-destructive/[0.02]"
+          : "bg-linear-to-b from-card to-muted/20",
   );
 
-  // Icon Container: Dynamic accent
+  // Icon Container: Neutral/Branded
   const iconContainerClasses = cn(
     "flex items-center justify-center w-8 h-8 rounded-lg border shadow-sm transition-colors duration-200",
     selected
       ? "bg-primary/10 border-primary/20 text-primary"
-      : nodeData.executionStatus === "running"
-        ? "bg-blue-500/10 border-blue-500/20 text-blue-600"
-        : nodeData.executionStatus === "completed"
-          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
-          : nodeData.executionStatus === "failed"
-            ? "bg-destructive/10 border-destructive/20 text-destructive"
-            : "bg-background border-border text-muted-foreground",
+      : "bg-background border-border text-muted-foreground",
   );
 
   return (
@@ -123,9 +106,6 @@ function PluginNode({ data, selected }: NodeProps) {
       )}
 
       <div className={cardClasses}>
-        {/* Status Spine */}
-        <div className={statusSpineClasses} />
-
         {/* Header */}
         <div className={headerClasses}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -145,12 +125,45 @@ function PluginNode({ data, selected }: NodeProps) {
               </span>
             </div>
           </div>
+
+          {/* Status Badge (Top Right) */}
+          {nodeData.executionStatus === "running" && (
+            <IconLoader2 className="w-4 h-4 text-blue-500 animate-spin" />
+          )}
+          {nodeData.executionStatus === "completed" && (
+            <div className="rounded-full bg-emerald-500/10 p-1">
+              <IconCheck className="w-3 h-3 text-emerald-500" />
+            </div>
+          )}
+          {nodeData.executionStatus === "failed" && (
+            <div className="rounded-full bg-destructive/10 p-1">
+              <IconAlertTriangle className="w-3 h-3 text-destructive" />
+            </div>
+          )}
+
+          {/* Status Bar (Bottom of Header) */}
+          {nodeData.executionStatus === "running" ? (
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-linear-to-r from-blue-500 via-cyan-400 to-blue-500"
+              style={{ backgroundSize: "200% 100%" }}
+              animate={{ backgroundPosition: ["0% 0%", "200% 0%"] }}
+              transition={{
+                duration: 2,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "linear",
+              }}
+            />
+          ) : nodeData.executionStatus === "completed" ? (
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500" />
+          ) : nodeData.executionStatus === "failed" ? (
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-destructive" />
+          ) : (
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+          )}
         </div>
 
         {/* Body */}
-        <div className="p-0 pl-1.5">
-          {" "}
-          {/* Add pl to account for spine overlay if transparent, or just visual alignment */}
+        <div className="p-0">
           {inputPorts.length > 0 || outputPorts.length > 0 ? (
             <div className="flex flex-col py-3 gap-1">
               {Array.from({
