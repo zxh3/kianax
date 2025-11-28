@@ -44,7 +44,7 @@ export function CanvasControls({
     <>
       {/* Top Center - Mode Switcher */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-background/80 backdrop-blur-sm border rounded-full p-1 shadow-sm">
+        <div className="bg-background/80 backdrop-blur-sm shadow-sm">
           <ToggleGroup
             type="single"
             value={editorMode}
@@ -54,7 +54,7 @@ export function CanvasControls({
             <ToggleGroupItem
               value="visual"
               size="sm"
-              className="rounded-full px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              className="px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
             >
               <IconEye className="mr-1.5 size-3.5" />
               Visual
@@ -62,10 +62,10 @@ export function CanvasControls({
             <ToggleGroupItem
               value="json"
               size="sm"
-              className="rounded-full px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              className="px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
             >
-              <IconCode className="mr-1.5 size-3.5" />
               JSON
+              <IconCode className="ml-1.5 size-3.5" />
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
