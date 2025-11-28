@@ -192,8 +192,94 @@ function getVariableCompletions(
     }));
   }
 
-  // Deeper path - we don't know the structure, so no completions
+  // Deeper path - try to get nested object keys from the variable value
+  const varName = path[0];
+  const variable = variables.find((v) => v.name === varName);
+
+  if (!variable || variable.value === undefined || variable.value === null) {
+    return [];
+  }
+
+  // Navigate to the nested value
+  const nestedPath = path.slice(1);
+  const targetValue = getNestedValue(variable.value, nestedPath);
+
+  // If we found an object, return its keys as completions
+  if (targetValue !== undefined && isPlainObject(targetValue)) {
+    return Object.keys(targetValue).map((key) => ({
+      label: key,
+      type: "property",
+      detail: getValueType(targetValue[key]),
+      info: formatNestedPreview(targetValue[key]),
+      boost: 5,
+    }));
+  }
+
   return [];
+}
+
+/**
+ * Get a nested value from an object using a path array.
+ */
+function getNestedValue(obj: unknown, path: string[]): unknown {
+  // If path is empty or just has an empty string, we're at the target
+  if (path.length === 0 || (path.length === 1 && path[0] === "")) {
+    return obj;
+  }
+
+  // Navigate through the path
+  let current: unknown = obj;
+  for (const key of path) {
+    if (key === "") continue; // Skip empty parts (user is typing after a dot)
+    if (!isPlainObject(current)) return undefined;
+    current = (current as Record<string, unknown>)[key];
+    if (current === undefined) return undefined;
+  }
+
+  return current;
+}
+
+/**
+ * Check if a value is a plain object (not array, null, etc.)
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Get a short type label for a value.
+ */
+function getValueType(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "?";
+  if (Array.isArray(value)) return `arr[${value.length}]`;
+  if (typeof value === "object") return "obj";
+  if (typeof value === "string") return "str";
+  if (typeof value === "number") return "num";
+  if (typeof value === "boolean") return "bool";
+  return typeof value;
+}
+
+/**
+ * Format a nested value for preview in completion info.
+ */
+function formatNestedPreview(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (typeof value === "string") {
+    return value.length > 20 ? `"${value.slice(0, 17)}..."` : `"${value}"`;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return `Array(${value.length})`;
+  }
+  if (typeof value === "object") {
+    const keys = Object.keys(value);
+    return `{${keys.slice(0, 3).join(", ")}${keys.length > 3 ? ", ..." : ""}}`;
+  }
+  return String(value);
 }
 
 /**
