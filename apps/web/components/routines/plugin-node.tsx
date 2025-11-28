@@ -49,12 +49,12 @@ function PluginNode({ data, selected }: NodeProps) {
 
   // Inner Card: The actual visible node
   const cardClasses = cn(
-    "relative bg-card border border-border rounded-xl shadow-sm overflow-hidden h-full w-full",
+    "relative bg-card border border-border rounded-xl shadow-sm h-full w-full",
   );
 
   // Header: Cleaner, subtle background
   const headerClasses = cn(
-    "relative flex items-center justify-between px-4 py-3",
+    "relative flex items-center justify-between px-4 py-3 rounded-t-xl overflow-hidden",
     // Very subtle tint for active states
     nodeData.executionStatus === "running"
       ? "bg-status-running-bg border-status-running-border"
