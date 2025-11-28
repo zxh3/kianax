@@ -4,6 +4,7 @@ import { api } from "@kianax/server/convex/_generated/api";
 import { ConvexError } from "convex/values";
 import { Id } from "@kianax/server/convex/_generated/dataModel";
 
+// TODO: Fix this route for accessing additional scopes for plugins
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
