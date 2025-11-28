@@ -117,8 +117,9 @@ export const autocompleteTheme = EditorView.theme({
     border: "1px solid hsl(var(--border))",
     borderRadius: "calc(var(--radius) - 2px)",
     boxShadow:
-      "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+      "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
     overflow: "hidden",
+    zIndex: "50",
   },
 
   ".cm-tooltip-autocomplete": {
@@ -126,12 +127,17 @@ export const autocompleteTheme = EditorView.theme({
       fontFamily: "inherit",
       maxHeight: "300px",
       maxWidth: "400px",
+      padding: "4px",
+      margin: "0",
+      listStyle: "none",
     },
     "& > ul > li": {
-      padding: "6px 8px",
+      padding: "8px 12px",
       display: "flex",
       alignItems: "center",
       gap: "8px",
+      borderRadius: "calc(var(--radius) - 4px)",
+      cursor: "pointer",
     },
     "& > ul > li[aria-selected]": {
       backgroundColor: "hsl(var(--accent))",
@@ -142,15 +148,21 @@ export const autocompleteTheme = EditorView.theme({
   // Completion item parts
   ".cm-completionLabel": {
     flex: "1",
+    fontWeight: "500",
   },
   ".cm-completionDetail": {
     fontSize: "12px",
     color: "hsl(var(--muted-foreground))",
     marginLeft: "auto",
+    fontStyle: "italic",
   },
   ".cm-completionMatchedText": {
     fontWeight: "600",
     color: "hsl(var(--primary))",
+  },
+  // Hide the default completion icon
+  ".cm-completionIcon": {
+    display: "none",
   },
 });
 
