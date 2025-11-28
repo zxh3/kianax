@@ -149,7 +149,7 @@ function TreeContent({
   return (
     <div
       ref={containerRef}
-      className="p-1 max-h-80 overflow-y-auto outline-none focus:ring-2 focus:ring-ring focus:ring-inset"
+      className="p-1 max-h-80 overflow-y-auto outline-none"
       role="tree"
       tabIndex={0}
       onKeyDown={handleKeyDown}
