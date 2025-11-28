@@ -173,6 +173,10 @@ interface TreeNodeProps {
   draggable?: boolean;
   /** Called when drag starts */
   onDragStart?: (path: string, value: unknown) => void;
+  /** Currently focused path (for keyboard navigation) */
+  focusedPath?: string | null;
+  /** Called to update focused path */
+  onFocusPath?: (path: string) => void;
 }
 
 export function TreeNode({
@@ -182,6 +186,8 @@ export function TreeNode({
   onSelect,
   draggable = false,
   onDragStart,
+  focusedPath,
+  onFocusPath,
 }: TreeNodeProps) {
   const { isExpanded, toggleExpanded } = useTreeContext();
 
@@ -198,7 +204,12 @@ export function TreeNode({
   // Is this a leaf node (can be selected)?
   const isLeaf = !isExpandable;
 
+  // Is this node focused?
+  const isFocused = focusedPath === path;
+
   const handleClick = () => {
+    // Set focus when clicking
+    onFocusPath?.(path);
     if (isExpandable) {
       toggleExpanded(path);
     } else if (onSelect) {
@@ -224,6 +235,7 @@ export function TreeNode({
           "flex items-center gap-1 px-2 py-1 rounded-sm cursor-pointer",
           "hover:bg-accent/50 transition-colors",
           isLeaf && draggable && "cursor-grab active:cursor-grabbing",
+          isFocused && "bg-accent ring-1 ring-ring",
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
@@ -231,7 +243,7 @@ export function TreeNode({
         onDragStart={handleDragStart}
         role="treeitem"
         aria-expanded={isExpandable ? expanded : undefined}
-        aria-selected={false}
+        aria-selected={isFocused}
       >
         {/* Expand/collapse indicator */}
         <span className="w-4 h-4 flex items-center justify-center shrink-0">
@@ -290,6 +302,8 @@ export function TreeNode({
               onSelect={onSelect}
               draggable={draggable}
               onDragStart={onDragStart}
+              focusedPath={focusedPath}
+              onFocusPath={onFocusPath}
             />
           ))}
         </div>

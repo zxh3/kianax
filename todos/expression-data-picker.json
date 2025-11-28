@@ -5,53 +5,53 @@
   "phases": [
     {
       "name": "Phase 1: Basic Tree View",
-      "status": "in_progress",
+      "status": "completed",
       "tasks": [
         {
           "task": "Create file structure for expression-data-picker component",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Implement TreeNode component with expand/collapse",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Render CompletionItem tree recursively",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add type badges matching existing design",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add value preview (truncated inline, full on hover)",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Style to match shadcn/ui design system",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Create Storybook stories for tree view",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Git commit: Phase 1 complete",
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },
     {
       "name": "Phase 2: Selection & Interactivity",
-      "status": "pending",
+      "status": "in_progress",
       "tasks": [
         {
           "task": "Implement onSelect callback for leaf nodes",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Build path string from tree position",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add keyboard navigation (arrow keys)",
@@ -63,11 +63,11 @@
         },
         {
           "task": "Add hover tooltips with full values",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Update Storybook with interactive examples",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Git commit: Phase 2 complete",
@@ -81,7 +81,7 @@
       "tasks": [
         {
           "task": "Make leaf nodes draggable with HTML5 drag API",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Create drag preview showing path",
@@ -101,7 +101,7 @@
         },
         {
           "task": "Create Storybook story with drag & drop demo",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Git commit: Phase 3 complete",
@@ -119,11 +119,11 @@
         },
         {
           "task": "Add empty state UI",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add ARIA attributes for accessibility",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Performance optimization for large trees",
