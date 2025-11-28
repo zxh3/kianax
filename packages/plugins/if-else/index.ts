@@ -1,9 +1,8 @@
 /**
- * Conditional Branch Plugin
+ * Conditional Branch Plugin (Flow-Based)
  *
  * Routes execution flow based on condition evaluation.
- * Conditions are configured at design-time (part of workflow structure).
- * Only the value being tested flows at runtime.
+ * The value to test comes through config expression (e.g., {{ nodes.upstream.output }})
  *
  * Boolean Logic: OR of AND groups
  * - Each group's conditions are ANDed together
@@ -16,12 +15,6 @@
  * - Simple OR: [{ conditions: [cond1] }, { conditions: [cond2] }, { conditions: [cond3] }]
  * - Complex: [{ conditions: [cond1, cond2] }, { conditions: [cond3, cond4] }]
  *   → Evaluates as: (cond1 AND cond2) OR (cond3 AND cond4)
- *
- * Design principles:
- * - Conditions = workflow structure (design-time config)
- * - Value = runtime data (input)
- * - Errors route to false branch (graceful degradation)
- * - Visual editor can display configured conditions
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
@@ -169,8 +162,8 @@ export const ifElsePlugin = createPlugin("if-else")
   .withMetadata({
     name: "Conditional Branch",
     description:
-      "Routes execution based on configured conditions. Configure comparison logic at design-time; value flows at runtime.",
-    version: "2.1.1",
+      "Routes execution based on configured conditions. Value comes from config expression.",
+    version: "3.0.0",
     icon: "🔀",
     tags: ["logic"],
     author: {
@@ -178,14 +171,24 @@ export const ifElsePlugin = createPlugin("if-else")
       url: "https://kianax.com",
     },
   })
-  // Input: data flows into the node
-  .withInput("input", {
-    label: "Input",
-    description: "The data to test against configured conditions",
-    schema: z.unknown(),
-  })
-  // Control flow node: multiple output handles for routing (NO generic "output")
-  // The execution routes to either "true" or "false" based on condition evaluation
+  .withConfig(
+    z.object({
+      // Value to test (via expression: {{ nodes.upstream.output }})
+      value: z
+        .unknown()
+        .optional()
+        .describe("The value to test against conditions"),
+
+      // Condition groups (design-time config)
+      conditionGroups: z
+        .array(ConditionGroupSchema)
+        .min(1)
+        .describe(
+          "Condition groups (OR of AND groups). Each group's conditions are ANDed; groups are ORed together.",
+        ),
+    }),
+  )
+  // Control flow handles for routing
   .withOutputHandles([
     {
       name: "true",
@@ -208,26 +211,17 @@ export const ifElsePlugin = createPlugin("if-else")
     description: "Executed when conditions fail",
     schema: BranchOutputSchema,
   })
-  .withConfig(
-    z.object({
-      conditionGroups: z
-        .array(ConditionGroupSchema)
-        .min(1)
-        .describe(
-          "Condition groups (OR of AND groups). Each group's conditions are ANDed; groups are ORed together.",
-        ),
-    }),
-  )
   .withConfigUI(IfElseConfigUI)
-  .execute(async ({ inputs, config }) => {
-    const data = inputs.input;
+  .execute(async ({ config }) => {
+    // Value comes from config (resolved from expression)
+    const value = config.value;
 
     // Evaluate each group (conditions within a group are ANDed)
     const groupResults = config.conditionGroups.map((group) => {
       const conditionResults = group.conditions.map((condition) => {
         try {
           const passed = evaluateCondition(
-            data,
+            value,
             condition.operator,
             condition.compareValue,
           );
@@ -235,7 +229,7 @@ export const ifElsePlugin = createPlugin("if-else")
           return {
             operator: condition.operator,
             expected: condition.compareValue,
-            actual: data,
+            actual: value,
             passed,
           };
         } catch {
@@ -243,7 +237,7 @@ export const ifElsePlugin = createPlugin("if-else")
           return {
             operator: condition.operator,
             expected: condition.compareValue,
-            actual: data,
+            actual: value,
             passed: false,
           };
         }
@@ -263,7 +257,7 @@ export const ifElsePlugin = createPlugin("if-else")
 
     const output = {
       result: finalResult,
-      value: data,
+      value,
       groups: groupResults,
     };
 
