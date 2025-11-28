@@ -30,6 +30,7 @@ const sampleContext: ExpressionContext = {
   completions: [
     {
       name: "vars",
+      type: "obj",
       detail: "Variables",
       info: "Access routine-level variables",
       children: [
@@ -81,11 +82,13 @@ const sampleContext: ExpressionContext = {
     },
     {
       name: "nodes",
+      type: "obj",
       detail: "Node outputs",
       info: "Access outputs from upstream nodes",
       children: [
         {
           name: "http_1",
+          type: "obj",
           detail: "HTTP Request",
           value: {
             success: {
@@ -103,12 +106,13 @@ const sampleContext: ExpressionContext = {
             error: null,
           },
           children: [
-            { name: "success", detail: "output" },
-            { name: "error", detail: "output" },
+            { name: "success", type: "obj", detail: "output" },
+            { name: "error", type: "obj", detail: "output" },
           ],
         },
         {
           name: "transform_1",
+          type: "obj",
           detail: "Data Transform",
           value: {
             data: [
@@ -116,21 +120,23 @@ const sampleContext: ExpressionContext = {
               { processed: true, value: 200 },
             ],
           },
-          children: [{ name: "data", detail: "output" }],
+          children: [{ name: "data", type: "arr", detail: "output" }],
         },
         {
           name: "condition_1",
+          type: "obj",
           detail: "Condition Check",
           value: { result: true, branch: "success" },
           children: [
-            { name: "result", detail: "output" },
-            { name: "branch", detail: "output" },
+            { name: "result", type: "bool", detail: "output" },
+            { name: "branch", type: "str", detail: "output" },
           ],
         },
       ],
     },
     {
       name: "trigger",
+      type: "obj",
       detail: "Trigger data",
       info: "Access data from the routine trigger",
       value: {
@@ -144,6 +150,7 @@ const sampleContext: ExpressionContext = {
     },
     {
       name: "execution",
+      type: "obj",
       detail: "Execution context",
       info: "Access execution metadata",
       value: {
@@ -327,6 +334,7 @@ export const AllTypes: Story = {
       completions: [
         {
           name: "types",
+          type: "obj",
           detail: "Type examples",
           children: [
             { name: "stringValue", type: "str", value: "Hello, World!" },

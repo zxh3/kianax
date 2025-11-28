@@ -1,7 +1,21 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import type { CompletionItem } from "../expression-input";
+import type { CompletionItem, CompletionItemType } from "../expression-input";
+
+/**
+ * Infer the type of a value for CompletionItem
+ */
+function inferType(value: unknown): CompletionItemType {
+  if (value === null) return "null";
+  if (value === undefined) return "obj";
+  if (Array.isArray(value)) return "arr";
+  if (typeof value === "string") return "str";
+  if (typeof value === "number") return "num";
+  if (typeof value === "boolean") return "bool";
+  if (typeof value === "object") return "obj";
+  return "obj";
+}
 
 interface TreeNavigationOptions {
   /** Root completion items */
@@ -71,6 +85,7 @@ function getItemChildren(item: CompletionItem): CompletionItem[] {
     if (Array.isArray(item.value)) {
       return item.value.map((v, i) => ({
         name: String(i),
+        type: inferType(v),
         value: v,
       }));
     }
@@ -78,6 +93,7 @@ function getItemChildren(item: CompletionItem): CompletionItem[] {
       return Object.entries(item.value as Record<string, unknown>).map(
         ([key, val]) => ({
           name: key,
+          type: inferType(val),
           value: val,
         }),
       );
@@ -175,7 +191,7 @@ export function useTreeNavigation({
               // Move to first child
               const childIndex = visibleNodes.findIndex(
                 (n) =>
-                  n.path.startsWith(focusedNode.path + ".") &&
+                  n.path.startsWith(`${focusedNode.path}.`) &&
                   n.depth === focusedNode.depth + 1,
               );
               const childNode = visibleNodes[childIndex];
