@@ -1,0 +1,47 @@
+{
+  "feature": "routine-editor-redesign",
+  "description": "Refactor RoutineEditor to decouple execution visualization from initial load, add an interactive execution history panel, and improve code organization by extracting logic into custom hooks.",
+  "status": "completed",
+  "tasks": [
+    {
+      "task": "Architectural Planning: Design the new component structure and hook interfaces (useRoutineGraph, useRoutineExecution, useAutoSave).",
+      "status": "completed"
+    },
+    {
+      "task": "Refactor: Extract auto-save logic into a reusable `useAutoSave` hook.",
+      "status": "completed"
+    },
+    {
+      "task": "Refactor: Extract ReactFlow node/edge management into `useRoutineGraph` hook.",
+      "status": "completed"
+    },
+    {
+      "task": "Feature: Create `ExecutionHistoryPanel` component to list recent executions with status indicators and timestamps.",
+      "status": "completed"
+    },
+    {
+      "task": "Refactor: Extract execution management (running tests, fetching history, selecting active execution) into `useRoutineExecution` hook.",
+      "status": "completed"
+    },
+    {
+      "task": "Modification: Update `RoutineEditor` to stop automatically visualizing the latest execution on mount.",
+      "status": "completed"
+    },
+    {
+      "task": "Integration: Connect `ExecutionHistoryPanel` to the graph, allowing users to click an execution to visualize its state (overlay node statuses).",
+      "status": "completed"
+    },
+    {
+      "task": "UI/UX: Add a 'Live' vs 'History' mode indicator to the editor to clarify when the user is viewing a past run versus editing.",
+      "status": "completed"
+    },
+    {
+      "task": "Cleanup: Simplify the main `index.tsx` file by composing the new smaller components and hooks.",
+      "status": "completed"
+    },
+    {
+      "task": "UI/UX: Move top bar controls (Mode, Status, Run Test) to floating canvas controls for a cleaner interface.",
+      "status": "completed"
+    }
+  ]
+}
