@@ -124,8 +124,9 @@ export function NodeConfigDrawer({
         results[state.nodeId] = state.output;
       }
     }
+
     return Object.keys(results).length > 0 ? results : undefined;
-  }, [testExecution?.nodeStates]);
+  }, [testExecution]);
 
   // Merge execution results into expression context
   const enrichedContext = useMemo(() => {
@@ -336,7 +337,7 @@ export function NodeConfigDrawer({
               <ConfigComponent
                 value={localConfig}
                 onChange={handleConfigChange}
-                expressionContext={expressionContext}
+                expressionContext={enrichedContext}
               />
             ) : (
               <div className="text-sm text-muted-foreground py-8 text-center italic bg-muted/50 rounded-lg border border-dashed border-border">
