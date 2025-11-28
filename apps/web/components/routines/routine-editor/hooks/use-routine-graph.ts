@@ -263,8 +263,8 @@ export function useRoutineGraph({
               targetStatus === "failed");
 
           const newStroke = isFlowing
-            ? "var(--status-running)"
-            : "var(--muted-foreground)"; // Blueish vs Muted Foreground
+            ? "var(--primary)"
+            : "var(--muted-foreground)"; // Primary vs Muted Foreground
 
           if (edge.style?.stroke !== newStroke) {
             return {
