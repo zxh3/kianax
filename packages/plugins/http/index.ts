@@ -75,11 +75,23 @@ export const httpRequestPlugin = createPlugin("http-request")
     tags: ["action", "data-source"],
     icon: "🌐",
   })
-  .withInput("request", {
-    label: "Request",
+  .withInput("input", {
+    label: "Input",
     description: "HTTP request parameters (URL, method, headers, body, etc.)",
     schema: RequestInputSchema,
   })
+  .withOutputHandles([
+    {
+      name: "success",
+      label: "Success",
+      description: "Successful response (2xx status codes)",
+    },
+    {
+      name: "error",
+      label: "Error",
+      description: "Error response (4xx, 5xx, network errors, timeouts)",
+    },
+  ])
   .withOutput("success", {
     label: "Success",
     description: "Successful response (2xx status codes)",
@@ -118,7 +130,7 @@ export const httpRequestPlugin = createPlugin("http-request")
   )
   .withConfigUI(HttpRequestConfigUI)
   .execute(async ({ inputs, config }) => {
-    const { url: baseUrl, method, headers, body, queryParams } = inputs.request;
+    const { url: baseUrl, method, headers, body, queryParams } = inputs.input;
 
     try {
       // Build URL with query parameters

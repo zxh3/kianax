@@ -20,16 +20,16 @@ export const openaiMessagePlugin = createPlugin("openai-message")
     }),
   )
   .withConfigUI(OpenAIConfigUI)
-  .withInput("prompt", {
-    label: "Prompt",
+  .withInput("input", {
+    label: "Input",
     description: "The user message to send to the model.",
     schema: z.object({
       message: z.string(),
       systemPrompt: z.string().optional(),
     }),
   })
-  .withOutput("response", {
-    label: "Response",
+  .withOutput("output", {
+    label: "Output",
     description: "The generated text response.",
     schema: z.object({
       text: z.string(),
@@ -59,11 +59,11 @@ export const openaiMessagePlugin = createPlugin("openai-message")
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
-    if (inputs.prompt.systemPrompt) {
-      messages.push({ role: "system", content: inputs.prompt.systemPrompt });
+    if (inputs.input.systemPrompt) {
+      messages.push({ role: "system", content: inputs.input.systemPrompt });
     }
 
-    messages.push({ role: "user", content: inputs.prompt.message });
+    messages.push({ role: "user", content: inputs.input.message });
 
     const completion = await openai.chat.completions.create({
       model: config.model,
@@ -79,7 +79,7 @@ export const openaiMessagePlugin = createPlugin("openai-message")
     }
 
     return {
-      response: {
+      output: {
         text: choice.message.content || "",
         usage: completion.usage,
       },
