@@ -26,7 +26,7 @@
  * ```
  */
 
-import type { z } from "zod";
+import { z } from "zod";
 import type { ComponentType } from "react";
 import { Plugin } from "./types/plugin-base";
 import type {
@@ -34,9 +34,10 @@ import type {
   PluginPort,
   PluginContext,
   PluginConfigUIProps,
-  CredentialSchemasRecord, // New: from common.ts
-  InferCredentialsData, // New: from common.ts
-} from "./types/plugin-base"; // Note: PluginContext, PluginConfigUIProps are from plugin-base.ts, which exports common.ts
+  CredentialSchemasRecord,
+  InferCredentialsData,
+} from "./types/plugin-base";
+import type { OutputHandle } from "./types/common";
 import type { CredentialType } from "./types/credentials"; // Import CredentialType
 
 /**
@@ -78,6 +79,9 @@ interface PortSchemaMap {
   [portName: string]: z.ZodType;
 }
 
+// Re-export OutputHandle for convenience
+export type { OutputHandle } from "./types/common";
+
 /**
  * Plugin Builder with progressive type accumulation
  *
@@ -110,10 +114,14 @@ export class PluginBuilder<
   private _inputSchemas: Map<string, z.ZodType> = new Map();
   private _outputSchemas: Map<string, z.ZodType> = new Map();
   private _configSchema?: z.ZodType;
-  private _execute?: ExecuteFunction<any, any, any, any>; // Updated
-  private _configUI?: ComponentType<PluginConfigUIProps<any, any>>; // Updated
+  private _execute?: ExecuteFunction<any, any, any, any>;
+  private _configUI?: ComponentType<PluginConfigUIProps<any, any>>;
 
-  private _credentialSchemas: CredentialSchemasRecord = {}; // New: Store credential schemas for this plugin
+  private _credentialSchemas: CredentialSchemasRecord = {};
+
+  // Flow-based system additions
+  private _outputSchema?: z.ZodType; // Single output schema for flow-based plugins
+  private _outputHandles: OutputHandle[] = []; // Control flow handles
 
   constructor(id: string) {
     this._id = id;
@@ -161,6 +169,10 @@ export class PluginBuilder<
 
   /**
    * Add an output port with full type tracking
+   *
+   * @deprecated For new plugins, prefer withOutputSchema() for data output definition
+   * and withOutputHandles() for control flow routing. Port-based outputs are maintained
+   * for backwards compatibility but the flow-based system uses handles for routing.
    */
   withOutput<TName extends string, TSchema extends z.ZodType>(
     name: TName,
@@ -179,7 +191,129 @@ export class PluginBuilder<
       schema: port.schema,
     });
     this._outputSchemas.set(name, port.schema);
+
+    // Also register as an output handle for flow-based routing
+    if (!this._outputHandles.find((h) => h.name === name)) {
+      this._outputHandles.push({
+        name,
+        label: port.label,
+        description: port.description,
+      });
+    }
+
     return this as any;
+  }
+
+  /**
+   * Define the output schema for flow-based plugins
+   *
+   * In the flow-based system, plugins declare a single output schema that describes
+   * the shape of data they produce. This schema is used for:
+   * - Autocomplete in expression inputs (shows available fields)
+   * - Type validation at design time
+   * - Documentation generation
+   *
+   * @example
+   * ```typescript
+   * createPlugin("http-request")
+   *   .withOutputSchema(z.object({
+   *     status: z.number(),
+   *     data: z.unknown(),
+   *     headers: z.record(z.string())
+   *   }))
+   * ```
+   */
+  withOutputSchema<TSchema extends z.ZodType>(
+    schema: TSchema,
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas & Record<"output", TSchema>,
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
+    this._outputSchema = schema;
+
+    // Also register as a default "output" port for compatibility
+    this._outputs.set("output", {
+      name: "output",
+      label: "Output",
+      description: "Plugin output data",
+      schema: schema,
+    });
+    this._outputSchemas.set("output", schema);
+
+    return this as any;
+  }
+
+  /**
+   * Define output handles for control flow routing
+   *
+   * Control flow plugins (if-else, switch, try-catch) use handles to route
+   * execution to different paths. Each handle represents a possible execution
+   * path that downstream nodes can connect to.
+   *
+   * When a plugin returns data keyed by handle name (e.g., `{ true: data }`),
+   * only edges connected to that handle will be activated.
+   *
+   * @example
+   * ```typescript
+   * createPlugin("if-else")
+   *   .withOutputHandles([
+   *     { name: "true", label: "True", description: "Condition passed" },
+   *     { name: "false", label: "False", description: "Condition failed" }
+   *   ])
+   * ```
+   *
+   * @example
+   * ```typescript
+   * createPlugin("try-catch")
+   *   .withOutputHandles([
+   *     { name: "success", label: "Success", description: "Execution succeeded" },
+   *     { name: "error", label: "Error", description: "Execution failed" }
+   *   ])
+   * ```
+   */
+  withOutputHandles(
+    handles: OutputHandle[],
+  ): PluginBuilder<
+    TInputSchemas,
+    TOutputSchemas,
+    TConfig,
+    TCredentialSchemas,
+    TCredentialsData
+  > {
+    this._outputHandles = handles;
+
+    // Register handles as output ports for backwards compatibility with execution engine
+    for (const handle of handles) {
+      if (!this._outputs.has(handle.name)) {
+        this._outputs.set(handle.name, {
+          name: handle.name,
+          label: handle.label,
+          description: handle.description,
+          schema: z.unknown(), // Handles don't have specific schemas
+        });
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * Get the registered output handles
+   * Used internally for execution engine and UI
+   */
+  getOutputHandles(): OutputHandle[] {
+    return this._outputHandles;
+  }
+
+  /**
+   * Get the output schema (for flow-based plugins)
+   * Used internally for autocomplete and validation
+   */
+  getOutputSchema(): z.ZodType | undefined {
+    return this._outputSchema;
   }
 
   /**
@@ -340,15 +474,23 @@ export class PluginBuilder<
       throw new Error("At least one output is required (use .withOutput())");
     }
 
+    // Add output handles to metadata if any are defined
+    const metadata: PluginMetadata = {
+      ...(this._metadata as PluginMetadata),
+      outputHandles:
+        this._outputHandles.length > 0 ? this._outputHandles : undefined,
+    };
+
     // Create and return BuiltPlugin instance
     return new BuiltPlugin({
-      metadata: this._metadata as PluginMetadata,
+      metadata,
       inputs: this._inputs,
       outputs: this._outputs,
+      outputSchema: this._outputSchema,
       configSchema: this._configSchema,
       execute: this._execute as any, // Cast due to complex generic type matching
       configUI: this._configUI as any, // Cast
-      credentialSchemas: this._credentialSchemas, // Pass credential schemas for BuiltPlugin
+      credentialSchemas: this._credentialSchemas,
     });
   }
 }
@@ -368,18 +510,20 @@ class BuiltPlugin<
   private _metadata: PluginMetadata;
   private _inputs: Map<string, PluginPort>;
   private _outputs: Map<string, PluginPort>;
+  private _outputSchema?: z.ZodType; // Flow-based output schema
   private _configSchema?: z.ZodType;
-  private _execute: ExecuteFunction<any, any, any, TCredentialsData>; // Use TCredentialsData
-  private _configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>; // Use TCredentialsData
+  private _execute: ExecuteFunction<any, any, any, TCredentialsData>;
+  private _configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>;
 
   constructor(config: {
     metadata: PluginMetadata;
     inputs: Map<string, PluginPort>;
     outputs: Map<string, PluginPort>;
+    outputSchema?: z.ZodType;
     configSchema?: z.ZodType;
     execute: ExecuteFunction<any, any, any, TCredentialsData>;
     configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>;
-    credentialSchemas: CredentialSchemasRecord; // Receive schemas
+    credentialSchemas: CredentialSchemasRecord;
   }) {
     super();
 
@@ -388,9 +532,18 @@ class BuiltPlugin<
 
     this._inputs = config.inputs;
     this._outputs = config.outputs;
+    this._outputSchema = config.outputSchema;
     this._configSchema = config.configSchema;
     this._execute = config.execute;
     this._configUI = config.configUI;
+  }
+
+  /**
+   * Get the output schema for flow-based plugins
+   * Used for autocomplete and type validation
+   */
+  getOutputSchema(): z.ZodType | undefined {
+    return this._outputSchema;
   }
 
   /**

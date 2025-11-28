@@ -63,6 +63,21 @@ export interface PluginContext<
 }
 
 /**
+ * Output handle definition for control flow nodes
+ *
+ * Control flow nodes (if-else, switch, try-catch) use handles to route
+ * execution to different paths. Each handle represents a possible execution path.
+ */
+export interface OutputHandle {
+  /** Handle name (used in connections, e.g., "true", "false", "error") */
+  name: string;
+  /** Display label for UI */
+  label: string;
+  /** Description for documentation */
+  description?: string;
+}
+
+/**
  * Plugin metadata (static properties)
  */
 export interface PluginMetadata {
@@ -96,6 +111,14 @@ export interface PluginMetadata {
    * Defines which Credential Types this plugin needs.
    */
   credentialRequirements?: CredentialRequest[];
+
+  /**
+   * Output handles for control flow routing (flow-based system)
+   *
+   * Control flow plugins define handles that determine which execution
+   * path is taken based on the plugin's output.
+   */
+  outputHandles?: OutputHandle[];
 
   /** JSON Schema exports for UI/documentation (optional, usually generated) */
   inputSchemaJson?: Record<string, unknown>;
