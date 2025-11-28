@@ -215,6 +215,7 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
   ) {
     const [isFocused, setIsFocused] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isExpressionDragActive, setIsExpressionDragActive] = useState(false);
     const [preview, setPreview] = useState<PreviewResult | null>(null);
     const [isResolvingPreview, setIsResolvingPreview] = useState(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -222,6 +223,37 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
     const handleDragOverChange = useCallback((isOver: boolean) => {
       setIsDragOver(isOver);
     }, []);
+
+    // Listen for global expression drag events to highlight all drop targets
+    useEffect(() => {
+      if (!acceptDrop) return;
+
+      const handleDragStart = (e: DragEvent) => {
+        // Check if this is an expression path drag
+        if (e.dataTransfer?.types.includes("application/x-expression-path")) {
+          setIsExpressionDragActive(true);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setIsExpressionDragActive(false);
+      };
+
+      // Also handle drop to clear state (in case dragend doesn't fire)
+      const handleDrop = () => {
+        setIsExpressionDragActive(false);
+      };
+
+      document.addEventListener("dragstart", handleDragStart);
+      document.addEventListener("dragend", handleDragEnd);
+      document.addEventListener("drop", handleDrop);
+
+      return () => {
+        document.removeEventListener("dragstart", handleDragStart);
+        document.removeEventListener("dragend", handleDragEnd);
+        document.removeEventListener("drop", handleDrop);
+      };
+    }, [acceptDrop]);
 
     const handleFocus = useCallback(() => {
       setIsFocused(true);
@@ -293,9 +325,18 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       "dark:bg-input/30",
 
       // Focus state
-      isFocused && ["border-ring", "ring-ring/50", "ring-[3px]"],
+      isFocused &&
+        !isExpressionDragActive && [
+          "border-ring",
+          "ring-ring/50",
+          "ring-[3px]",
+        ],
 
-      // Drag-over state (highlight as drop target with dotted border)
+      // Drag active state (show all potential drop targets with dotted border)
+      isExpressionDragActive &&
+        !isDragOver && ["border-primary/50", "border-dashed", "border-2"],
+
+      // Drag-over state (actively hovering - stronger highlight)
       isDragOver && [
         "border-primary",
         "border-dashed",

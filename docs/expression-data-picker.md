@@ -128,8 +128,9 @@ interface ExpressionInputProps {
 
 ### Drop Target States (ExpressionInput)
 - **Default**: Normal input appearance
-- **Drag Over**: Dashed primary border, light primary background, visible cursor at drop position
-- **Drop Complete**: Expression inserted, returns to default state
+- **Drag Active**: When ANY expression drag starts, ALL inputs with `acceptDrop=true` show dashed border (semi-transparent primary) to indicate they are valid drop targets
+- **Drag Over**: When hovering over a specific input, shows stronger highlight (solid primary border, background tint, visible cursor at insertion point)
+- **Drop Complete**: Expression inserted, all inputs return to default state
 
 ### Type Badges
 | Type | Color | Label |
