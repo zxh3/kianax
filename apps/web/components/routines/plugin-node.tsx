@@ -55,13 +55,13 @@ function PluginNode({ data, selected }: NodeProps) {
   // Header: Cleaner, subtle background
   const headerClasses = cn(
     "relative flex items-center justify-between px-4 py-3",
-    // Very subtle tint for active states to differentiate slightly
+    // Very subtle tint for active states
     nodeData.executionStatus === "running"
-      ? "bg-blue-500/[0.02]"
+      ? "bg-status-running-bg border-status-running-border"
       : nodeData.executionStatus === "completed"
-        ? "bg-emerald-500/[0.02]"
+        ? "bg-status-completed-bg border-status-completed-border"
         : nodeData.executionStatus === "failed"
-          ? "bg-destructive/[0.02]"
+          ? "bg-status-failed-bg border-status-failed-border"
           : "bg-linear-to-b from-card to-muted/20",
   );
 
@@ -128,23 +128,23 @@ function PluginNode({ data, selected }: NodeProps) {
 
           {/* Status Badge (Top Right) */}
           {nodeData.executionStatus === "running" && (
-            <IconLoader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <IconLoader2 className="w-4 h-4 text-status-running animate-spin" />
           )}
           {nodeData.executionStatus === "completed" && (
-            <div className="rounded-full bg-emerald-500/10 p-1">
-              <IconCheck className="w-3 h-3 text-emerald-500" />
+            <div className="rounded-full bg-status-completed-bg p-1">
+              <IconCheck className="w-3 h-3 text-status-completed" />
             </div>
           )}
           {nodeData.executionStatus === "failed" && (
-            <div className="rounded-full bg-destructive/10 p-1">
-              <IconAlertTriangle className="w-3 h-3 text-destructive" />
+            <div className="rounded-full bg-status-failed-bg p-1">
+              <IconAlertTriangle className="w-3 h-3 text-status-failed" />
             </div>
           )}
 
           {/* Status Bar (Bottom of Header) */}
           {nodeData.executionStatus === "running" ? (
             <motion.div
-              className="absolute bottom-0 left-0 right-0 h-[2px] bg-linear-to-r from-blue-500 via-cyan-400 to-blue-500"
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-linear-to-r from-status-running via-cyan-400 to-status-running"
               style={{ backgroundSize: "200% 100%" }}
               animate={{ backgroundPosition: ["0% 0%", "200% 0%"] }}
               transition={{
@@ -154,9 +154,9 @@ function PluginNode({ data, selected }: NodeProps) {
               }}
             />
           ) : nodeData.executionStatus === "completed" ? (
-            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500" />
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-status-completed" />
           ) : nodeData.executionStatus === "failed" ? (
-            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-destructive" />
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-status-failed" />
           ) : (
             <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
           )}
