@@ -14,7 +14,7 @@ import { EditorView } from "@codemirror/view";
 export const shadcnBaseTheme = EditorView.theme({
   // Root container
   "&": {
-    fontSize: "14px",
+    fontSize: "12px", // text-xs
     backgroundColor: "transparent",
     width: "100%",
     maxWidth: "100%",
@@ -31,7 +31,7 @@ export const shadcnBaseTheme = EditorView.theme({
     fontFamily: "inherit",
     caretColor: "var(--foreground)",
     whiteSpace: "pre-wrap",
-    wordBreak: "break-all",
+    overflowWrap: "anywhere",
   },
 
   // Individual lines
@@ -76,21 +76,21 @@ export const shadcnBaseTheme = EditorView.theme({
 
 /**
  * Single-line input theme.
- * Styled to match shadcn/ui Input component.
+ * Styled to match shadcn/ui Input component but allows text wrapping.
  */
 export const singleLineTheme = EditorView.theme({
   "&": {
-    height: "36px", // h-9 = 36px
+    minHeight: "36px", // h-9 = 36px
   },
   "& .cm-scroller": {
-    overflow: "hidden",
-    alignItems: "center", // Override CodeMirror's flex-start default
+    // overflow: "hidden", // Removed to allow scrolling/wrapping if needed
+    // alignItems: "center", // Removed to allow multiline alignment
   },
   ".cm-content": {
-    padding: "0 12px", // Only horizontal padding, vertical centering via flex
+    padding: "8px 12px", // py-2 px-3, same as multiline for consistency when wrapping
   },
   ".cm-line": {
-    lineHeight: "31.5px",
+    // lineHeight: "31.5px", // Removed fixed line height
   },
 });
 
