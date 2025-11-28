@@ -1,25 +1,13 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@kianax/server/convex/_generated/api";
+import { useCallback, useState, useEffect } from "react";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge,
   type Node,
-  type Edge,
-  type NodeChange,
-  type EdgeChange,
-  type Connection,
-  type OnConnect,
-  type OnNodesChange,
-  type OnEdgesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import PluginNode, { type PluginNodeData } from "../plugin-node";
@@ -31,16 +19,15 @@ import { Toolbar } from "./toolbar";
 import { NodeSelector } from "./sidebar";
 import { VariablesPanel, type RoutineVariable } from "./variables-panel";
 import { ValidationPanel } from "./validation-panel";
-import { TopBar } from "./topbar";
+import { CanvasControls } from "./canvas-controls";
 import { useTheme } from "next-themes";
 import { getPluginMetadata } from "@/lib/plugins";
-import type {
-  RoutineEditorProps,
-  RoutineNode,
-  RoutineConnection,
-  EditorMode,
-} from "./types";
+import type { RoutineEditorProps, EditorMode } from "./types";
 import { ExpressionContextProvider } from "./expression-context";
+import { useAutoSave } from "./hooks/use-auto-save";
+import { useRoutineGraph } from "./hooks/use-routine-graph";
+import { useRoutineExecution } from "./hooks/use-routine-execution";
+import { ExecutionHistoryDrawer } from "../execution-history-drawer";
 
 const nodeTypes = {
   pluginNode: PluginNode,
@@ -56,7 +43,7 @@ export function RoutineEditor({
   onTest,
 }: RoutineEditorProps) {
   const { theme } = useTheme();
-  // State definitions
+
   const [nodeSelectorOpen, setNodeSelectorOpen] = useState(false);
   const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<"select" | "hand" | null>(
@@ -68,137 +55,80 @@ export function RoutineEditor({
   const [configuringNodeId, setConfiguringNodeId] = useState<string | null>(
     null,
   );
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationPanelDismissed, setValidationPanelDismissed] =
     useState(false);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
 
   // Variables state
   const [variables, setVariables] =
     useState<RoutineVariable[]>(initialVariables);
 
-  // Test Execution State
-  const [testWorkflowId, setTestWorkflowId] = useState<string | null>(null);
-  const [testPanelOpen, setTestPanelOpen] = useState(false);
-  const [isStartingTest, setIsStartingTest] = useState(false);
-  const [resultDrawerOpen, setResultDrawerOpen] = useState(false);
-  const [selectedResultNodeId, setSelectedResultNodeId] = useState<
-    string | null
-  >(null);
+  // --- Hooks ---
 
-  // Auto-save timer ref
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleConfigureNode = useCallback((nodeId: string) => {
+    setConfiguringNodeId(nodeId);
+    setConfigDrawerOpen(true);
+  }, []);
 
-  // Track if we've initialized to prevent re-initialization on prop changes
-  const isInitializedRef = useRef(false);
-
-  // Fetch execution status if a test is running/open
-  const testExecutionByWorkflow = useQuery(
-    api.executions.getByWorkflowId,
-    testWorkflowId ? { workflowId: testWorkflowId } : "skip",
-  );
-
-  // Also fetch the latest execution for this routine (persists across page refreshes)
-  const latestExecutions = useQuery(api.executions.getByRoutine, {
-    routineId,
-    limit: 1,
+  const {
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    addNode,
+    updateNodeConfig,
+    updateNodeExecutionStatus,
+    setNodesSelection,
+    getRoutineData,
+    convertFromReactFlowNodes,
+    convertFromReactFlowEdges,
+    convertToReactFlowNodes,
+    convertToReactFlowEdges,
+  } = useRoutineGraph({
+    initialNodes,
+    initialConnections,
+    onConfigureNode: handleConfigureNode,
   });
-  const latestExecution = latestExecutions?.[0];
 
-  // Prefer active test execution, fall back to latest execution
-  const testExecution = testExecutionByWorkflow ?? latestExecution;
+  const {
+    setTestPanelOpen,
+    isStartingTest,
+    resultDrawerOpen,
+    setResultDrawerOpen,
+    selectedResultNodeId,
+    setSelectedResultNodeId,
+    handleRunTest,
+    activeExecution,
+    nodeStatusMap,
+    viewingExecutionId,
+    setViewingExecutionId,
+  } = useRoutineExecution({
+    routineId,
+    getRoutineData,
+    variables,
+    onSave,
+    onTest,
+  });
 
-  // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const { hasUnsavedChanges, triggerAutoSave } = useAutoSave({
+    nodes,
+    edges,
+    variables,
+    onSave,
+    convertFromReactFlowNodes,
+    convertFromReactFlowEdges,
+  });
 
-  // Refs to track latest nodes, edges, and variables for auto-save
-  const nodesRef = useRef<Node[]>([]);
-  const edgesRef = useRef<Edge[]>([]);
-  const variablesRef = useRef<RoutineVariable[]>([]);
+  // --- Effects ---
 
-  // Update refs whenever nodes, edges, or variables change
+  // Sync node status from execution
   useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
+    updateNodeExecutionStatus(nodeStatusMap);
+  }, [nodeStatusMap, updateNodeExecutionStatus]);
 
-  useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
-
-  useEffect(() => {
-    variablesRef.current = variables;
-  }, [variables]);
-
-  // Update nodes with execution status
-  useEffect(() => {
-    if (!testExecution || !testExecution.nodeStates) return;
-
-    // Create a map of node status
-    // If multiple executions for a node (loop), take the latest or "running" one
-    const nodeStatusMap = new Map<
-      string,
-      "running" | "completed" | "failed" | "pending"
-    >();
-
-    testExecution.nodeStates.forEach((state: any) => {
-      nodeStatusMap.set(state.nodeId, state.status);
-    });
-
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        const status = nodeStatusMap.get(node.id);
-        // Only update if status changed to avoid unnecessary renders?
-        // React state updates should be referentially stable if possible.
-        // Here we create new object only if executionStatus is different.
-        const currentStatus = (node.data as any).executionStatus;
-        if (status !== currentStatus) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              executionStatus: status,
-            },
-          };
-        }
-        return node;
-      }),
-    );
-  }, [testExecution]);
-
-  const handleRunTest = async () => {
-    setIsStartingTest(true);
-    try {
-      // 1. Save first (optional but recommended to sync backend)
-      // Assuming handleSave logic is reused or we trust current state is saved?
-      // Let's auto-save for safety.
-      const routineNodes = convertFromReactFlowNodes(nodes);
-      const routineConnections = convertFromReactFlowEdges(edges);
-      await onSave(routineNodes, routineConnections, variables);
-
-      // 2. Trigger execution via API
-      const response = await fetch(`/api/workflows/${routineId}/execute`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to start workflow");
-      }
-
-      const data = await response.json();
-      setTestWorkflowId(data.workflowId);
-      setTestPanelOpen(true);
-      toast.success("Test run started");
-
-      // Call prop onTest if provided (for parent callbacks)
-      if (onTest) onTest();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to start test run");
-      console.error(error);
-    } finally {
-      setIsStartingTest(false);
-    }
-  };
   // Reset validation panel dismissed state when errors change
   useEffect(() => {
     if (validationErrors.length > 0) {
@@ -206,151 +136,18 @@ export function RoutineEditor({
     }
   }, [validationErrors]);
 
-  // Handler for clicking on a node in the validation panel
-  const handleValidationNodeClick = useCallback((nodeId: string) => {
-    // Select the node by updating its selection state
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        selected: node.id === nodeId,
-      })),
-    );
-    // Optionally open the config drawer for the node
-    setConfiguringNodeId(nodeId);
-    setConfigDrawerOpen(true);
-  }, []);
-
-  // Handler for opening node configuration
-  const handleConfigureNode = useCallback((nodeId: string) => {
-    setConfiguringNodeId(nodeId);
-    setConfigDrawerOpen(true);
-  }, []);
-
-  // Handler for node click - opens the result drawer if in test mode
-  // Otherwise, clicking the node body just selects it (default React Flow behavior)
-  // Configuration is now opened exclusively via the gear icon on the node
-  const onNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      if (testPanelOpen) {
-        setSelectedResultNodeId(node.id);
-        setResultDrawerOpen(true);
-        setConfigDrawerOpen(false);
-      }
-    },
-    [testPanelOpen],
-  );
-
-  // Convert routine nodes to React Flow nodes
-  const convertToReactFlowNodes = useCallback(
-    (routineNodes: RoutineNode[]): Node[] => {
-      return routineNodes.map((node) => ({
-        id: node.id,
-        type: "pluginNode",
-        position: node.position,
-        data: {
-          label: node.label,
-          pluginId: node.pluginId,
-          onConfigure: handleConfigureNode,
-          config: node.config,
-          credentialMappings: node.credentialMappings,
-        },
-      }));
-    },
-    [handleConfigureNode],
-  );
-
-  // Convert routine connections to React Flow edges
-  const convertToReactFlowEdges = useCallback(
-    (routineConnections: RoutineConnection[]): Edge[] => {
-      return routineConnections.map((conn) => ({
-        id: conn.id,
-        source: conn.sourceNodeId,
-        target: conn.targetNodeId,
-        sourceHandle: conn.sourceHandle,
-        targetHandle: conn.targetHandle,
-        animated: true,
-        style: {
-          strokeWidth: 2,
-          strokeDasharray: "5 5",
-          stroke:
-            conn.sourceHandle === "true" || conn.sourceHandle === "success"
-              ? "#10b981"
-              : conn.sourceHandle === "false" || conn.sourceHandle === "error"
-                ? "#ef4444"
-                : "#94a3b8",
-        },
-      }));
-    },
-    [],
-  );
-
-  // Convert React Flow nodes back to routine nodes
-  const convertFromReactFlowNodes = useCallback(
-    (reactFlowNodes: Node[]): RoutineNode[] => {
-      return reactFlowNodes.map((node) => {
-        const data = node.data as PluginNodeData & {
-          config?: Record<string, unknown>;
-        };
-        return {
-          id: node.id,
-          pluginId: data.pluginId,
-          label: data.label,
-          position: node.position,
-          config: data.config,
-          credentialMappings: data.credentialMappings,
-        };
-      });
-    },
-    [],
-  );
-
-  // Convert React Flow edges back to routine connections
-  const convertFromReactFlowEdges = useCallback(
-    (reactFlowEdges: Edge[]): RoutineConnection[] => {
-      return reactFlowEdges.map((edge) => ({
-        id: edge.id,
-        sourceNodeId: edge.source,
-        targetNodeId: edge.target,
-        sourceHandle: edge.sourceHandle || undefined,
-        targetHandle: edge.targetHandle || undefined,
-      }));
-    },
-    [],
-  );
-
-  // Initialize nodes and edges only once on mount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: We intentionally want this to run only once on mount to prevent position flipping
+  // Sync JSON when switching to JSON mode
   useEffect(() => {
-    if (!isInitializedRef.current) {
-      setNodes(convertToReactFlowNodes(initialNodes));
-      setEdges(convertToReactFlowEdges(initialConnections));
-      isInitializedRef.current = true;
+    if (editorMode === "json") {
+      const { nodes: rNodes, connections: rConns } = getRoutineData();
+      setJsonValue(
+        JSON.stringify({ nodes: rNodes, connections: rConns }, null, 2),
+      );
     }
-  }, []);
+  }, [editorMode, getRoutineData]);
 
-  // Auto-save function with debounce
-  const triggerAutoSave = useCallback(() => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
+  // --- Handlers ---
 
-    setHasUnsavedChanges(true);
-
-    autoSaveTimerRef.current = setTimeout(async () => {
-      try {
-        // Use refs to get the latest values
-        const routineNodes = convertFromReactFlowNodes(nodesRef.current);
-        const routineConnections = convertFromReactFlowEdges(edgesRef.current);
-        await onSave(routineNodes, routineConnections, variablesRef.current);
-        setHasUnsavedChanges(false);
-      } catch (error) {
-        console.error("Auto-save failed:", error);
-        setHasUnsavedChanges(false);
-      }
-    }, 1000); // 1 second debounce
-  }, [convertFromReactFlowNodes, convertFromReactFlowEdges, onSave]);
-
-  // Handle variables change - triggers auto-save
   const handleVariablesChange = useCallback(
     (newVariables: RoutineVariable[]) => {
       setVariables(newVariables);
@@ -358,168 +155,6 @@ export function RoutineEditor({
     },
     [triggerAutoSave],
   );
-
-  // Cleanup auto-save timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, []);
-
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setNodes((nds) => applyNodeChanges(changes, nds));
-
-      // Only trigger auto-save for meaningful changes (not just selection or dimension changes)
-      const shouldSave = changes.some((change) => {
-        if (change.type === "remove") {
-          return true;
-        }
-        // Only save position changes when dragging is done
-        if (change.type === "position" && change.dragging === false) {
-          return true;
-        }
-        return false;
-      });
-
-      if (shouldSave) {
-        triggerAutoSave();
-      }
-    },
-    [triggerAutoSave],
-  );
-
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      setEdges((eds) => applyEdgeChanges(changes, eds));
-
-      // Only trigger auto-save for meaningful changes
-      const shouldSave = changes.some((change) => change.type === "remove");
-
-      if (shouldSave) {
-        triggerAutoSave();
-      }
-    },
-    [triggerAutoSave],
-  );
-
-  const onConnect: OnConnect = useCallback(
-    (connection: Connection) => {
-      // Customize edge based on connection
-      const newEdge: Edge = {
-        ...connection,
-        id: `${connection.source}-${connection.target}-${Date.now()}`,
-        animated: true,
-        style: {
-          strokeWidth: 2,
-          strokeDasharray: "5 5",
-          stroke:
-            connection.sourceHandle === "true" ||
-            connection.sourceHandle === "success"
-              ? "#10b981"
-              : connection.sourceHandle === "false" ||
-                  connection.sourceHandle === "error"
-                ? "#ef4444"
-                : "#94a3b8",
-        },
-        label: connection.sourceHandle || undefined,
-        labelStyle: {
-          fill: "#64748b",
-          fontWeight: 600,
-          fontSize: 11,
-        },
-        labelBgStyle: {
-          fill: "#ffffff",
-          fillOpacity: 0.9,
-          stroke: "#e2e8f0",
-          strokeWidth: 1,
-        },
-        labelBgPadding: [8, 4] as [number, number],
-        labelBgBorderRadius: 8,
-      };
-
-      setEdges((eds) => addEdge(newEdge, eds));
-      triggerAutoSave();
-    },
-    [triggerAutoSave],
-  );
-
-  const handleSaveNodeConfig = useCallback(
-    (
-      nodeId: string,
-      config: Record<string, unknown>,
-      label: string,
-      credentialMappings?: Record<string, string>,
-    ) => {
-      setNodes((nds) =>
-        nds.map((node) =>
-          node.id === nodeId
-            ? {
-                ...node,
-                data: { ...node.data, config, label, credentialMappings },
-              }
-            : node,
-        ),
-      );
-      triggerAutoSave();
-    },
-    [triggerAutoSave],
-  );
-
-  const handleAddNode = useCallback(
-    (pluginId: string, pluginName: string) => {
-      // Calculate better position (spread nodes horizontally)
-      const existingNodes = nodes;
-      const columnWidth = 300;
-      const rowHeight = 150;
-      const maxNodesPerRow = 3;
-
-      const nodeIndex = existingNodes.length;
-      const row = Math.floor(nodeIndex / maxNodesPerRow);
-      const col = nodeIndex % maxNodesPerRow;
-
-      const newNode: Node = {
-        id: `node-${Date.now()}`,
-        type: "pluginNode",
-        position: {
-          x: col * columnWidth + 100,
-          y: row * rowHeight + 100,
-        },
-        data: {
-          label: pluginName,
-          pluginId,
-          onConfigure: handleConfigureNode,
-        },
-      };
-
-      setNodes((nds) => [...nds, newNode]);
-      triggerAutoSave();
-    },
-    [nodes, handleConfigureNode, triggerAutoSave],
-  );
-
-  // Sync JSON when switching to JSON mode
-  useEffect(() => {
-    if (editorMode === "json") {
-      const routineNodes = convertFromReactFlowNodes(nodes);
-      const routineConnections = convertFromReactFlowEdges(edges);
-      setJsonValue(
-        JSON.stringify(
-          { nodes: routineNodes, connections: routineConnections },
-          null,
-          2,
-        ),
-      );
-    }
-  }, [
-    editorMode,
-    nodes,
-    edges,
-    convertFromReactFlowEdges,
-    convertFromReactFlowNodes,
-  ]);
 
   const handleApplyJson = () => {
     try {
@@ -531,10 +166,13 @@ export function RoutineEditor({
         throw new Error("Invalid JSON: 'connections' array is required");
       }
 
+      // We manually update nodes/edges via setters from hook
+      // Note: We need to convert them first using the converters from hook
       setNodes(convertToReactFlowNodes(parsed.nodes));
       setEdges(convertToReactFlowEdges(parsed.connections));
       setEditorMode("visual");
       toast.success("JSON applied successfully");
+      triggerAutoSave();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Invalid JSON format";
@@ -542,12 +180,46 @@ export function RoutineEditor({
     }
   };
 
-  const configuringNode = nodes.find((n) => n.id === configuringNodeId);
+  const handleValidationNodeClick = useCallback(
+    (nodeId: string) => {
+      setNodesSelection(nodeId);
+      setConfiguringNodeId(nodeId);
+      setConfigDrawerOpen(true);
+    },
+    [setNodesSelection],
+  );
 
+  const onNodeClick = useCallback(
+    (_: unknown, node: Node) => {
+      // If we are viewing an execution (test ran or selected from history)
+      if (viewingExecutionId) {
+        setSelectedResultNodeId(node.id);
+        setResultDrawerOpen(true);
+        setConfigDrawerOpen(false);
+      }
+    },
+    [viewingExecutionId, setSelectedResultNodeId, setResultDrawerOpen],
+  );
+
+  const handleSaveNodeConfig = useCallback(
+    (
+      nodeId: string,
+      config: Record<string, unknown>,
+      label: string,
+      credentialMappings?: Record<string, string>,
+    ) => {
+      updateNodeConfig(nodeId, config, label, credentialMappings);
+      triggerAutoSave();
+    },
+    [updateNodeConfig, triggerAutoSave],
+  );
+
+  const configuringNode = nodes.find((n) => n.id === configuringNodeId);
   const selectedResultNode = nodes.find((n) => n.id === selectedResultNodeId);
+
   let selectedNodeExecutionState = null;
-  if (testExecution?.nodeStates && selectedResultNodeId) {
-    const states = testExecution.nodeStates.filter(
+  if (activeExecution?.nodeStates && selectedResultNodeId) {
+    const states = activeExecution.nodeStates.filter(
       (s: any) => s.nodeId === selectedResultNodeId,
     );
     if (states.length > 0) {
@@ -564,157 +236,194 @@ export function RoutineEditor({
       edges={edges}
       variables={variables}
     >
-      <div className="flex h-full w-full flex-col">
-        {/* Top Toolbar */}
-        <TopBar
+      <div className="relative h-full w-full">
+        {/* Canvas Controls (Floating) */}
+        <CanvasControls
           editorMode={editorMode}
           onEditorModeChange={setEditorMode}
           hasUnsavedChanges={hasUnsavedChanges}
           isStartingTest={isStartingTest}
           onRunTest={handleRunTest}
           onApplyJson={editorMode === "json" ? handleApplyJson : undefined}
+          onToggleHistory={() => setHistoryDrawerOpen(true)}
+          viewingExecutionId={viewingExecutionId}
+          onExitViewingMode={() => {
+            setViewingExecutionId(null);
+            setTestPanelOpen(false);
+            setResultDrawerOpen(false);
+          }}
         />
 
-        {/* Canvas / Editor Area */}
-        <div className="relative flex-1">
-          {editorMode === "visual" ? (
-            <>
-              {/* Floating Toolbar */}
-              <Toolbar
-                activeTool={activeTool}
-                onToolChange={setActiveTool}
-                onAddNode={() => setNodeSelectorOpen(true)}
-                onToggleVariables={() => setVariablesPanelOpen((prev) => !prev)}
-                variablesPanelOpen={variablesPanelOpen}
+        {editorMode === "visual" ? (
+          <>
+            {/* Floating Toolbar */}
+            <Toolbar
+              activeTool={activeTool}
+              onToolChange={setActiveTool}
+              onAddNode={() => setNodeSelectorOpen(true)}
+              onToggleVariables={() => setVariablesPanelOpen((prev) => !prev)}
+              variablesPanelOpen={variablesPanelOpen}
+            />
+
+            {/* Node Selector */}
+            <NodeSelector
+              isOpen={nodeSelectorOpen}
+              onClose={() => setNodeSelectorOpen(false)}
+              onAddNode={(pluginId, name) => {
+                addNode(pluginId, name);
+                triggerAutoSave();
+              }}
+            />
+
+            {/* Variables Panel */}
+            <VariablesPanel
+              isOpen={variablesPanelOpen}
+              onClose={() => setVariablesPanelOpen(false)}
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
+            />
+
+            {/* Validation Panel */}
+            {!validationPanelDismissed && (
+              <ValidationPanel
+                errors={validationErrors}
+                onClose={() => setValidationPanelDismissed(true)}
+                onNodeClick={handleValidationNodeClick}
               />
+            )}
 
-              {/* Node Selector */}
-              <NodeSelector
-                isOpen={nodeSelectorOpen}
-                onClose={() => setNodeSelectorOpen(false)}
-                onAddNode={handleAddNode}
+            <ReactFlow
+              colorMode={theme === "dark" ? "dark" : "light"}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={(changes) => {
+                onNodesChange(changes);
+                // Trigger auto-save for meaningful changes (remove, or position drag end)
+                const shouldSave = changes.some((change) => {
+                  if (change.type === "remove") return true;
+                  if (change.type === "position" && change.dragging === false)
+                    return true;
+                  return false;
+                });
+                if (shouldSave) triggerAutoSave();
+              }}
+              onEdgesChange={(changes) => {
+                onEdgesChange(changes);
+                // Trigger auto-save for meaningful changes (remove)
+                const shouldSave = changes.some(
+                  (change) => change.type === "remove",
+                );
+                if (shouldSave) triggerAutoSave();
+              }}
+              onConnect={(conn) => {
+                onConnect(conn);
+                triggerAutoSave();
+              }}
+              onNodeClick={onNodeClick}
+              nodeTypes={nodeTypes}
+              fitView={false}
+              className="bg-background"
+              deleteKeyCode={["Delete", "Backspace"]}
+              panOnDrag={activeTool === "hand" ? true : [1, 2]}
+              selectionOnDrag={activeTool === "select"}
+              panOnScroll={activeTool === "hand"}
+              selectionKeyCode={null}
+              multiSelectionKeyCode="Shift"
+              connectionLineStyle={{
+                stroke: "#6366f1",
+                strokeWidth: 2,
+                strokeDasharray: "5 5",
+              }}
+            >
+              <Background variant={BackgroundVariant.Dots} gap={30} size={1} />
+              <Controls
+                position="bottom-left"
+                showZoom={true}
+                showFitView={true}
+                showInteractive={false}
+                style={{ left: 16, bottom: 16 }}
               />
-
-              {/* Variables Panel */}
-              <VariablesPanel
-                isOpen={variablesPanelOpen}
-                onClose={() => setVariablesPanelOpen(false)}
-                variables={variables}
-                onVariablesChange={handleVariablesChange}
+              <MiniMap
+                nodeColor="#64748b"
+                nodeStrokeColor="#94a3b8"
+                nodeBorderRadius={2}
+                maskColor="rgba(100, 116, 139, 0.2)"
+                position="bottom-right"
+                style={{ right: 16, bottom: 16 }}
               />
+            </ReactFlow>
 
-              {/* Validation Panel - shows expression errors */}
-              {!validationPanelDismissed && (
-                <ValidationPanel
-                  errors={validationErrors}
-                  onClose={() => setValidationPanelDismissed(true)}
-                  onNodeClick={handleValidationNodeClick}
-                />
-              )}
-
-              <ReactFlow
-                colorMode={theme === "dark" ? "dark" : "light"}
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onNodeClick={onNodeClick}
-                nodeTypes={nodeTypes}
-                fitView={false}
-                className="bg-background"
-                deleteKeyCode={["Delete", "Backspace"]}
-                panOnDrag={activeTool === "hand" ? true : [1, 2]}
-                selectionOnDrag={activeTool === "select"}
-                panOnScroll={activeTool === "hand"}
-                selectionKeyCode={null}
-                multiSelectionKeyCode="Shift"
-                connectionLineStyle={{
-                  stroke: "#6366f1",
-                  strokeWidth: 2,
-                  strokeDasharray: "5 5",
+            {/* Node Configuration Drawer */}
+            {configuringNode && (
+              <NodeConfigDrawer
+                key={configuringNode.id}
+                isOpen={configDrawerOpen}
+                onClose={() => {
+                  setConfigDrawerOpen(false);
+                  setConfiguringNodeId(null);
                 }}
-              >
-                <Background
-                  variant={BackgroundVariant.Dots}
-                  gap={30}
-                  size={1}
-                />
-                <Controls
-                  position="bottom-left"
-                  showZoom={true}
-                  showFitView={true}
-                  showInteractive={false}
-                  style={{ left: 16, bottom: 16 }}
-                />
-                <MiniMap
-                  nodeColor="#64748b"
-                  nodeStrokeColor="#94a3b8"
-                  nodeBorderRadius={2}
-                  maskColor="rgba(100, 116, 139, 0.2)"
-                  position="bottom-right"
-                  style={{ right: 16, bottom: 16 }}
-                />
-              </ReactFlow>
-
-              {/* Node Configuration Drawer (Always right-aligned) */}
-              {configuringNode && (
-                <NodeConfigDrawer
-                  key={configuringNode.id}
-                  isOpen={configDrawerOpen}
-                  onClose={() => {
-                    setConfigDrawerOpen(false);
-                    setConfiguringNodeId(null);
-                  }}
-                  nodeId={configuringNode.id}
-                  pluginId={(configuringNode.data as PluginNodeData).pluginId}
-                  pluginName={
-                    getPluginMetadata(
-                      (configuringNode.data as PluginNodeData).pluginId,
-                    )?.name || "Plugin"
-                  }
-                  nodeLabel={(configuringNode.data as PluginNodeData).label}
-                  config={
-                    (
-                      configuringNode.data as PluginNodeData & {
-                        config?: Record<string, unknown>;
-                      }
-                    ).config
-                  }
-                  credentialMappings={
-                    (configuringNode.data as PluginNodeData).credentialMappings
-                  }
-                  onSave={handleSaveNodeConfig}
-                  testExecution={testExecution}
-                />
-              )}
-
-              {/* Test Result Drawer (Shifts left if config is open) */}
-              {selectedResultNode && (
-                <TestResultDrawer
-                  isOpen={resultDrawerOpen}
-                  onClose={() => {
-                    setResultDrawerOpen(false);
-                    setSelectedResultNodeId(null);
-                  }}
-                  nodeId={selectedResultNode.id}
-                  nodeLabel={(selectedResultNode.data as PluginNodeData).label}
-                  executionState={selectedNodeExecutionState}
-                  className={resultDrawerStyle}
-                />
-              )}
-            </>
-          ) : (
-            <div className="h-full p-4">
-              <Textarea
-                value={jsonValue}
-                onChange={(e) => setJsonValue(e.target.value)}
-                className="h-full font-mono text-sm"
-                placeholder="Edit workflow JSON here..."
+                nodeId={configuringNode.id}
+                pluginId={(configuringNode.data as PluginNodeData).pluginId}
+                pluginName={
+                  getPluginMetadata(
+                    (configuringNode.data as PluginNodeData).pluginId,
+                  )?.name || "Plugin"
+                }
+                nodeLabel={(configuringNode.data as PluginNodeData).label}
+                config={
+                  (
+                    configuringNode.data as PluginNodeData & {
+                      config?: Record<string, unknown>;
+                    }
+                  ).config
+                }
+                credentialMappings={
+                  (configuringNode.data as PluginNodeData).credentialMappings
+                }
+                onSave={handleSaveNodeConfig}
+                testExecution={activeExecution}
               />
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Test Result Drawer */}
+            {selectedResultNode && (
+              <TestResultDrawer
+                isOpen={resultDrawerOpen}
+                onClose={() => {
+                  setResultDrawerOpen(false);
+                  setSelectedResultNodeId(null);
+                }}
+                nodeId={selectedResultNode.id}
+                nodeLabel={(selectedResultNode.data as PluginNodeData).label}
+                executionState={selectedNodeExecutionState}
+                className={resultDrawerStyle}
+              />
+            )}
+
+            {/* Execution History Drawer */}
+            <ExecutionHistoryDrawer
+              open={historyDrawerOpen}
+              onOpenChange={setHistoryDrawerOpen}
+              routineId={routineId}
+              routineName="Routine History"
+              onSelectExecution={(execId) => {
+                setViewingExecutionId(execId);
+              }}
+              activeExecutionId={viewingExecutionId}
+            />
+          </>
+        ) : (
+          <div className="h-full p-4 pt-16">
+            {" "}
+            {/* Add padding top for controls */}
+            <Textarea
+              value={jsonValue}
+              onChange={(e) => setJsonValue(e.target.value)}
+              className="h-full font-mono text-sm"
+              placeholder="Edit workflow JSON here..."
+            />
+          </div>
+        )}
       </div>
     </ExpressionContextProvider>
   );
