@@ -16,6 +16,9 @@ export const shadcnBaseTheme = EditorView.theme({
   "&": {
     fontSize: "14px",
     backgroundColor: "transparent",
+    width: "100%",
+    maxWidth: "100%",
+    overflow: "hidden",
   },
 
   // Focused state - matches input focus ring
@@ -27,6 +30,8 @@ export const shadcnBaseTheme = EditorView.theme({
   ".cm-content": {
     fontFamily: "inherit",
     caretColor: "var(--foreground)",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
   },
 
   // Individual lines
@@ -59,6 +64,7 @@ export const shadcnBaseTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "inherit",
     lineHeight: "1.5",
+    maxWidth: "100%",
   },
 
   // Placeholder text

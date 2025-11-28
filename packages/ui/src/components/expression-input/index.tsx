@@ -326,8 +326,8 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
 
     // Build container classes matching shadcn/ui input/textarea styling
     const containerClasses = cn(
-      // Base styles
-      "w-full rounded-md border bg-transparent shadow-xs transition-[color,box-shadow]",
+      // Base styles - relative + overflow-clip ensures content is clipped
+      "relative w-full rounded-md border bg-transparent shadow-xs transition-[color,box-shadow] overflow-clip",
 
       // Single-line vs multi-line
       multiline ? "min-h-16" : "h-9",
