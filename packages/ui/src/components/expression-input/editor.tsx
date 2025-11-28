@@ -231,6 +231,9 @@ export function Editor({
       // Theme
       ...getExpressionInputTheme(multiline),
 
+      // Wrapping
+      EditorView.lineWrapping,
+
       // Placeholder
       ...(placeholder ? [placeholderExt(placeholder)] : []),
 
