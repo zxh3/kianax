@@ -13,12 +13,14 @@ import {
 } from "@kianax/ui/components/select";
 import { getPluginConfigComponent, getPluginMetadata } from "@kianax/plugins";
 import { ScrollArea } from "@kianax/ui/components/scroll-area";
-import { IconX, IconKey } from "@tabler/icons-react";
+import { IconX, IconKey, IconDatabase } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery } from "convex/react";
 import { api } from "@kianax/server/convex/_generated/api";
 import Link from "next/link";
 import { useOptionalNodeExpressionContext } from "./routine-editor/expression-context";
+import { ExpressionDataPicker } from "@kianax/ui/components/expression-data-picker";
+import { buildExpressionContext } from "@kianax/ui/components/expression-input";
 
 interface NodeConfigDrawerProps {
   isOpen: boolean;
@@ -89,6 +91,17 @@ export function NodeConfigDrawer({
   // Returns undefined if not within ExpressionContextProvider
   const expressionContext = useOptionalNodeExpressionContext(nodeId);
 
+  // Convert domain-specific context to generic tree format for data picker
+  const uiContext = buildExpressionContext(expressionContext);
+
+  // Check if we have any data to show in the picker
+  const hasExpressionData =
+    expressionContext &&
+    ((expressionContext.variables && expressionContext.variables.length > 0) ||
+      (expressionContext.upstreamNodes &&
+        expressionContext.upstreamNodes.length > 0) ||
+      expressionContext.hasTrigger);
+
   const handleSave = () => {
     onSave(nodeId, localConfig, localLabel, localCredentialMappings);
     toast.success("Configuration saved");
@@ -100,9 +113,12 @@ export function NodeConfigDrawer({
 
   if (!isOpen) return null;
 
+  // Use wider layout if we have expression data to show
+  const drawerWidth = hasExpressionData ? "w-[640px]" : "w-96";
+
   return (
     <div
-      className={`absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 contain-[paint] ${
+      className={`absolute top-2 right-2 bottom-2 ${drawerWidth} bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 contain-[paint] ${
         className || ""
       }`}
     >
@@ -124,116 +140,150 @@ export function NodeConfigDrawer({
         </Button>
       </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1 min-h-0 w-full min-w-0">
-        <div className="p-4 space-y-6 w-full min-w-0 overflow-hidden">
-          {/* Node Label Section */}
-          <div className="space-y-2">
-            <Label htmlFor="node-label" className="text-sm font-medium">
-              Node Label
-            </Label>
-            <Input
-              id={nodeLabelInputId}
-              value={localLabel}
-              onChange={(e) => setLocalLabel(e.target.value)}
-              placeholder="Enter node name..."
-              className="font-medium"
-            />
-            <p className="text-xs text-muted-foreground">
-              Give this node a descriptive name to identify it in your routine.
-            </p>
+      {/* Split Panel Content */}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {/* Left Panel: Data Browser (only shown when we have expression data) */}
+        {hasExpressionData && uiContext && (
+          <div className="w-56 border-r border-border flex flex-col min-h-0 bg-muted/20">
+            <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+              <IconDatabase className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">
+                Data Browser
+              </span>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-2">
+              <ExpressionDataPicker
+                context={uiContext}
+                draggable
+                showSearch
+                searchPlaceholder="Search..."
+                maxHeight={9999}
+                className="border-0 bg-transparent"
+              />
+            </div>
+            <div className="px-3 py-2 border-t border-border">
+              <p className="text-[10px] text-muted-foreground/70 leading-tight">
+                Drag items to expression fields or click to copy
+              </p>
+            </div>
           </div>
+        )}
 
-          {/* Credential Selection Section */}
-          {requirements.length > 0 && (
-            <div className="border-t border-border pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <IconKey className="size-4" />
-                  Credentials
-                </h4>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs"
-                  asChild
-                >
-                  <Link href="/dashboard/settings/credentials" target="_blank">
-                    Manage
-                  </Link>
-                </Button>
-              </div>
-              <div className="space-y-4">
-                {requirements.map((req) => {
-                  const key = req.alias || req.id;
-                  // Filter user credentials that match the required type ID
-                  const compatibleCredentials =
-                    userCredentials?.filter((c) => c.typeId === req.id) || [];
+        {/* Right Panel: Config Form */}
+        <ScrollArea className="flex-1 min-h-0 w-full min-w-0">
+          <div className="p-4 space-y-6 w-full min-w-0 overflow-hidden">
+            {/* Node Label Section */}
+            <div className="space-y-2">
+              <Label htmlFor="node-label" className="text-sm font-medium">
+                Node Label
+              </Label>
+              <Input
+                id={nodeLabelInputId}
+                value={localLabel}
+                onChange={(e) => setLocalLabel(e.target.value)}
+                placeholder="Enter node name..."
+                className="font-medium"
+              />
+              <p className="text-xs text-muted-foreground">
+                Give this node a descriptive name to identify it in your
+                routine.
+              </p>
+            </div>
 
-                  return (
-                    <div key={key} className="space-y-2">
-                      <Label className="text-xs font-medium flex gap-1">
-                        {req.alias || req.id}
-                        {req.required !== false && (
-                          <span className="text-destructive">*</span>
-                        )}
-                      </Label>
-                      <Select
-                        value={localCredentialMappings[key] || ""}
-                        onValueChange={(value) =>
-                          setLocalCredentialMappings((prev) => ({
-                            ...prev,
-                            [key]: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select credential..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {compatibleCredentials.length > 0 ? (
-                            compatibleCredentials.map((cred) => (
-                              <SelectItem key={cred._id} value={cred._id}>
-                                {cred.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="p-2 text-xs text-muted-foreground text-center">
-                              No compatible credentials found.
-                            </div>
+            {/* Credential Selection Section */}
+            {requirements.length > 0 && (
+              <div className="border-t border-border pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <IconKey className="size-4" />
+                    Credentials
+                  </h4>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    asChild
+                  >
+                    <Link
+                      href="/dashboard/settings/credentials"
+                      target="_blank"
+                    >
+                      Manage
+                    </Link>
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {requirements.map((req) => {
+                    const key = req.alias || req.id;
+                    // Filter user credentials that match the required type ID
+                    const compatibleCredentials =
+                      userCredentials?.filter((c) => c.typeId === req.id) || [];
+
+                    return (
+                      <div key={key} className="space-y-2">
+                        <Label className="text-xs font-medium flex gap-1">
+                          {req.alias || req.id}
+                          {req.required !== false && (
+                            <span className="text-destructive">*</span>
                           )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  );
-                })}
+                        </Label>
+                        <Select
+                          value={localCredentialMappings[key] || ""}
+                          onValueChange={(value) =>
+                            setLocalCredentialMappings((prev) => ({
+                              ...prev,
+                              [key]: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select credential..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compatibleCredentials.length > 0 ? (
+                              compatibleCredentials.map((cred) => (
+                                <SelectItem key={cred._id} value={cred._id}>
+                                  {cred.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <div className="p-2 text-xs text-muted-foreground text-center">
+                                No compatible credentials found.
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Divider */}
-          {ConfigComponent && (
-            <div className="border-t border-border pt-6">
-              <h4 className="text-sm font-semibold text-foreground mb-4">
-                Plugin Configuration
-              </h4>
-            </div>
-          )}
+            {/* Divider */}
+            {ConfigComponent && (
+              <div className="border-t border-border pt-6">
+                <h4 className="text-sm font-semibold text-foreground mb-4">
+                  Plugin Configuration
+                </h4>
+              </div>
+            )}
 
-          {/* Plugin Config */}
-          {ConfigComponent ? (
-            <ConfigComponent
-              value={localConfig}
-              onChange={handleConfigChange}
-              expressionContext={expressionContext}
-            />
-          ) : (
-            <div className="text-sm text-muted-foreground py-8 text-center italic bg-muted/50 rounded-lg border border-dashed border-border">
-              This plugin has no configuration options.
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            {/* Plugin Config */}
+            {ConfigComponent ? (
+              <ConfigComponent
+                value={localConfig}
+                onChange={handleConfigChange}
+                expressionContext={expressionContext}
+              />
+            ) : (
+              <div className="text-sm text-muted-foreground py-8 text-center italic bg-muted/50 rounded-lg border border-dashed border-border">
+                This plugin has no configuration options.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
