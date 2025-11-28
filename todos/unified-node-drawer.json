@@ -1,0 +1,31 @@
+{
+  "feature": "unified-node-drawer",
+  "description": "Unify the floating Node Config and Test Result drawers into a single, resizable sidebar within the Visual Editor.",
+  "status": "completed",
+  "tasks": [
+    {
+      "task": "Create `NodeInspector` component in `apps/web/components/routines/routine-editor/node-inspector.tsx` that supports Tabs (Configuration, Results).",
+      "status": "completed"
+    },
+    {
+      "task": "Refactor `VisualEditor` to use `ResizablePanelGroup` from `@kianax/ui` for a split-pane layout (Canvas | Sidebar).",
+      "status": "completed"
+    },
+    {
+      "task": "Migrate `NodeConfigDrawer` logic (forms, inputs, credential selection) into `NodeInspector`.",
+      "status": "completed"
+    },
+    {
+      "task": "Migrate `TestResultDrawer` logic (status badges, output JSON, error display) into `NodeInspector`.",
+      "status": "completed"
+    },
+    {
+      "task": "Update `VisualEditor` state management to control the sidebar visibility based on `configuringNodeId` or `selectedResultNodeId`.",
+      "status": "completed"
+    },
+    {
+      "task": "Remove the obsolete `NodeConfigDrawer` and `TestResultDrawer` components.",
+      "status": "completed"
+    }
+  ]
+}
