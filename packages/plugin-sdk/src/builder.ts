@@ -492,6 +492,17 @@ export class PluginBuilder<
       throw new Error("At least one output is required (use .withOutput())");
     }
 
+    // Auto-register a default "input" handle if no input was explicitly defined
+    // This ensures all nodes have an input connection point for the UI
+    if (this._inputs.size === 0) {
+      this._inputs.set("input", {
+        name: "input",
+        label: "Input",
+        description: "Node input (connects from upstream nodes)",
+        schema: z.unknown(),
+      });
+    }
+
     // Add output handles to metadata if any are defined
     const metadata: PluginMetadata = {
       ...(this._metadata as PluginMetadata),
