@@ -26,13 +26,13 @@ export const staticDataPlugin = createPlugin("static-data")
     tags: ["data-source"],
     icon: "📌",
   })
-  .withInput("data", {
-    label: "Data",
-    description: "The static data input",
+  .withInput("input", {
+    label: "Input",
+    description: "Input data (optional, static data comes from config)",
     schema: z.unknown(),
   })
-  .withOutput("data", {
-    label: "Data",
+  .withOutput("output", {
+    label: "Output",
     description: "The static data output",
     schema: z.unknown(),
   })
@@ -47,7 +47,7 @@ export const staticDataPlugin = createPlugin("static-data")
   .execute(async ({ config }) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return {
-      data: config.data,
+      output: config.data,
     };
   })
   .build();

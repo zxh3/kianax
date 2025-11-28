@@ -19,16 +19,16 @@ export const googleSheetsPlugin = createPlugin("google-sheets")
     }),
   )
   .withConfigUI(GoogleSheetsConfigUI)
-  .withInput("data", {
-    label: "Data",
+  .withInput("input", {
+    label: "Input",
     description:
       "Data to write/append (for write operations). Array of values.",
     schema: z.object({
       values: z.array(z.any()).optional(),
     }),
   })
-  .withOutput("result", {
-    label: "Result",
+  .withOutput("output", {
+    label: "Output",
     schema: z.object({
       values: z.array(z.array(z.any())).optional(),
       updatedRange: z.string().optional(),
@@ -55,7 +55,7 @@ export const googleSheetsPlugin = createPlugin("google-sheets")
       url = `${baseUrl}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`;
       method = "POST";
       body = JSON.stringify({
-        values: [inputs.data.values || []],
+        values: [inputs.input.values || []],
       });
     } else if (operation === "clear") {
       url = `${baseUrl}/${spreadsheetId}/values/${range}:clear`;
@@ -80,19 +80,19 @@ export const googleSheetsPlugin = createPlugin("google-sheets")
 
     if (operation === "read") {
       return {
-        result: {
+        output: {
           values: result.values || [],
         },
       };
     } else if (operation === "append") {
       return {
-        result: {
+        output: {
           updatedRange: result.updates?.updatedRange,
           updatedRows: result.updates?.updatedRows,
         },
       };
     }
 
-    return { result: {} };
+    return { output: {} };
   })
   .build();

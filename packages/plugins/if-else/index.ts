@@ -179,8 +179,8 @@ export const ifElsePlugin = createPlugin("if-else")
     },
   })
   // Input: data flows into the node
-  .withInput("data", {
-    label: "Data",
+  .withInput("input", {
+    label: "Input",
     description: "The data to test against configured conditions",
     schema: z.unknown(),
   })
@@ -220,7 +220,7 @@ export const ifElsePlugin = createPlugin("if-else")
   )
   .withConfigUI(IfElseConfigUI)
   .execute(async ({ inputs, config }) => {
-    const data = inputs.data;
+    const data = inputs.input;
 
     // Evaluate each group (conditions within a group are ANDed)
     const groupResults = config.conditionGroups.map((group) => {
