@@ -26,7 +26,7 @@ export const shadcnBaseTheme = EditorView.theme({
   // Content area
   ".cm-content": {
     fontFamily: "inherit",
-    caretColor: "hsl(var(--foreground))",
+    caretColor: "var(--foreground)",
   },
 
   // Individual lines
@@ -36,13 +36,13 @@ export const shadcnBaseTheme = EditorView.theme({
 
   // Cursor
   ".cm-cursor": {
-    borderLeftColor: "hsl(var(--foreground))",
+    borderLeftColor: "var(--foreground)",
     borderLeftWidth: "2px",
   },
 
   // Selection
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-    backgroundColor: "hsl(var(--primary) / 0.2)",
+    backgroundColor: "oklch(from var(--primary) l c h / 0.2)",
   },
 
   // Active line highlight (subtle)
@@ -63,7 +63,7 @@ export const shadcnBaseTheme = EditorView.theme({
 
   // Placeholder text
   ".cm-placeholder": {
-    color: "hsl(var(--muted-foreground))",
+    color: "var(--muted-foreground)",
     fontStyle: "normal",
   },
 });
@@ -112,12 +112,12 @@ export const multiLineTheme = EditorView.theme({
  */
 export const autocompleteTheme = EditorView.theme({
   ".cm-tooltip": {
-    backgroundColor: "hsl(var(--popover))",
-    color: "hsl(var(--popover-foreground))",
-    border: "1px solid hsl(var(--border))",
-    borderRadius: "calc(var(--radius) - 2px)",
+    backgroundColor: "var(--popover)",
+    color: "var(--popover-foreground)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius)",
     boxShadow:
-      "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+      "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
     overflow: "hidden",
     zIndex: "50",
   },
@@ -130,6 +130,7 @@ export const autocompleteTheme = EditorView.theme({
       padding: "4px",
       margin: "0",
       listStyle: "none",
+      backgroundColor: "var(--popover)",
     },
     "& > ul > li": {
       padding: "8px 12px",
@@ -140,8 +141,8 @@ export const autocompleteTheme = EditorView.theme({
       cursor: "pointer",
     },
     "& > ul > li[aria-selected]": {
-      backgroundColor: "hsl(var(--accent))",
-      color: "hsl(var(--accent-foreground))",
+      backgroundColor: "var(--accent)",
+      color: "var(--accent-foreground)",
     },
   },
 
@@ -152,13 +153,13 @@ export const autocompleteTheme = EditorView.theme({
   },
   ".cm-completionDetail": {
     fontSize: "12px",
-    color: "hsl(var(--muted-foreground))",
+    color: "var(--muted-foreground)",
     marginLeft: "auto",
     fontStyle: "italic",
   },
   ".cm-completionMatchedText": {
     fontWeight: "600",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
   },
   // Hide the default completion icon
   ".cm-completionIcon": {
