@@ -305,6 +305,10 @@ async function executeNodeWithActivity(
 /**
  * Gather inputs for a node from upstream nodes
  * Converts from PortData[] back to Record<string, unknown>
+ *
+ * Flow-based routing:
+ * - If edge has sourceHandle: get data from that specific handle
+ * - If edge has no sourceHandle: get ALL data from source node
  */
 function gatherNodeInputs(
   nodeId: string,
@@ -319,15 +323,31 @@ function gatherNodeInputs(
     const portDataArray = state.nodeOutputs.get(edge.sourceNodeId);
 
     if (portDataArray) {
-      // Find the specific port
-      const portData = portDataArray.find(
-        (p) => p.portName === edge.sourcePort,
-      );
+      // Get the handle (prefer sourceHandle, fallback to sourcePort for backwards compat)
+      const handle = edge.sourceHandle ?? edge.sourcePort;
 
-      if (portData?.items && portData.items.length > 0 && portData.items[0]) {
-        // For now, take the first item's data
-        // TODO: Handle multiple items (n8n-style batch processing)
-        inputs[edge.targetPort] = portData.items[0].data;
+      // Determine target port name (prefer targetHandle, fallback to targetPort, then "input")
+      const targetPortName = edge.targetHandle ?? edge.targetPort ?? "input";
+
+      if (handle) {
+        // Handle-based: get specific port
+        const portData = portDataArray.find((p) => p.portName === handle);
+
+        if (portData?.items && portData.items.length > 0 && portData.items[0]) {
+          inputs[targetPortName] = portData.items[0].data;
+        }
+      } else {
+        // Flow-based: get first available data from source
+        for (const portData of portDataArray) {
+          if (
+            portData.items &&
+            portData.items.length > 0 &&
+            portData.items[0]
+          ) {
+            inputs[targetPortName] = portData.items[0].data;
+            break; // Take first available data
+          }
+        }
       }
     }
   }

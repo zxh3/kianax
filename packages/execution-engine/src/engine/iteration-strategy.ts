@@ -142,6 +142,11 @@ export class BFSIterationStrategy implements IterationStrategy {
 
   /**
    * Find nodes that are ready to execute (all dependencies satisfied)
+   *
+   * Flow-based routing:
+   * - If edge has sourceHandle: check if that specific handle has output
+   * - If edge has no sourceHandle: check if source node has ANY output
+   * - Legacy: sourcePort is treated as sourceHandle for backwards compatibility
    */
   private findReadyNodes(
     queue: string[],
@@ -151,25 +156,39 @@ export class BFSIterationStrategy implements IterationStrategy {
     return queue.filter((nodeId) => {
       const incomingEdges = graph.edgesByTarget.get(nodeId) || [];
 
-      // All dependencies must have executed at least once and have output
+      // All dependencies must have executed and produced the required output
       return incomingEdges.every((edge) => {
         const sourceResult = state.getNodeResult(edge.sourceNodeId);
         if (!sourceResult || sourceResult.status === "error") {
           return false;
         }
 
-        // Check if the specific output port has data
-        const hasPortOutput = sourceResult.outputs.some(
-          (p) => p.portName === edge.sourcePort && p.items.length > 0,
-        );
+        // Get the handle (prefer sourceHandle, fallback to sourcePort for backwards compat)
+        const handle = edge.sourceHandle ?? edge.sourcePort;
 
-        return hasPortOutput;
+        if (handle) {
+          // Handle-based routing: check if specific handle has output
+          const hasHandleOutput = sourceResult.outputs.some(
+            (p) => p.portName === handle && p.items.length > 0,
+          );
+          return hasHandleOutput;
+        } else {
+          // Flow-based routing: any output from source node activates edge
+          const hasAnyOutput = sourceResult.outputs.some(
+            (p) => p.items.length > 0,
+          );
+          return hasAnyOutput;
+        }
       });
     });
   }
 
   /**
    * Determine which nodes should be executed next based on current results
+   *
+   * Flow-based routing:
+   * - If edge has sourceHandle: only follow if that handle has output
+   * - If edge has no sourceHandle: follow if ANY output was produced
    */
   private determineNextNodes(
     executedNodes: string[],
@@ -185,17 +204,25 @@ export class BFSIterationStrategy implements IterationStrategy {
       const outgoingEdges = graph.edgesBySource.get(nodeId) || [];
 
       for (const edge of outgoingEdges) {
-        // Check if this output port produced data
-        const portOutput = result.outputs.find(
-          (p) => p.portName === edge.sourcePort,
-        );
+        // Get the handle (prefer sourceHandle, fallback to sourcePort for backwards compat)
+        const handle = edge.sourceHandle ?? edge.sourcePort;
 
-        if (!portOutput || portOutput.items.length === 0) {
-          continue; // No data on this port
+        let shouldFollow = false;
+
+        if (handle) {
+          // Handle-based routing: only follow if specific handle has output
+          const portOutput = result.outputs.find((p) => p.portName === handle);
+          shouldFollow =
+            portOutput !== undefined && portOutput.items.length > 0;
+        } else {
+          // Flow-based routing: follow if ANY output was produced
+          shouldFollow = result.outputs.some((p) => p.items.length > 0);
         }
 
-        // Add target node (may be upstream for loops - that's fine!)
-        nextNodes.add(edge.targetNodeId);
+        if (shouldFollow) {
+          // Add target node (may be upstream for loops - that's fine!)
+          nextNodes.add(edge.targetNodeId);
+        }
       }
     }
 
@@ -290,11 +317,21 @@ export class DFSIterationStrategy implements IterationStrategy {
     const outgoingEdges = graph.edgesBySource.get(nodeId) || [];
 
     for (const edge of outgoingEdges) {
-      // Check if port has data
-      const portOutput = result.outputs.find(
-        (p) => p.portName === edge.sourcePort,
-      );
-      if (!portOutput || portOutput.items.length === 0) continue;
+      // Get the handle (prefer sourceHandle, fallback to sourcePort for backwards compat)
+      const handle = edge.sourceHandle ?? edge.sourcePort;
+
+      let shouldFollow = false;
+
+      if (handle) {
+        // Handle-based routing: only follow if specific handle has output
+        const portOutput = result.outputs.find((p) => p.portName === handle);
+        shouldFollow = portOutput !== undefined && portOutput.items.length > 0;
+      } else {
+        // Flow-based routing: follow if ANY output was produced
+        shouldFollow = result.outputs.some((p) => p.items.length > 0);
+      }
+
+      if (!shouldFollow) continue;
 
       // Recursively execute next node
       await this.dfs(

@@ -1,8 +1,13 @@
 /**
  * Input gathering logic
  *
- * Responsible for collecting inputs for a node from its upstream nodes
- * based on explicit port-to-port connections.
+ * Flow-based connection model:
+ * - For handle-based connections (sourceHandle specified): gather from that specific handle
+ * - For flow-based connections (no sourceHandle): gather ALL outputs from source node
+ *
+ * Data is mapped to target ports:
+ * - If targetHandle/targetPort specified: use that as the port name
+ * - If not specified: use "input" as the default port name
  */
 
 import type { ExecutionItem, PortData } from "../types/execution.js";
@@ -14,8 +19,10 @@ import type { ExecutionState } from "./execution-state.js";
  *
  * This function:
  * 1. Finds all incoming edges to the node
- * 2. For each edge, gets the output from the source node's specified port
- * 3. Maps it to the target port
+ * 2. For each edge, gets outputs from source node:
+ *    - Handle-based: only from specified handle
+ *    - Flow-based: all outputs merged
+ * 3. Maps data to target port
  * 4. Adds lineage metadata to track data flow
  */
 export function gatherNodeInputs(
@@ -33,37 +40,60 @@ export function gatherNodeInputs(
       continue;
     }
 
-    // Find the specific output port from source
-    const sourcePort = sourceResult.outputs.find(
-      (p) => p.portName === edge.sourcePort,
-    );
+    // Get the handle (prefer sourceHandle, fallback to sourcePort for backwards compat)
+    const handle = edge.sourceHandle ?? edge.sourcePort;
 
-    if (!sourcePort) {
-      throw new Error(
-        `Source port "${edge.sourcePort}" not found in node "${edge.sourceNodeId}" output. ` +
-          `Available ports: ${sourceResult.outputs.map((p) => p.portName).join(", ")}`,
-      );
-    }
+    // Determine target port name (prefer targetHandle, fallback to targetPort, then "input")
+    const targetPortName = edge.targetHandle ?? edge.targetPort ?? "input";
 
     // Get or create target port entry
-    const targetPortName = edge.targetPort;
     const existingItems = portDataMap.get(targetPortName) || [];
 
-    // Add lineage metadata to each item
-    const itemsWithLineage = sourcePort.items.map(
-      (item, idx): ExecutionItem => ({
-        ...item,
-        metadata: {
-          ...item.metadata,
-          sourceNode: edge.sourceNodeId,
-          sourcePort: edge.sourcePort,
-          sourceItemIndex: idx,
-        },
-      }),
-    );
+    if (handle) {
+      // Handle-based: get specific output port
+      const sourcePort = sourceResult.outputs.find(
+        (p) => p.portName === handle,
+      );
 
-    // Append items to target port
-    existingItems.push(...itemsWithLineage);
+      if (!sourcePort) {
+        // In flow-based system, missing handle just means no data (not an error)
+        // This can happen when edge expects a specific handle but node didn't produce it
+        continue;
+      }
+
+      // Add lineage metadata to each item
+      const itemsWithLineage = sourcePort.items.map(
+        (item, idx): ExecutionItem => ({
+          ...item,
+          metadata: {
+            ...item.metadata,
+            sourceNode: edge.sourceNodeId,
+            sourcePort: handle,
+            sourceItemIndex: idx,
+          },
+        }),
+      );
+
+      existingItems.push(...itemsWithLineage);
+    } else {
+      // Flow-based: collect ALL outputs from source node
+      for (const sourcePort of sourceResult.outputs) {
+        const itemsWithLineage = sourcePort.items.map(
+          (item, idx): ExecutionItem => ({
+            ...item,
+            metadata: {
+              ...item.metadata,
+              sourceNode: edge.sourceNodeId,
+              sourcePort: sourcePort.portName,
+              sourceItemIndex: idx,
+            },
+          }),
+        );
+
+        existingItems.push(...itemsWithLineage);
+      }
+    }
+
     portDataMap.set(targetPortName, existingItems);
   }
 

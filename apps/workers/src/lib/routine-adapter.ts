@@ -3,15 +3,14 @@
  *
  * Converts between Temporal's RoutineInput format and
  * execution-engine's RoutineDefinition format.
+ *
+ * Uses flow-based connection model:
+ * - sourceHandle: for control flow routing (optional)
+ * - targetHandle: for UI positioning (optional)
  */
 
 import type { RoutineInput } from "@kianax/shared/temporal";
-import type {
-  RoutineDefinition,
-  Edge,
-  Node,
-  PortType,
-} from "@kianax/execution-engine";
+import type { RoutineDefinition, Edge, Node } from "@kianax/execution-engine";
 
 /**
  * Convert Temporal RoutineInput to execution-engine RoutineDefinition
@@ -28,14 +27,14 @@ export function adaptRoutineInput(input: RoutineInput): RoutineDefinition {
     credentialMappings: node.credentialMappings,
   }));
 
-  // Convert connections to edges
+  // Convert connections to edges (flow-based model)
   const adaptedEdges: Edge[] = connections.map((conn) => ({
     id: conn.id,
     sourceNodeId: conn.sourceNodeId,
-    sourcePort: conn.sourceHandle || "output", // Default to "output" if not specified
     targetNodeId: conn.targetNodeId,
-    targetPort: conn.targetHandle || "input", // Default to "input" if not specified
-    type: "main" as PortType.Main, // All edges are main type (port-based routing)
+    // Flow-based: sourceHandle is optional, only used for control flow routing
+    sourceHandle: conn.sourceHandle || undefined,
+    targetHandle: conn.targetHandle || undefined,
   }));
 
   return {
