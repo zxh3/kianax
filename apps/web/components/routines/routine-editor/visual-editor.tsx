@@ -366,6 +366,7 @@ export function VisualEditor({
             onSave={handleSaveNodeConfig}
             onClose={handleCloseInspector}
             testExecution={activeExecution}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
         )}
       </ResizablePanel>

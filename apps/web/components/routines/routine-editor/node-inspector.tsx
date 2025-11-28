@@ -74,6 +74,7 @@ interface NodeInspectorProps {
   onClose: () => void;
   testExecution?: TestExecution | null;
   defaultTab?: "config" | "result";
+  hasUnsavedChanges: boolean;
 }
 
 // --- Helper Functions ---
@@ -97,6 +98,7 @@ export function NodeInspector({
   onClose,
   testExecution,
   defaultTab = "config",
+  hasUnsavedChanges,
 }: NodeInspectorProps) {
   const [activeTab, setActiveTab] = useState<"config" | "result">(defaultTab);
 
@@ -368,7 +370,7 @@ export function NodeInspector({
 
           {/* Footer Action */}
           <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-2">
-            <Button size="sm" onClick={handleSave}>
+            <Button size="sm" onClick={handleSave} disabled={hasUnsavedChanges}>
               Save Changes
             </Button>
           </div>
