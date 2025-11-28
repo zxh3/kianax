@@ -43,7 +43,7 @@
     },
     {
       "name": "Phase 2: Selection & Interactivity",
-      "status": "in_progress",
+      "status": "completed",
       "tasks": [
         {
           "task": "Implement onSelect callback for leaf nodes",
@@ -55,11 +55,11 @@
         },
         {
           "task": "Add keyboard navigation (arrow keys)",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add search/filter input",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add hover tooltips with full values",
@@ -71,13 +71,13 @@
         },
         {
           "task": "Git commit: Phase 2 complete",
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },
     {
       "name": "Phase 3: Drag & Drop",
-      "status": "pending",
+      "status": "completed",
       "tasks": [
         {
           "task": "Make leaf nodes draggable with HTML5 drag API",
@@ -85,19 +85,19 @@
         },
         {
           "task": "Create drag preview showing path",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Add acceptDrop prop to ExpressionInput",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Implement drop target highlighting",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Insert expression on drop",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "task": "Create Storybook story with drag & drop demo",

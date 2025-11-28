@@ -179,6 +179,9 @@ export interface ExpressionInputProps {
   onFocus?: () => void;
   /** Called when input loses focus */
   onBlur?: () => void;
+
+  /** Accept drag & drop of expression paths from ExpressionDataPicker */
+  acceptDrop?: boolean;
 }
 
 /**
@@ -206,13 +209,19 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       extensions,
       onFocus,
       onBlur,
+      acceptDrop = false,
     },
     ref,
   ) {
     const [isFocused, setIsFocused] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
     const [preview, setPreview] = useState<PreviewResult | null>(null);
     const [isResolvingPreview, setIsResolvingPreview] = useState(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleDragOverChange = useCallback((isOver: boolean) => {
+      setIsDragOver(isOver);
+    }, []);
 
     const handleFocus = useCallback(() => {
       setIsFocused(true);
@@ -286,6 +295,14 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       // Focus state
       isFocused && ["border-ring", "ring-ring/50", "ring-[3px]"],
 
+      // Drag-over state (highlight as drop target)
+      isDragOver && [
+        "border-primary",
+        "ring-primary/50",
+        "ring-[3px]",
+        "bg-primary/5",
+      ],
+
       // Error state
       error && [
         "border-destructive",
@@ -312,6 +329,8 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
             extensions={extensions}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            acceptDrop={acceptDrop}
+            onDragOverChange={handleDragOverChange}
           />
         </div>
 

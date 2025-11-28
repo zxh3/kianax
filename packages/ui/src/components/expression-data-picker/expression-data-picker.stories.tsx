@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { ExpressionDataPicker } from "./index";
-import type { ExpressionContext } from "../expression-input";
+import { ExpressionInput, type ExpressionContext } from "../expression-input";
 
 const meta: Meta<typeof ExpressionDataPicker> = {
   title: "Components/ExpressionDataPicker",
@@ -351,5 +351,116 @@ export const AllTypes: Story = {
       ],
     },
     defaultExpanded: ["types"],
+  },
+};
+
+/**
+ * Combined drag & drop demo with ExpressionInput.
+ * Drag leaf nodes from the picker and drop them into the input field.
+ */
+export const DragToExpressionInput: Story = {
+  render: (args) => {
+    const [value, setValue] = useState("Enter URL: ");
+
+    return (
+      <div className="space-y-4">
+        <div className="text-sm text-muted-foreground">
+          Drag a leaf node from the tree below and drop it into the input field.
+        </div>
+
+        {/* ExpressionInput with acceptDrop enabled */}
+        <div className="space-y-1">
+          <span className="text-sm font-medium">API Endpoint</span>
+          <ExpressionInput
+            value={value}
+            onChange={setValue}
+            context={args.context}
+            acceptDrop
+            showPreview
+            placeholder="Drag an expression here..."
+          />
+        </div>
+
+        {/* Expression Data Picker */}
+        <div className="space-y-1">
+          <span className="text-sm font-medium">Available Data</span>
+          <ExpressionDataPicker
+            {...args}
+            draggable
+            onSelect={(path) => {
+              // Also support click-to-insert
+              setValue((prev) => `${prev}{{ ${path} }}`);
+            }}
+          />
+        </div>
+
+        {/* Current value preview */}
+        <div className="p-3 rounded-md bg-muted text-sm font-mono">
+          {value || "(empty)"}
+        </div>
+      </div>
+    );
+  },
+  args: {
+    context: sampleContext,
+    defaultExpanded: ["vars", "nodes", "nodes.http_1"],
+  },
+};
+
+/**
+ * Side-by-side layout for drag & drop workflow.
+ */
+export const SideBySideLayout: Story = {
+  render: (args) => {
+    const [url, setUrl] = useState("");
+    const [body, setBody] = useState("");
+
+    return (
+      <div className="flex gap-4">
+        {/* Left: Form fields */}
+        <div className="flex-1 space-y-4">
+          <h3 className="text-sm font-semibold">HTTP Request Configuration</h3>
+
+          <div className="space-y-1">
+            <span className="text-sm font-medium">URL</span>
+            <ExpressionInput
+              value={url}
+              onChange={setUrl}
+              context={args.context}
+              acceptDrop
+              placeholder="https://api.example.com/{{ ... }}"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-sm font-medium">Request Body</span>
+            <ExpressionInput
+              value={body}
+              onChange={setBody}
+              context={args.context}
+              acceptDrop
+              multiline
+              rows={4}
+              placeholder='{"userId": "{{ vars.userId }}"}'
+            />
+          </div>
+        </div>
+
+        {/* Right: Data picker */}
+        <div className="w-80">
+          <h3 className="text-sm font-semibold mb-2">Available Data</h3>
+          <ExpressionDataPicker
+            {...args}
+            draggable
+            showSearch
+            className="h-80"
+          />
+        </div>
+      </div>
+    );
+  },
+  args: {
+    context: sampleContext,
+    defaultExpanded: ["vars", "nodes"],
   },
 };

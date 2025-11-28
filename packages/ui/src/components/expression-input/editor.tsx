@@ -41,6 +41,10 @@ export interface EditorProps {
   onBlur?: () => void;
   /** CSS class for the container */
   className?: string;
+  /** Accept drag & drop of expression paths */
+  acceptDrop?: boolean;
+  /** Called when drag-over state changes */
+  onDragOverChange?: (isDragOver: boolean) => void;
 }
 
 /**
@@ -61,12 +65,18 @@ export function Editor({
   onFocus,
   onBlur,
   className,
+  acceptDrop = false,
+  onDragOverChange,
 }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const isInternalUpdate = useRef(false);
   const expressionContextRef = useRef(expressionContext);
+  const onDragOverChangeRef = useRef(onDragOverChange);
+
+  // Keep refs updated
+  onDragOverChangeRef.current = onDragOverChange;
 
   // Keep refs updated
   onChangeRef.current = onChange;
@@ -134,6 +144,71 @@ export function Editor({
     [disabled],
   );
 
+  // Drag & drop handlers for accepting expression paths
+  const dragDropHandlers = useCallback(
+    () =>
+      EditorView.domEventHandlers({
+        dragover: (event, view) => {
+          if (!acceptDrop) return false;
+
+          // Check if this is an expression path drag
+          const hasExpressionData = event.dataTransfer?.types.includes(
+            "application/x-expression-path",
+          );
+          if (!hasExpressionData) return false;
+
+          event.preventDefault();
+          event.dataTransfer!.dropEffect = "copy";
+          onDragOverChangeRef.current?.(true);
+
+          // Move cursor to drop position
+          const pos = view.posAtCoords({
+            x: event.clientX,
+            y: event.clientY,
+          });
+          if (pos !== null) {
+            view.dispatch({
+              selection: { anchor: pos },
+            });
+          }
+
+          return true;
+        },
+        dragleave: () => {
+          if (!acceptDrop) return false;
+          onDragOverChangeRef.current?.(false);
+          return false;
+        },
+        drop: (event, view) => {
+          if (!acceptDrop) return false;
+
+          const expressionPath = event.dataTransfer?.getData(
+            "application/x-expression-path",
+          );
+          if (!expressionPath) return false;
+
+          event.preventDefault();
+          onDragOverChangeRef.current?.(false);
+
+          // Insert expression at cursor/drop position
+          const pos = view.posAtCoords({
+            x: event.clientX,
+            y: event.clientY,
+          });
+          if (pos !== null) {
+            const insertion = `{{ ${expressionPath} }}`;
+            view.dispatch({
+              changes: { from: pos, insert: insertion },
+              selection: { anchor: pos + insertion.length },
+            });
+          }
+
+          return true;
+        },
+      }),
+    [acceptDrop],
+  );
+
   // Initialize editor
   useEffect(() => {
     if (!containerRef.current) return;
@@ -157,6 +232,7 @@ export function Editor({
       focusHandlers(),
       singleLineExtension(),
       readOnlyExtension(),
+      dragDropHandlers(),
 
       // Additional extensions from props
       ...additionalExtensions,
@@ -178,9 +254,9 @@ export function Editor({
       view.destroy();
       viewRef.current = null;
     };
-    // Only recreate on mount/unmount and when multiline/disabled change
+    // Only recreate on mount/unmount and when multiline/disabled/acceptDrop change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [multiline, disabled]);
+  }, [multiline, disabled, acceptDrop]);
 
   // Sync external value changes to editor
   useEffect(() => {
