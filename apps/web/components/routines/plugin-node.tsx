@@ -1,6 +1,5 @@
 import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { IconSettings } from "@tabler/icons-react";
 import {
   getPluginInputs,
   getPluginOutputs,
@@ -18,7 +17,7 @@ export interface PluginNodeData extends Record<string, unknown> {
   onConfigure?: (nodeId: string) => void;
 }
 
-function PluginNode({ data, selected, id }: NodeProps) {
+function PluginNode({ data, selected }: NodeProps) {
   const nodeData = data as PluginNodeData;
 
   // Get plugin metadata and ports
@@ -38,30 +37,25 @@ function PluginNode({ data, selected, id }: NodeProps) {
   const inputPorts = Object.values(inputs);
   const outputPorts = Object.values(outputs);
 
-  const handleConfigClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (nodeData.onConfigure && id) {
-      nodeData.onConfigure(id);
-    }
-  };
-
   // Determine border/ring styles based on execution status or selection
-  // Priority: selected > execution status > default
   const statusClasses = cn(
     // Base classes
     "relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group",
-    // Execution status effects (non-conflicting with selection)
+
+    // Selection - using ring to separate from status border
+    selected && "ring-2 ring-primary ring-offset-1",
+
+    // Execution status effects
     nodeData.executionStatus === "running" && "animate-pulse",
-    // Border/shadow: selected takes priority, then execution status, then default
-    selected
-      ? "border-primary shadow-md"
-      : nodeData.executionStatus === "running"
-        ? "border-primary"
-        : nodeData.executionStatus === "completed"
-          ? "border-green-300/50 shadow-sm"
-          : nodeData.executionStatus === "failed"
-            ? "border-destructive ring-1 ring-destructive"
-            : "border-border shadow-sm hover:border-ring",
+
+    // Status Borders
+    nodeData.executionStatus === "running"
+      ? "border-blue-500"
+      : nodeData.executionStatus === "completed"
+        ? "border-green-500 shadow-sm"
+        : nodeData.executionStatus === "failed"
+          ? "border-destructive"
+          : "border-border shadow-sm hover:border-ring",
   );
 
   return (
@@ -92,14 +86,6 @@ function PluginNode({ data, selected, id }: NodeProps) {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleConfigClick}
-          className="p-1.5 rounded-md hover:bg-muted hover:shadow-sm border border-transparent hover:border-border transition-all text-muted-foreground hover:text-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
-          title="Configure"
-        >
-          <IconSettings className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Body */}

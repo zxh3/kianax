@@ -15,6 +15,7 @@ import {
   ToggleGroupItem,
 } from "@kianax/ui/components/toggle-group";
 import { cn } from "@kianax/ui/lib/utils";
+import { motion } from "motion/react";
 import type { EditorMode } from "./types";
 
 interface CanvasControlsProps {
@@ -42,8 +43,12 @@ export function CanvasControls({
 }: CanvasControlsProps) {
   return (
     <>
-      {/* Top Center - Mode Switcher */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+      {/* Top Left - Mode Switcher */}
+      <motion.div
+        layout
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="absolute top-4 left-4 z-10"
+      >
         <div className="bg-background/80 backdrop-blur-sm shadow-sm">
           <ToggleGroup
             type="single"
@@ -69,10 +74,14 @@ export function CanvasControls({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
-      </div>
+      </motion.div>
 
       {/* Top Right - Actions */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+      <motion.div
+        layout
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="absolute top-4 right-4 z-10 flex items-center gap-2"
+      >
         {/* Viewing Mode Indicator */}
         {viewingExecutionId && (
           <div className="flex items-center gap-2 bg-amber-500/10 backdrop-blur-sm border border-amber-500/20 rounded-full pl-3 pr-1 py-1 shadow-sm">
@@ -150,7 +159,7 @@ export function CanvasControls({
             </>
           )}
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }
