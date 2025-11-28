@@ -102,7 +102,7 @@ export function NodeConfigDrawer({
 
   return (
     <div
-      className={`absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 ${
+      className={`absolute top-2 right-2 bottom-2 w-96 bg-background border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden transition-all duration-300 contain-[paint] ${
         className || ""
       }`}
     >
@@ -125,8 +125,8 @@ export function NodeConfigDrawer({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-6">
+      <ScrollArea className="flex-1 min-h-0 w-full min-w-0">
+        <div className="p-4 space-y-6 w-full min-w-0 overflow-hidden">
           {/* Node Label Section */}
           <div className="space-y-2">
             <Label htmlFor="node-label" className="text-sm font-medium">
