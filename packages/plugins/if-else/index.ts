@@ -170,7 +170,7 @@ export const ifElsePlugin = createPlugin("if-else")
     name: "Conditional Branch",
     description:
       "Routes execution based on configured conditions. Configure comparison logic at design-time; value flows at runtime.",
-    version: "2.0.0",
+    version: "2.1.0",
     icon: "🔀",
     tags: ["logic"],
     author: {
@@ -178,11 +178,22 @@ export const ifElsePlugin = createPlugin("if-else")
       url: "https://kianax.com",
     },
   })
-  .withInput("data", {
-    label: "Data",
-    description: "The data to test against configured conditions",
-    schema: z.unknown(),
-  })
+  // Flow-based: use output handles for control flow routing
+  .withOutputHandles([
+    {
+      name: "true",
+      label: "True",
+      description: "Executed when conditions pass",
+    },
+    {
+      name: "false",
+      label: "False",
+      description: "Executed when conditions fail",
+    },
+  ])
+  // Define the output schema for autocomplete (same data goes to both handles)
+  .withOutputSchema(BranchOutputSchema)
+  // Legacy: keep withOutput for backwards compatibility with existing routines
   .withOutput("true", {
     label: "True",
     description: "Executed when conditions pass",
