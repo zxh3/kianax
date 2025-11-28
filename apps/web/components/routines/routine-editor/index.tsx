@@ -160,6 +160,10 @@ export function RoutineEditor({
         setSelectedResultNodeId(node.id);
         setResultDrawerOpen(true);
         setConfigDrawerOpen(false);
+      } else {
+        setConfiguringNodeId(node.id);
+        setConfigDrawerOpen(true);
+        setResultDrawerOpen(false);
       }
     },
     [viewingExecutionId, setSelectedResultNodeId, setResultDrawerOpen],
@@ -172,22 +176,6 @@ export function RoutineEditor({
       variables={variables}
     >
       <div className="relative h-full w-full">
-        <CanvasControls
-          editorMode={editorMode}
-          onEditorModeChange={setEditorMode}
-          hasUnsavedChanges={hasUnsavedChanges}
-          isStartingTest={isStartingTest}
-          onRunTest={handleRunTest}
-          onApplyJson={editorMode === "json" ? handleApplyJson : undefined}
-          onToggleHistory={() => setHistoryDrawerOpen(true)}
-          viewingExecutionId={viewingExecutionId}
-          onExitViewingMode={() => {
-            setViewingExecutionId(null);
-            setTestPanelOpen(false);
-            setResultDrawerOpen(false);
-          }}
-        />
-
         {editorMode === "visual" ? (
           <VisualEditor
             nodes={nodes}
@@ -217,9 +205,36 @@ export function RoutineEditor({
             setSelectedResultNodeId={setSelectedResultNodeId}
             resultDrawerOpen={resultDrawerOpen}
             setResultDrawerOpen={setResultDrawerOpen}
+            editorMode={editorMode}
+            onEditorModeChange={setEditorMode}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isStartingTest={isStartingTest}
+            onRunTest={handleRunTest}
+            onApplyJson={undefined}
+            onExitViewingMode={() => {
+              setViewingExecutionId(null);
+              setTestPanelOpen(false);
+              setResultDrawerOpen(false);
+            }}
           />
         ) : (
-          <JsonEditor value={jsonValue} onChange={setJsonValue} />
+          <JsonEditor value={jsonValue} onChange={setJsonValue}>
+            <CanvasControls
+              editorMode={editorMode}
+              onEditorModeChange={setEditorMode}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isStartingTest={isStartingTest}
+              onRunTest={handleRunTest}
+              onApplyJson={handleApplyJson}
+              onToggleHistory={() => setHistoryDrawerOpen(true)}
+              viewingExecutionId={viewingExecutionId}
+              onExitViewingMode={() => {
+                setViewingExecutionId(null);
+                setTestPanelOpen(false);
+                setResultDrawerOpen(false);
+              }}
+            />
+          </JsonEditor>
         )}
       </div>
     </ExpressionContextProvider>

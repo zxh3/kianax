@@ -39,6 +39,7 @@ import { getPluginConfigComponent, getPluginMetadata } from "@kianax/plugins";
 import { useOptionalNodeExpressionContext } from "./expression-context";
 import { ExpressionDataPicker } from "@kianax/ui/components/expression-data-picker";
 import { buildExpressionContext } from "@kianax/ui/components/expression-input";
+import { motion } from "motion/react";
 
 // --- Types ---
 
@@ -178,7 +179,13 @@ export function NodeInspector({
   }, [testExecution, nodeId]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-background border-l border-border">
+    <motion.div
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="flex flex-col h-[calc(100vh-100px)] w-full bg-background border-l border-border"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="overflow-hidden">
@@ -223,51 +230,36 @@ export function NodeInspector({
           value="config"
           className="flex-1 flex flex-col min-h-0 m-0 pt-2"
         >
-          <div className="flex-1 flex min-h-0">
-            {/* Left Data Picker Panel (Desktop only?) - User asked for unification. 
-                    Original had split panel. If we are in a sidebar (~400px), split panel is too tight.
-                    We might need to stack them or put Data Picker in a separate popover or bottom section.
-                    
-                    User's prompt: "Maybe we should unify them to some view when we click on a node... resizable component"
-                    If the sidebar is resizable, maybe we can fit side-by-side if wide enough?
-                    
-                    For now, let's stack them vertically or put the data picker in an accordion/collapsible.
-                    Actually, the original NodeConfigDrawer had a split view if `hasExpressionData`.
-                    
-                    Let's stick to a single vertical scroll for the Sidebar context. 
-                    We can put the Data Picker at the top or bottom, or collapsible.
-                 */}
+          <div className="flex-1 flex flex-row min-h-0">
+            {/* Left Data Picker Panel */}
+            {hasExpressionData && uiContext && (
+              <div className="w-[280px] border-r border-border flex flex-col bg-muted/5">
+                <div className="px-3 py-2 border-b border-border bg-muted/30 flex items-center gap-2 flex-shrink-0">
+                  <IconDatabase className="size-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium">Available Data</span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                  <ExpressionDataPicker
+                    context={uiContext}
+                    onSelect={handleDataPickerSelect}
+                    draggable
+                    showSearch
+                    searchPlaceholder="Search variables..."
+                    maxHeight={9999}
+                    className="border-0 bg-transparent"
+                  />
+                </div>
+                <div className="px-3 py-1.5 border-t border-border bg-muted/20 flex-shrink-0">
+                  <p className="text-[10px] text-muted-foreground">
+                    Click to copy • Drag to input fields
+                  </p>
+                </div>
+              </div>
+            )}
 
+            {/* Right Config Form Panel */}
             <ScrollArea className="flex-1 h-full">
               <div className="p-4 space-y-6">
-                {/* Variables Browser (Collapsible or Always visible?) */}
-                {hasExpressionData && uiContext && (
-                  <div className="rounded-lg border border-border bg-muted/10 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-border bg-muted/30 flex items-center gap-2">
-                      <IconDatabase className="size-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium">
-                        Available Data
-                      </span>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto p-2">
-                      <ExpressionDataPicker
-                        context={uiContext}
-                        onSelect={handleDataPickerSelect}
-                        draggable
-                        showSearch
-                        searchPlaceholder="Search variables..."
-                        maxHeight={9999}
-                        className="border-0 bg-transparent"
-                      />
-                    </div>
-                    <div className="px-3 py-1.5 border-t border-border bg-muted/20">
-                      <p className="text-[10px] text-muted-foreground">
-                        Click to copy • Drag to input fields
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Node Label */}
                 <div className="space-y-2">
                   <Label htmlFor="node-label" className="text-sm font-medium">
@@ -490,6 +482,6 @@ export function NodeInspector({
           </ScrollArea>
         </TabsContent>
       </Tabs>
-    </div>
+    </motion.div>
   );
 }

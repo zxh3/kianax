@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -18,6 +16,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@kianax/ui/components/resizable";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useTheme } from "next-themes";
 import PluginNode, { type PluginNodeData } from "../plugin-node";
 import { Toolbar } from "./toolbar";
@@ -29,6 +28,8 @@ import { getPluginMetadata } from "@/lib/plugins";
 import type { ExpressionValidationError } from "@kianax/execution-engine";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
 import { NodeInspector } from "./node-inspector";
+import { CanvasControls } from "./canvas-controls";
+import type { EditorMode } from "./types";
 
 const nodeTypes = {
   pluginNode: PluginNode,
@@ -78,6 +79,15 @@ interface VisualEditorProps {
   setSelectedResultNodeId: (id: string | null) => void;
   resultDrawerOpen: boolean;
   setResultDrawerOpen: (open: boolean) => void;
+
+  // Canvas Control Props
+  editorMode: EditorMode;
+  onEditorModeChange: (mode: EditorMode) => void;
+  hasUnsavedChanges: boolean;
+  isStartingTest: boolean;
+  onRunTest: () => void;
+  onApplyJson?: () => void;
+  onExitViewingMode: () => void;
 }
 
 export function VisualEditor({
@@ -108,8 +118,17 @@ export function VisualEditor({
   setSelectedResultNodeId,
   resultDrawerOpen,
   setResultDrawerOpen,
+  // Canvas Control Props
+  editorMode,
+  onEditorModeChange,
+  hasUnsavedChanges,
+  isStartingTest,
+  onRunTest,
+  onApplyJson,
+  onExitViewingMode,
 }: VisualEditorProps) {
   const { theme } = useTheme();
+  const inspectorPanelRef = useRef<ImperativePanelHandle>(null);
 
   // Local UI State
   const [nodeSelectorOpen, setNodeSelectorOpen] = useState(false);
@@ -121,7 +140,6 @@ export function VisualEditor({
     useState(false);
 
   // Inspector logic
-  // Determine which node is currently inspected and which mode (config vs result)
   const inspectedNodeId = configuringNodeId || selectedResultNodeId;
   const isInspectorOpen =
     (!!configuringNodeId && configDrawerOpen) ||
@@ -132,6 +150,21 @@ export function VisualEditor({
     () => nodes.find((n) => n.id === inspectedNodeId),
     [nodes, inspectedNodeId],
   );
+
+  // Handle opening/closing animation of the inspector panel
+  useEffect(() => {
+    const panel = inspectorPanelRef.current;
+    if (panel) {
+      if (isInspectorOpen) {
+        // If it's currently collapsed (0), expand it to desired size
+        // We can check current size but expand() usually restores or goes to minSize.
+        // Let's specify 40% as target size.
+        panel.resize(40);
+      } else {
+        panel.collapse();
+      }
+    }
+  }, [isInspectorOpen]);
 
   const handleCloseInspector = useCallback(() => {
     setConfigDrawerOpen(false);
@@ -167,8 +200,27 @@ export function VisualEditor({
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-      <ResizablePanel defaultSize={75} minSize={30}>
+      <ResizablePanel
+        defaultSize={60} // Start with room for inspector potentially? No, normally 100 if closed.
+        // But react-resizable-panels distributes remaining space.
+        // If we start inspector at 0, this will take 100.
+        minSize={30}
+        className="transition-[flex] duration-300 ease-out"
+      >
         <div className="relative w-full h-full">
+          {/* Canvas Controls moved here to be inside the panel */}
+          <CanvasControls
+            editorMode={editorMode}
+            onEditorModeChange={onEditorModeChange}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isStartingTest={isStartingTest}
+            onRunTest={onRunTest}
+            onApplyJson={onApplyJson}
+            onToggleHistory={() => setHistoryDrawerOpen(true)}
+            viewingExecutionId={viewingExecutionId}
+            onExitViewingMode={onExitViewingMode}
+          />
+
           {/* Floating Toolbar */}
           <Toolbar
             activeTool={activeTool}
@@ -231,6 +283,7 @@ export function VisualEditor({
               triggerAutoSave();
             }}
             onNodeClick={onNodeClick}
+            onPaneClick={handleCloseInspector}
             nodeTypes={nodeTypes}
             fitView={false}
             className="bg-background"
@@ -264,10 +317,7 @@ export function VisualEditor({
             />
           </ReactFlow>
 
-          {/* Execution History Drawer (Still modal/overlay for now?) 
-                User asked for redesign of node config/results. History might stay as drawer for now unless unified later.
-                It's a drawer over the whole screen usually or side sheet.
-            */}
+          {/* Execution History Drawer */}
           <ExecutionHistoryDrawer
             open={historyDrawerOpen}
             onOpenChange={setHistoryDrawerOpen}
@@ -281,39 +331,46 @@ export function VisualEditor({
         </div>
       </ResizablePanel>
 
+      {/* Resize Handle - Only visible when inspector is open */}
+      <ResizableHandle className={isInspectorOpen ? "" : "hidden"} />
+
       {/* Inspector Panel */}
-      {isInspectorOpen && inspectedNode && (
-        <>
-          <ResizableHandle />
-          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-            <NodeInspector
-              key={inspectedNode.id} // Force re-mount when switching nodes to reset internal state if needed
-              nodeId={inspectedNode.id}
-              pluginId={(inspectedNode.data as PluginNodeData).pluginId}
-              pluginName={
-                getPluginMetadata(
-                  (inspectedNode.data as PluginNodeData).pluginId,
-                )?.name || "Plugin"
-              }
-              nodeLabel={(inspectedNode.data as PluginNodeData).label}
-              config={
-                (
-                  inspectedNode.data as PluginNodeData & {
-                    config?: Record<string, unknown>;
-                  }
-                ).config
-              }
-              credentialMappings={
-                (inspectedNode.data as PluginNodeData).credentialMappings
-              }
-              onSave={handleSaveNodeConfig}
-              onClose={handleCloseInspector}
-              testExecution={activeExecution}
-              defaultTab={inspectorTab}
-            />
-          </ResizablePanel>
-        </>
-      )}
+      <ResizablePanel
+        ref={inspectorPanelRef}
+        defaultSize={0}
+        collapsedSize={0}
+        collapsible={true}
+        minSize={20}
+        maxSize={50}
+        className="transition-[flex] duration-300 ease-out overflow-hidden"
+      >
+        {inspectedNode && (
+          <NodeInspector
+            key={inspectedNode.id}
+            nodeId={inspectedNode.id}
+            pluginId={(inspectedNode.data as PluginNodeData).pluginId}
+            pluginName={
+              getPluginMetadata((inspectedNode.data as PluginNodeData).pluginId)
+                ?.name || "Plugin"
+            }
+            nodeLabel={(inspectedNode.data as PluginNodeData).label}
+            config={
+              (
+                inspectedNode.data as PluginNodeData & {
+                  config?: Record<string, unknown>;
+                }
+              ).config
+            }
+            credentialMappings={
+              (inspectedNode.data as PluginNodeData).credentialMappings
+            }
+            onSave={handleSaveNodeConfig}
+            onClose={handleCloseInspector}
+            testExecution={activeExecution}
+            defaultTab={inspectorTab}
+          />
+        )}
+      </ResizablePanel>
     </ResizablePanelGroup>
   );
 }
