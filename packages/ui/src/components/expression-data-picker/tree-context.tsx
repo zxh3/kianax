@@ -14,8 +14,6 @@ interface TreeContextValue {
   expand: (path: string) => void;
   /** Collapse a specific path */
   collapse: (path: string) => void;
-  /** Expand all paths */
-  expandAll: () => void;
   /** Collapse all paths */
   collapseAll: () => void;
 }
@@ -65,11 +63,6 @@ export function TreeProvider({
     });
   }, []);
 
-  const expandAll = useCallback(() => {
-    // This is a no-op here - would need all paths passed in
-    // For now, consumers should call expand() on specific paths
-  }, []);
-
   const collapseAll = useCallback(() => {
     setExpandedPaths(new Set());
   }, []);
@@ -82,7 +75,6 @@ export function TreeProvider({
         isExpanded,
         expand,
         collapse,
-        expandAll,
         collapseAll,
       }}
     >

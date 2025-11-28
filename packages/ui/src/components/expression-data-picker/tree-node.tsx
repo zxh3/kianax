@@ -2,8 +2,9 @@
 
 import { ChevronRight } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { inferType } from "../../lib/expression-types";
 import { useTreeContext } from "./tree-context";
-import type { CompletionItem, CompletionItemType } from "../expression-input";
+import type { CompletionItem } from "../expression-input";
 
 /**
  * Type badge colors matching the PreviewBadge in ExpressionInput
@@ -66,20 +67,6 @@ function formatValuePreview(value: unknown, maxLength = 30): string {
   }
 
   return String(value);
-}
-
-/**
- * Determine the type of a value
- */
-function inferType(value: unknown): CompletionItemType {
-  if (value === null) return "null";
-  if (value === undefined) return "obj"; // Default to obj for unknown
-  if (Array.isArray(value)) return "arr";
-  if (typeof value === "string") return "str";
-  if (typeof value === "number") return "num";
-  if (typeof value === "boolean") return "bool";
-  if (typeof value === "object") return "obj";
-  return "obj"; // Default fallback
 }
 
 /**

@@ -1,21 +1,8 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import type { CompletionItem, CompletionItemType } from "../expression-input";
-
-/**
- * Infer the type of a value for CompletionItem
- */
-function inferType(value: unknown): CompletionItemType {
-  if (value === null) return "null";
-  if (value === undefined) return "obj";
-  if (Array.isArray(value)) return "arr";
-  if (typeof value === "string") return "str";
-  if (typeof value === "number") return "num";
-  if (typeof value === "boolean") return "bool";
-  if (typeof value === "object") return "obj";
-  return "obj";
-}
+import { inferType } from "../../lib/expression-types";
+import type { CompletionItem } from "../expression-input";
 
 interface TreeNavigationOptions {
   /** Root completion items */
