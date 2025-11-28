@@ -125,6 +125,10 @@ function resolveExpressions(value: string, context: PreviewContext): unknown {
     if (resolved === undefined || resolved === null) {
       return "";
     }
+    // Handle pending values - show friendly placeholder instead of Symbol string
+    if (isPendingValue(resolved)) {
+      return "[pending]";
+    }
     if (typeof resolved === "object") {
       return JSON.stringify(resolved);
     }
