@@ -84,7 +84,7 @@ export const singleLineTheme = EditorView.theme({
     padding: "0 12px", // Only horizontal padding, vertical centering via flex
   },
   ".cm-line": {
-    lineHeight: "20px",
+    lineHeight: "31.5px",
   },
 });
 
