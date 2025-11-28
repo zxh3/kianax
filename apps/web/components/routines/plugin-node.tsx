@@ -42,9 +42,6 @@ function PluginNode({ data, selected }: NodeProps) {
     // Base classes
     "relative bg-card border rounded-xl min-w-[280px] transition-all duration-200 group",
 
-    // Selection - using ring to separate from status border
-    selected && "ring-2 ring-primary ring-offset-1",
-
     // Execution status effects
     nodeData.executionStatus === "running" && "animate-pulse",
 
@@ -60,6 +57,16 @@ function PluginNode({ data, selected }: NodeProps) {
 
   return (
     <div className={statusClasses}>
+      {/* Selection Indicators (Crosshair corners) */}
+      {selected && (
+        <>
+          <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-primary rounded-tl-sm" />
+          <div className="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-primary rounded-tr-sm" />
+          <div className="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-primary rounded-bl-sm" />
+          <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-primary rounded-br-sm" />
+        </>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-linear-to-b from-card to-muted/20 rounded-t-xl">
         <div className="flex items-center gap-3 flex-1 min-w-0">
