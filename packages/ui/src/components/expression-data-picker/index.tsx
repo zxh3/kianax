@@ -47,8 +47,14 @@ export interface ExpressionDataPickerProps {
   /** Show search/filter input */
   showSearch?: boolean;
 
+  /** Placeholder text for search input */
+  searchPlaceholder?: string;
+
   /** Initially expanded paths */
   defaultExpanded?: string[];
+
+  /** Maximum height of the tree view in pixels (default: 320) */
+  maxHeight?: number;
 
   /** Additional CSS class */
   className?: string;
@@ -109,12 +115,14 @@ function TreeContent({
   onDragStart,
   draggable,
   searchQuery,
+  maxHeight,
 }: {
   items: CompletionItem[];
   onSelect?: (path: string, value: unknown) => void;
   onDragStart?: (path: string, value: unknown) => void;
   draggable: boolean;
   searchQuery: string;
+  maxHeight: number;
 }) {
   const { isExpanded, toggleExpanded } = useTreeContext();
 
@@ -149,7 +157,8 @@ function TreeContent({
   return (
     <div
       ref={containerRef}
-      className="p-1 max-h-80 overflow-y-auto outline-none"
+      className="p-1 overflow-y-auto outline-none"
+      style={{ maxHeight: `${maxHeight}px` }}
       role="tree"
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -188,7 +197,9 @@ export const ExpressionDataPicker = forwardRef<
     onDragStart,
     draggable = false,
     showSearch = false,
+    searchPlaceholder = "Search...",
     defaultExpanded = [],
+    maxHeight = 320,
     className,
   },
   ref,
@@ -230,7 +241,7 @@ export const ExpressionDataPicker = forwardRef<
         <div className="p-2 border-b">
           <input
             type="text"
-            placeholder="Search..."
+            placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={handleSearchChange}
             className="w-full px-2 py-1 text-sm rounded border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -246,6 +257,7 @@ export const ExpressionDataPicker = forwardRef<
           onDragStart={onDragStart}
           draggable={draggable}
           searchQuery={searchQuery}
+          maxHeight={maxHeight}
         />
       </TreeProvider>
     </div>

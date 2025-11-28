@@ -401,7 +401,8 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
 );
 
 /**
- * Preview badge component showing resolved value
+ * Preview badge component showing resolved value.
+ * Uses ARIA live region to announce changes to screen readers.
  */
 function PreviewBadge({
   preview,
@@ -434,7 +435,12 @@ function PreviewBadge({
 
   if (!preview.success) {
     return (
-      <div className="mt-1 flex items-center gap-1.5">
+      <div
+        className="mt-1 flex items-center gap-1.5"
+        role="status"
+        aria-live="polite"
+        aria-label="Expression preview error"
+      >
         <span className="bg-destructive/10 text-destructive rounded px-1.5 py-0.5 text-xs font-medium">
           error
         </span>
@@ -446,7 +452,12 @@ function PreviewBadge({
   }
 
   return (
-    <div className="mt-1 flex items-center gap-1.5">
+    <div
+      className="mt-1 flex items-center gap-1.5"
+      role="status"
+      aria-live="polite"
+      aria-label={`Expression preview: ${typeLabels[preview.type]} ${formatPreviewValue(preview.value)}`}
+    >
       {isResolving ? (
         <span className="bg-muted text-muted-foreground animate-pulse rounded px-1.5 py-0.5 text-xs">
           resolving...

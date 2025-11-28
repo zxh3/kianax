@@ -242,11 +242,11 @@ function createDefaultExecution() {
 }
 
 /**
- * Check if a string contains expressions
+ * Check if a string contains expressions.
+ * Uses a non-global regex to avoid state issues with lastIndex.
  */
 export function containsExpression(value: string): boolean {
-  EXPRESSION_PATTERN.lastIndex = 0;
-  return EXPRESSION_PATTERN.test(value);
+  return /\{\{\s*[^}]+?\s*\}\}/.test(value);
 }
 
 /**
