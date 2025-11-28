@@ -1,14 +1,12 @@
 /**
- * HTTP Request Plugin
+ * HTTP Request Plugin (Flow-Based)
  *
  * Make HTTP requests to external APIs and services.
- * Supports all standard HTTP methods, headers, query params, and request bodies.
+ * All request parameters come through config expressions.
  *
- * Design decisions:
- * - Request parameters are inputs (runtime), not config (design-time)
- * - Config is for behavior: timeouts, retries, redirect handling
- * - Strongly typed HTTP methods
- * - Separate success/error output ports for clean error handling
+ * Control flow node with success/error routing:
+ * - Success: 2xx responses route to "success" handle
+ * - Error: 4xx, 5xx, network errors route to "error" handle
  */
 
 import { createPlugin, z } from "@kianax/plugin-sdk";
@@ -18,29 +16,6 @@ import { HttpRequestConfigUI } from "./config-ui";
  * HTTP methods enum
  */
 const HttpMethod = z.enum(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]);
-
-/**
- * Input schema - request parameters
- */
-const RequestInputSchema = z.object({
-  url: z
-    .string()
-    .url("Must be a valid URL")
-    .describe("The URL to send the request to"),
-  method: HttpMethod.default("GET").describe("HTTP method"),
-  headers: z
-    .record(z.string(), z.string())
-    .optional()
-    .describe("Request headers (key-value pairs)"),
-  body: z
-    .unknown()
-    .optional()
-    .describe("Request body (auto-serialized to JSON for POST/PUT/PATCH)"),
-  queryParams: z
-    .record(z.string(), z.string())
-    .optional()
-    .describe("URL query parameters (key-value pairs)"),
-});
 
 /**
  * Success response schema
@@ -67,7 +42,7 @@ export const httpRequestPlugin = createPlugin("http-request")
     name: "HTTP Request",
     description:
       "Make HTTP requests to external APIs with support for all standard methods, custom headers, query parameters, and request bodies.",
-    version: "2.0.0",
+    version: "3.0.0",
     author: {
       name: "Kianax",
       url: "https://kianax.com",
@@ -75,35 +50,25 @@ export const httpRequestPlugin = createPlugin("http-request")
     tags: ["action", "data-source"],
     icon: "🌐",
   })
-  .withInput("input", {
-    label: "Input",
-    description: "HTTP request parameters (URL, method, headers, body, etc.)",
-    schema: RequestInputSchema,
-  })
-  .withOutputHandles([
-    {
-      name: "success",
-      label: "Success",
-      description: "Successful response (2xx status codes)",
-    },
-    {
-      name: "error",
-      label: "Error",
-      description: "Error response (4xx, 5xx, network errors, timeouts)",
-    },
-  ])
-  .withOutput("success", {
-    label: "Success",
-    description: "Successful response (2xx status codes)",
-    schema: SuccessResponseSchema,
-  })
-  .withOutput("error", {
-    label: "Error",
-    description: "Error response (4xx, 5xx, network errors, timeouts)",
-    schema: ErrorResponseSchema,
-  })
   .withConfig(
     z.object({
+      // Request parameters (can be expressions)
+      url: z.string().describe("The URL to send the request to"),
+      method: HttpMethod.default("GET").describe("HTTP method"),
+      headers: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("Request headers (key-value pairs)"),
+      body: z
+        .unknown()
+        .optional()
+        .describe("Request body (auto-serialized to JSON for POST/PUT/PATCH)"),
+      queryParams: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("URL query parameters (key-value pairs)"),
+
+      // Behavior config
       timeout: z
         .number()
         .min(100)
@@ -128,9 +93,32 @@ export const httpRequestPlugin = createPlugin("http-request")
         .describe("Automatically follow HTTP 3xx redirects"),
     }),
   )
+  // Control flow handles for routing
+  .withOutputHandles([
+    {
+      name: "success",
+      label: "Success",
+      description: "Successful response (2xx status codes)",
+    },
+    {
+      name: "error",
+      label: "Error",
+      description: "Error response (4xx, 5xx, network errors, timeouts)",
+    },
+  ])
+  .withOutput("success", {
+    label: "Success",
+    description: "Successful response (2xx status codes)",
+    schema: SuccessResponseSchema,
+  })
+  .withOutput("error", {
+    label: "Error",
+    description: "Error response (4xx, 5xx, network errors, timeouts)",
+    schema: ErrorResponseSchema,
+  })
   .withConfigUI(HttpRequestConfigUI)
-  .execute(async ({ inputs, config }) => {
-    const { url: baseUrl, method, headers, body, queryParams } = inputs.input;
+  .execute(async ({ config }) => {
+    const { url: baseUrl, method, headers, body, queryParams } = config;
 
     try {
       // Build URL with query parameters

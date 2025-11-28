@@ -12,6 +12,14 @@ import {
 import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
 
 export interface HttpRequestConfig {
+  // Request parameters (via expressions in flow-based system)
+  url: string;
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD";
+  headers?: Record<string, string>;
+  body?: unknown;
+  queryParams?: Record<string, string>;
+
+  // Behavior config
   timeout: number;
   retries: number;
   retryDelay: number;
@@ -35,6 +43,13 @@ export function HttpRequestConfigUI({
   onChange,
 }: HttpRequestConfigUIProps) {
   const defaultConfig: HttpRequestConfig = {
+    // Request parameters - typically set via expressions in NodeConfigDrawer
+    url: "",
+    method: "GET",
+    headers: undefined,
+    body: undefined,
+    queryParams: undefined,
+    // Behavior config
     timeout: 30000,
     retries: 0,
     retryDelay: 1000,

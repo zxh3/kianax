@@ -12,9 +12,14 @@ import {
 import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
 
 export interface OpenAIConfig {
+  // Model configuration
   model: string;
   temperature: number;
   maxTokens?: number;
+
+  // Runtime data (via expressions in flow-based system)
+  message: string;
+  systemPrompt?: string;
 }
 
 interface OpenAIConfigUIProps {
@@ -30,6 +35,9 @@ export function OpenAIConfigUI({ value, onChange }: OpenAIConfigUIProps) {
     model: "gpt-4o",
     temperature: 0.7,
     maxTokens: undefined,
+    // Runtime fields - typically set via expressions in NodeConfigDrawer
+    message: "",
+    systemPrompt: undefined,
   };
 
   const [config, setConfig] = useState<OpenAIConfig>(value || defaultConfig);

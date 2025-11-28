@@ -1,26 +1,38 @@
 /**
- * Plugin Builder API
+ * Plugin Builder API (Flow-Based)
  *
  * Fluent builder pattern for creating plugins with full type inference.
- * Provides better type safety and developer experience compared to class-based approach.
+ * In the flow-based system, all runtime data comes through config expressions.
  *
  * @example
  * ```typescript
+ * // Flow-based plugin - all data comes through config
  * export const myPlugin = createPlugin("my-plugin")
- *   .withMetadata({ name: "My Plugin", description: "...", version: "1.0.0" })
- *   .withInput("query", {
- *     label: "Query",
- *     schema: z.object({ text: z.string() })
+ *   .withMetadata({
+ *     name: "My Plugin",
+ *     description: "Processes data from upstream nodes",
+ *     version: "1.0.0",
+ *     tags: ["processor"]
  *   })
- *   .withOutput("results", {
- *     label: "Results",
- *     schema: z.object({ items: z.array(z.string()) })
- *   })
- *   .withConfig(z.object({ apiKey: z.string() }))
- *   .execute(async ({ inputs, config, context }) => {
- *     const query = inputs.query.text;  // Fully typed!
- *     const apiKey = config.apiKey;      // Fully typed!
- *     return { results: { items: [] } };
+ *   .withConfig(z.object({
+ *     // Static config
+ *     apiKey: z.string(),
+ *     // Runtime data via expression: {{ nodes.upstream.output }}
+ *     inputData: z.any(),
+ *   }))
+ *   .withOutputSchema(z.object({
+ *     result: z.any(),
+ *     metadata: z.object({ processedAt: z.string() })
+ *   }))
+ *   .execute(async ({ config, context }) => {
+ *     // config.inputData is resolved from expression
+ *     const data = config.inputData;
+ *     return {
+ *       output: {
+ *         result: processData(data),
+ *         metadata: { processedAt: new Date().toISOString() }
+ *       }
+ *     };
  *   })
  *   .build();
  * ```
@@ -57,16 +69,19 @@ export interface BuilderPortDefinition {
 }
 
 /**
- * Execute function signature with full type inference
+ * Execute function signature for flow-based plugins
+ *
+ * In the flow-based system, all data comes through config (with expressions resolved).
+ * There is no separate `inputs` parameter - everything is in `config`.
  */
 export type ExecuteFunction<
-  TInputs,
   TOutputs,
   TConfig,
-  TCredentialsData extends Record<string, unknown>, // New: Credentials data
+  TCredentialsData extends Record<string, unknown>,
 > = (params: {
-  inputs: TInputs;
+  /** Plugin configuration with all expressions resolved */
   config: TConfig;
+  /** Execution context (credentials, execution info, etc.) */
   context: PluginContext<TCredentialsData>;
   /** Persistent node state (for loop nodes, stateful operations, etc.) */
   nodeState: Record<string, unknown>;
@@ -114,7 +129,7 @@ export class PluginBuilder<
   private _inputSchemas: Map<string, z.ZodType> = new Map();
   private _outputSchemas: Map<string, z.ZodType> = new Map();
   private _configSchema?: z.ZodType;
-  private _execute?: ExecuteFunction<any, any, any, any>;
+  private _execute?: ExecuteFunction<any, any, any>;
   private _configUI?: ComponentType<PluginConfigUIProps<any, any>>;
 
   private _credentialSchemas: CredentialSchemasRecord = {};
@@ -145,7 +160,11 @@ export class PluginBuilder<
   }
 
   /**
-   * Add an input port with full type tracking
+   * Add an input port definition (for UI purposes only)
+   *
+   * @deprecated In the flow-based system, inputs come through config expressions.
+   * This method is kept for backwards compatibility and UI purposes (showing input handles).
+   * The input schema is NOT used at runtime - all data flows through config.
    */
   withInput<TName extends string, TSchema extends z.ZodType>(
     name: TName,
@@ -414,15 +433,14 @@ export class PluginBuilder<
   /**
    * Set execute function with full type inference
    *
-   * The inputs, outputs, and config parameters are all fully typed based on
-   * the schemas defined in previous builder calls!
+   * In the flow-based system, all data comes through config (expressions resolved).
+   * The outputs and config parameters are fully typed based on schemas defined above.
    */
   execute(
     fn: ExecuteFunction<
-      InferSchemaRecord<TInputSchemas>,
       InferSchemaRecord<TOutputSchemas>,
       TConfig,
-      TCredentialsData // Pass the inferred credentials data type
+      TCredentialsData
     >,
   ): PluginBuilder<
     TInputSchemas,
@@ -512,7 +530,7 @@ class BuiltPlugin<
   private _outputs: Map<string, PluginPort>;
   private _outputSchema?: z.ZodType; // Flow-based output schema
   private _configSchema?: z.ZodType;
-  private _execute: ExecuteFunction<any, any, any, TCredentialsData>;
+  private _execute: ExecuteFunction<any, any, TCredentialsData>;
   private _configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>;
 
   constructor(config: {
@@ -521,7 +539,7 @@ class BuiltPlugin<
     outputs: Map<string, PluginPort>;
     outputSchema?: z.ZodType;
     configSchema?: z.ZodType;
-    execute: ExecuteFunction<any, any, any, TCredentialsData>;
+    execute: ExecuteFunction<any, any, TCredentialsData>;
     configUI?: ComponentType<PluginConfigUIProps<any, TCredentialsData>>;
     credentialSchemas: CredentialSchemasRecord;
   }) {
@@ -576,14 +594,17 @@ class BuiltPlugin<
 
   /**
    * Implement execute() from Plugin base class
+   *
+   * In the flow-based system, inputs are ignored - all data comes through config.
    */
   async execute(
-    inputs: Record<string, any>,
+    _inputs: Record<string, any>, // Ignored in flow-based system
     config: TConfig,
-    context: PluginContext<TCredentialsData>, // Use TCredentialsData
+    context: PluginContext<TCredentialsData>,
     nodeState: Record<string, unknown>,
   ): Promise<Record<string, any>> {
-    const result = await this._execute({ inputs, config, context, nodeState });
+    // Flow-based: pass only config (with expressions resolved), context, and nodeState
+    const result = await this._execute({ config, context, nodeState });
     return result as Record<string, any>;
   }
 }
@@ -596,23 +617,27 @@ class BuiltPlugin<
  *
  * @example
  * ```typescript
+ * // Flow-based plugin example
  * const plugin = createPlugin("weather-api")
  *   .withMetadata({
  *     name: "Weather API",
- *     description: "Fetch weather data",
+ *     description: "Fetch weather data for a location",
  *     version: "1.0.0",
- *     tags: ["api", "weather", "input"]
+ *     tags: ["api", "data-source"]
  *   })
- *   .withInput("location", {
- *     label: "Location",
- *     schema: z.object({ city: z.string() })
- *   })
- *   .withOutput("weather", {
- *     label: "Weather Data",
- *     schema: z.object({ temp: z.number() })
- *   })
- *   .execute(async ({ inputs }) => {
- *     return { weather: { temp: 72 } };
+ *   .withConfig(z.object({
+ *     // Expression: {{ nodes.upstream.output.city }}
+ *     city: z.string(),
+ *     units: z.enum(["celsius", "fahrenheit"]).default("celsius"),
+ *   }))
+ *   .withOutputSchema(z.object({
+ *     temp: z.number(),
+ *     humidity: z.number(),
+ *     description: z.string(),
+ *   }))
+ *   .execute(async ({ config }) => {
+ *     const weather = await fetchWeather(config.city, config.units);
+ *     return { output: weather };
  *   })
  *   .build();
  * ```

@@ -37,6 +37,8 @@ interface ConditionGroup {
 }
 
 export interface IfElseConfig {
+  /** Value to test - typically an expression like {{ nodes.upstream.output }} */
+  value?: unknown;
   conditionGroups: ConditionGroup[];
 }
 

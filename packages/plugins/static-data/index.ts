@@ -18,7 +18,7 @@ export const staticDataPlugin = createPlugin("static-data")
     name: "Static Data",
     description:
       "Outputs static data configured at design-time. Useful for constants, test data, and default values.",
-    version: "2.0.0",
+    version: "3.0.0",
     author: {
       name: "Kianax",
       url: "https://kianax.com",
@@ -26,16 +26,7 @@ export const staticDataPlugin = createPlugin("static-data")
     tags: ["data-source"],
     icon: "📌",
   })
-  .withInput("input", {
-    label: "Input",
-    description: "Input data (optional, static data comes from config)",
-    schema: z.unknown(),
-  })
-  .withOutput("output", {
-    label: "Output",
-    description: "The static data output",
-    schema: z.unknown(),
-  })
+  // No input - this is a pure data source
   .withConfig(
     z.object({
       data: z
@@ -43,9 +34,9 @@ export const staticDataPlugin = createPlugin("static-data")
         .describe("Static data to output (any JSON-serializable value)"),
     }),
   )
+  .withOutputSchema(z.unknown())
   .withConfigUI(StaticDataConfigUI)
   .execute(async ({ config }) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     return {
       output: config.data,
     };
