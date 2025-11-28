@@ -12,6 +12,7 @@ export type {
   PluginTag,
   CredentialSchemasRecord,
   InferCredentialsData,
+  OutputHandle,
 } from "./types/common";
 
 export type {
