@@ -204,13 +204,13 @@ export function NodeConfigDrawer({
 
       {/* Split Panel Content */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        {/* Left Panel: Data Browser (only shown when we have expression data) */}
+        {/* Left Panel: Variables Browser (only shown when we have expression data) */}
         {hasExpressionData && uiContext && (
           <div className="w-56 border-r border-border flex flex-col min-h-0 bg-muted/20">
             <div className="px-3 py-2 border-b border-border flex items-center gap-2">
               <IconDatabase className="size-3.5 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground">
-                Data Browser
+                Variables Browser
               </span>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-2">
