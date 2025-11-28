@@ -62,7 +62,7 @@ export function useRoutineGraph({
         style: {
           strokeWidth: 2,
           strokeDasharray: "5 5",
-          stroke: "#94a3b8", // Always gray for conditional branches
+          stroke: "var(--muted-foreground)",
         },
       }));
     },
@@ -134,7 +134,7 @@ export function useRoutineGraph({
       style: {
         strokeWidth: 2,
         strokeDasharray: "5 5",
-        stroke: "#94a3b8", // Always gray for conditional branches
+        stroke: "var(--muted-foreground)",
       },
       label: connection.sourceHandle || undefined,
       labelStyle: {
@@ -262,7 +262,9 @@ export function useRoutineGraph({
               targetStatus === "completed" ||
               targetStatus === "failed");
 
-          const newStroke = isFlowing ? "#10b981" : "#94a3b8"; // Green vs Gray
+          const newStroke = isFlowing
+            ? "var(--status-running)"
+            : "var(--muted-foreground)"; // Blueish vs Muted Foreground
 
           if (edge.style?.stroke !== newStroke) {
             return {
