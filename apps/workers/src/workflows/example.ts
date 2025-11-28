@@ -9,7 +9,7 @@
  */
 
 import { proxyActivities } from "@temporalio/workflow";
-import type * as activities from "../activities";
+import type * as activities from "../activities/index.js";
 
 // Proxy activities with timeout configuration
 const { greet, logMessage } = proxyActivities<typeof activities>({

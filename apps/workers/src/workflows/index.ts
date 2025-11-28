@@ -5,5 +5,5 @@
  * Workflows must be imported from this file by the Worker.
  */
 
-export * from "./routine-executor";
-export * from "./example";
+export * from "./routine-executor.js";
+export * from "./example.js";

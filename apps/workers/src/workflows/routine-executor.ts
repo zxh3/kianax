@@ -6,7 +6,7 @@
  */
 
 import { proxyActivities, workflowInfo } from "@temporalio/workflow";
-import type * as activities from "../activities";
+import type * as activities from "../activities/index.js";
 import type { RoutineInput } from "@kianax/shared/temporal";
 import {
   BFSIterationStrategy,
@@ -17,7 +17,7 @@ import {
   type Edge,
   validateGraph,
 } from "@kianax/execution-engine";
-import { adaptRoutineInput } from "../lib/routine-adapter";
+import { adaptRoutineInput } from "../lib/routine-adapter.js";
 
 // Proxy activities with timeout and retry configuration
 const {

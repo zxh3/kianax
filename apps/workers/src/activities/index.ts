@@ -5,6 +5,6 @@
  * Activities are imported by workflows via proxyActivities().
  */
 
-export * from "./plugins";
-export * from "./convex";
-export * from "./example";
+export * from "./plugins.js";
+export * from "./convex.js";
+export * from "./example.js";

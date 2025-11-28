@@ -11,7 +11,7 @@ import type {
   UpdateRoutineStatusInput,
   StoreNodeResultInput,
 } from "@kianax/shared/temporal";
-import { api } from "../../../server/convex/_generated/api";
+import { api } from "../../../server/convex/_generated/api.js";
 import { parseWorkerEnv } from "@kianax/config";
 
 /**

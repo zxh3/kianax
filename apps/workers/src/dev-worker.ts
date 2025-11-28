@@ -9,7 +9,7 @@
 import "dotenv/config";
 
 import { parseWorkerEnv, validateEnv } from "@kianax/config";
-import { runWorker } from "./worker";
+import { runWorker } from "./worker.js";
 
 async function main() {
   // Validate env vars before starting

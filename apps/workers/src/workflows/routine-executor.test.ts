@@ -14,7 +14,7 @@ import {
   ExecutionState,
 } from "@kianax/execution-engine";
 import type { RoutineInput } from "@kianax/shared/temporal";
-import { adaptRoutineInput } from "../lib/routine-adapter";
+import { adaptRoutineInput } from "../lib/routine-adapter.js";
 
 /**
  * Recreate the buildExecutionGraph function from routine-executor.ts
