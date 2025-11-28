@@ -70,10 +70,10 @@ interface ExpressionFieldProps {
   className?: string;
   /** Action button (e.g., "Format JSON") */
   action?: React.ReactNode;
-  /** Show data picker by default */
-  defaultShowDataPicker?: boolean;
-  /** Hide the data picker toggle entirely */
-  hideDataPicker?: boolean;
+  /** Show variable picker by default */
+  defaultShowVariablePicker?: boolean;
+  /** Hide the variable picker toggle entirely */
+  hideVariablePicker?: boolean;
 }
 
 /**
@@ -98,11 +98,11 @@ export function ExpressionField({
   showPreview = true,
   className,
   action,
-  defaultShowDataPicker = false,
-  hideDataPicker = false,
+  defaultShowVariablePicker = false,
+  hideVariablePicker = true,
 }: ExpressionFieldProps) {
-  const [isDataPickerOpen, setIsDataPickerOpen] = useState(
-    defaultShowDataPicker,
+  const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(
+    defaultShowVariablePicker,
   );
   const inputRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +132,7 @@ export function ExpressionField({
       expressionContext.hasTrigger);
 
   // Show data picker toggle only if we have context and it's not hidden
-  const showDataPickerToggle = !hideDataPicker && hasExpressionData;
+  const showVariablePickerToggle = !hideVariablePicker && hasExpressionData;
 
   return (
     <ConfigSection
@@ -141,10 +141,10 @@ export function ExpressionField({
       error={error}
       action={
         action ||
-        (showDataPickerToggle ? (
+        (showVariablePickerToggle ? (
           <Collapsible
-            open={isDataPickerOpen}
-            onOpenChange={setIsDataPickerOpen}
+            open={isVariablePickerOpen}
+            onOpenChange={setIsVariablePickerOpen}
           >
             <CollapsibleTrigger asChild>
               <Button
@@ -153,11 +153,11 @@ export function ExpressionField({
                 className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <IconDatabase className="size-3.5" />
-                Data
+                Variables
                 <IconChevronDown
                   className={cn(
                     "size-3 transition-transform duration-200",
-                    isDataPickerOpen && "rotate-180",
+                    isVariablePickerOpen && "rotate-180",
                   )}
                 />
               </Button>
@@ -182,10 +182,10 @@ export function ExpressionField({
         />
 
         {/* Collapsible data picker */}
-        {showDataPickerToggle && uiContext && (
+        {showVariablePickerToggle && uiContext && (
           <Collapsible
-            open={isDataPickerOpen}
-            onOpenChange={setIsDataPickerOpen}
+            open={isVariablePickerOpen}
+            onOpenChange={setIsVariablePickerOpen}
           >
             <CollapsibleContent>
               <div className="pt-2">
