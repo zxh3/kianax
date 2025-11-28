@@ -128,8 +128,13 @@ export function NodeInspector({
   const ConfigComponent = getPluginConfigComponent(pluginId);
 
   const handleSave = () => {
-    onSave(nodeId, localConfig, localLabel, localCredentialMappings);
-    toast.success("Configuration saved");
+    try {
+      onSave(nodeId, localConfig, localLabel, localCredentialMappings);
+      toast.success("Configuration updated");
+    } catch (error) {
+      console.error("Failed to save configuration:", error);
+      toast.error("Failed to save configuration");
+    }
   };
 
   // --- Expression Context Logic ---
