@@ -5,31 +5,31 @@
 ## Phase 1: Core Infrastructure
 
 ### 1.1 Connection Model Update
-- [ ] Add `sourceHandle` field to `Connection` type in `packages/execution-engine/src/types/graph.ts`
-- [ ] Update `Edge` interface to support handle-based routing
+- [x] Add `sourceHandle` field to `Connection` type in `packages/execution-engine/src/types/graph.ts`
+- [x] Update `Edge` interface to support handle-based routing
 - [ ] Create migration script for existing routines (port-based → flow-based)
 - [ ] Update Convex schema for new connection structure
 
 ### 1.2 Plugin SDK Changes
-- [ ] Add `withOutputSchema()` builder method to plugin SDK
-- [ ] Add `withOutputHandles()` builder method for control flow nodes
-- [ ] Deprecate `withInput()` / `withOutput()` port methods (keep for backwards compat)
+- [x] Add `withOutputSchema()` builder method to plugin SDK
+- [x] Add `withOutputHandles()` builder method for control flow nodes
+- [x] Deprecate `withInput()` / `withOutput()` port methods (keep for backwards compat)
 - [ ] Add `__handle` return value support for routing
-- [ ] Update plugin type definitions
+- [x] Update plugin type definitions (OutputHandle in PluginMetadata)
 
 ### 1.3 Execution Engine Changes
-- [ ] Implement `shouldExecute()` function for handle-based routing
-- [ ] Update `executeNode()` to work with config-only plugins
-- [ ] Remove port-based input gathering (or make optional)
+- [x] Implement handle-based routing in BFS/DFS iteration strategies
+- [x] Update `findReadyNodes()` for handle-based edge activation
+- [x] Update `determineNextNodes()` for handle-based routing
+- [x] Update `gatherNodeInputs()` for flow-based data collection
 - [ ] Add `setActiveHandle()` / `getActiveHandle()` to execution state
-- [ ] Update topological sort to respect handle connections
 
 ## Phase 2: Control Flow Nodes
 
 ### 2.1 If-Else Node Migration
-- [ ] Update if-else plugin to use output handles (`true`, `false`)
+- [x] Update if-else plugin to use output handles (`true`, `false`)
 - [ ] Move condition evaluation to config expression
-- [ ] Test branching behavior with new routing
+- [x] Test branching behavior with new routing (verified in Temporal UI)
 - [ ] Update if-else config UI
 
 ### 2.2 New Control Flow Nodes
@@ -53,9 +53,9 @@
 ## Phase 3: Expression System Integration
 
 ### 3.1 Scope Enhancement
-- [ ] Update `getUpstreamNodes()` to include output schemas
-- [ ] Add output schema to `CompletionItem` tree in expression context
-- [ ] Support deep autocomplete into output schema: `{{ nodes.http.output.data.` → shows schema fields
+- [x] Update `getUpstreamNodes()` to include output schemas
+- [x] Add output schema to `CompletionItem` tree in expression context
+- [x] Support deep autocomplete into output schema: `{{ nodes.http.output.data.` → shows schema fields
 - [ ] Add validation for expression paths against output schemas
 
 ### 3.2 Special Context Variables
