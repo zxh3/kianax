@@ -4,6 +4,7 @@ import { api } from "@kianax/server/convex/_generated/api";
 import { toast } from "sonner";
 import type { RoutineNode, RoutineConnection, RoutineVariable } from "../types";
 import type { Id } from "@kianax/server/convex/_generated/dataModel";
+import type { ExpressionValidationError } from "@kianax/execution-engine";
 
 interface UseRoutineExecutionProps {
   routineId: Id<"routines">;
@@ -12,6 +13,7 @@ interface UseRoutineExecutionProps {
     connections: RoutineConnection[];
   };
   variables: RoutineVariable[];
+  validationErrors: ExpressionValidationError[];
   onSave: (
     nodes: RoutineNode[],
     connections: RoutineConnection[],
@@ -24,6 +26,7 @@ export function useRoutineExecution({
   routineId,
   getRoutineData,
   variables,
+  validationErrors,
   onSave,
   onTest,
 }: UseRoutineExecutionProps) {
@@ -84,6 +87,21 @@ export function useRoutineExecution({
   ]);
 
   const handleRunTest = async () => {
+    // Block execution if there are validation errors
+    if (validationErrors.length > 0) {
+      toast.error(
+        `Cannot run: ${validationErrors.length} expression error${validationErrors.length > 1 ? "s" : ""} must be fixed first`,
+      );
+      // Show the first error details
+      const firstError = validationErrors[0];
+      if (firstError) {
+        toast.error(`${firstError.message}`, {
+          description: `Node: ${firstError.nodeLabel || firstError.nodeId}`,
+        });
+      }
+      return;
+    }
+
     setIsStartingTest(true);
     try {
       const { nodes, connections } = getRoutineData();

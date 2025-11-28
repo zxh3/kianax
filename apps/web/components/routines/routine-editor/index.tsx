@@ -84,6 +84,7 @@ export function RoutineEditor({
     routineId,
     getRoutineData,
     variables,
+    validationErrors,
     onSave,
     onTest,
   });

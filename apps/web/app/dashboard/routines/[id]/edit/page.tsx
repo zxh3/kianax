@@ -23,7 +23,6 @@ export default function RoutineEditorPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const routineId = id as Id<"routines">;
-  const [isExecuting, setIsExecuting] = useState(false);
 
   // Fetch routine data
   const routine = useQuery(api.routines.get, { id: routineId });
@@ -111,46 +110,6 @@ export default function RoutineEditorPage({ params }: PageProps) {
     }
   };
 
-  const handleTest = async () => {
-    if (isExecuting) return;
-
-    // Block execution if there are validation errors
-    if (validationErrors.length > 0) {
-      toast.error(
-        `Cannot run: ${validationErrors.length} expression error${validationErrors.length > 1 ? "s" : ""} must be fixed first`,
-      );
-      // Show the first error details
-      const firstError = validationErrors[0];
-      if (firstError) {
-        toast.error(`${firstError.message}`, {
-          description: `Node: ${firstError.nodeLabel || firstError.nodeId}`,
-        });
-      }
-      return;
-    }
-
-    setIsExecuting(true);
-    try {
-      toast.info("Starting workflow execution...");
-
-      const response = await fetch(`/api/workflows/${routineId}/execute`, {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to execute workflow");
-      }
-
-      toast.success(`Workflow started! Workflow ID: ${data.workflowId}`);
-    } catch (error: any) {
-      toast.error(`Failed to execute workflow: ${error.message}`);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   const handleBack = () => {
     router.push("/dashboard/routines");
   };
@@ -199,7 +158,6 @@ export default function RoutineEditorPage({ params }: PageProps) {
           initialVariables={routine.variables || []}
           validationErrors={validationErrors}
           onSave={handleSave}
-          onTest={handleTest}
         />
       </div>
     </div>
