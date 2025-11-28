@@ -11,7 +11,14 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { BaseConfigUI, ConfigSection, ConfigCard, InfoCard } from "../ui";
+import {
+  BaseConfigUI,
+  ConfigSection,
+  ConfigCard,
+  InfoCard,
+  ExpressionField,
+} from "../ui";
+import type { ExpressionContext } from "../config-registry";
 
 type ComparisonOperator =
   | "=="
@@ -45,6 +52,8 @@ export interface IfElseConfig {
 interface IfElseConfigUIProps {
   value?: IfElseConfig;
   onChange: (value: IfElseConfig) => void;
+  /** Expression context for autocomplete suggestions */
+  expressionContext?: ExpressionContext;
 }
 
 const OPERATORS = [
@@ -69,7 +78,11 @@ const OPERATORS = [
  * - Each group's conditions are ANDed together
  * - Groups are ORed together
  */
-export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
+export function IfElseConfigUI({
+  value,
+  onChange,
+  expressionContext,
+}: IfElseConfigUIProps) {
   const defaultConfig: IfElseConfig = {
     conditionGroups: [
       {
@@ -156,8 +169,23 @@ export function IfElseConfigUI({ value, onChange }: IfElseConfigUIProps) {
     }
   };
 
+  const handleValueChange = (newValue: string) => {
+    handleChange({ ...localConfig, value: newValue || undefined });
+  };
+
   return (
     <BaseConfigUI>
+      <ExpressionField
+        label="Value to Test"
+        description="The value to compare against conditions. Use expressions to reference data from other nodes."
+        value={localConfig.value !== undefined ? String(localConfig.value) : ""}
+        onChange={handleValueChange}
+        expressionContext={expressionContext}
+        multiline
+        rows={2}
+        placeholder="{{ nodes.upstream.output }}"
+      />
+
       <ConfigSection
         label="Condition Groups"
         description="OR of AND groups: conditions within a group are ANDed, groups are ORed together"

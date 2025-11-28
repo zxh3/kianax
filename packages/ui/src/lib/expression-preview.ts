@@ -6,6 +6,19 @@
  */
 
 /**
+ * Symbol to mark values that are valid paths but have no runtime data yet.
+ * Used during configuration when nodes haven't executed.
+ */
+export const PENDING_VALUE = Symbol.for("kianax.pending");
+
+/**
+ * Check if a value is a pending marker
+ */
+export function isPendingValue(value: unknown): boolean {
+  return value === PENDING_VALUE;
+}
+
+/**
  * Preview context for expression resolution
  */
 export interface PreviewContext {
@@ -37,11 +50,14 @@ export interface PreviewResult {
     | "object"
     | "array"
     | "null"
-    | "undefined";
+    | "undefined"
+    | "pending";
   /** Whether resolution was successful */
   success: boolean;
   /** Error message if resolution failed */
   error?: string;
+  /** Whether the value is pending (valid path but no runtime data) */
+  pending?: boolean;
 }
 
 /**
@@ -64,6 +80,17 @@ export function resolvePreview(
 ): PreviewResult {
   try {
     const resolved = resolveExpressions(value, context);
+
+    // Check if the resolved value is a pending marker
+    if (isPendingValue(resolved)) {
+      return {
+        value: undefined,
+        type: "pending",
+        success: true,
+        pending: true,
+      };
+    }
+
     return {
       value: resolved,
       type: getValueType(resolved),
@@ -253,6 +280,11 @@ export function containsExpression(value: string): boolean {
  * Format a preview value for display
  */
 export function formatPreviewValue(value: unknown, maxLength = 50): string {
+  // Handle pending values
+  if (isPendingValue(value)) {
+    return "Available at runtime";
+  }
+
   if (value === undefined) return "undefined";
   if (value === null) return "null";
 

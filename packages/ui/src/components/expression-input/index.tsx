@@ -51,6 +51,7 @@ import {
   resolvePreview,
   containsExpression,
   formatPreviewValue,
+  PENDING_VALUE,
   type PreviewResult,
 } from "../../lib/expression-preview";
 
@@ -147,8 +148,21 @@ function extractPreviewData(
           }
         }
       }
-    } else if (item.name === "trigger" && item.value !== undefined) {
-      result.trigger = item.value;
+    } else if (item.name === "trigger") {
+      // Handle trigger - use value if present, otherwise build from children
+      if (item.value !== undefined) {
+        result.trigger = item.value;
+      } else if (item.children) {
+        const triggerData: Record<string, unknown> = {};
+        for (const child of item.children) {
+          if (child.value !== undefined) {
+            triggerData[child.name] = child.value;
+          }
+        }
+        if (Object.keys(triggerData).length > 0) {
+          result.trigger = triggerData;
+        }
+      }
     } else if (item.name === "execution" && item.value !== undefined) {
       result.execution = item.value as PreviewData["execution"];
     }
@@ -420,6 +434,7 @@ function PreviewBadge({
     array: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
     null: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
     undefined: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+    pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   };
 
   // Type labels
@@ -431,6 +446,7 @@ function PreviewBadge({
     array: "arr",
     null: "null",
     undefined: "?",
+    pending: "pending",
   };
 
   if (!preview.success) {
@@ -446,6 +462,30 @@ function PreviewBadge({
         </span>
         <span className="text-muted-foreground text-xs truncate">
           {preview.error}
+        </span>
+      </div>
+    );
+  }
+
+  // Handle pending values (valid path but no runtime data yet)
+  if (preview.pending || preview.type === "pending") {
+    return (
+      <div
+        className="mt-1 flex items-center gap-1.5"
+        role="status"
+        aria-live="polite"
+        aria-label="Expression value available at runtime"
+      >
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 text-xs font-medium",
+            typeColors.pending,
+          )}
+        >
+          {typeLabels.pending}
+        </span>
+        <span className="text-muted-foreground text-xs truncate">
+          Available at runtime
         </span>
       </div>
     );
@@ -555,6 +595,7 @@ export interface DomainExpressionContext {
 /**
  * Convert output schema fields to completion items.
  * Recursively converts the schema field tree to a completion tree.
+ * Adds PENDING_VALUE for leaf nodes to indicate "valid path but no data yet".
  */
 function convertSchemaFieldsToCompletions(
   fields: OutputSchemaField[],
@@ -566,6 +607,9 @@ function convertSchemaFieldsToCompletions(
     children: field.children
       ? convertSchemaFieldsToCompletions(field.children)
       : undefined,
+    // Add pending value for leaf nodes (no children)
+    // This allows preview to show "Available at runtime" instead of error
+    value: field.children ? undefined : PENDING_VALUE,
   }));
 }
 
@@ -633,6 +677,8 @@ export function buildExpressionContext(
               name: output,
               type: "obj" as const,
               detail: "output",
+              // Mark as pending since we don't have actual values during config
+              value: PENDING_VALUE,
             })),
       })),
     });
@@ -646,8 +692,18 @@ export function buildExpressionContext(
       detail: "Trigger data",
       info: "Access data from the routine trigger",
       children: [
-        { name: "payload", type: "obj", detail: "Trigger payload data" },
-        { name: "type", type: "str", detail: "Trigger type" },
+        {
+          name: "payload",
+          type: "obj",
+          detail: "Trigger payload data",
+          value: PENDING_VALUE,
+        },
+        {
+          name: "type",
+          type: "str",
+          detail: "Trigger type",
+          value: PENDING_VALUE,
+        },
       ],
     });
   }

@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@kianax/ui/components/select";
-import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
+import { BaseConfigUI, ConfigSection, InfoCard, ExpressionField } from "../ui";
+import type { ExpressionContext } from "../config-registry";
 
 export interface HttpRequestConfig {
   // Request parameters (via expressions in flow-based system)
@@ -29,18 +30,20 @@ export interface HttpRequestConfig {
 interface HttpRequestConfigUIProps {
   value?: HttpRequestConfig;
   onChange: (value: HttpRequestConfig) => void;
+  /** Expression context for autocomplete suggestions */
+  expressionContext?: ExpressionContext;
 }
 
 /**
  * Configuration UI for HTTP Request Plugin
  *
- * Configures request behavior: timeouts, retries, and redirect handling.
- * Note: The actual request parameters (URL, method, headers, body) are
- * provided as inputs at runtime, not configured here.
+ * Configures request parameters and behavior: URL, method, headers, body,
+ * timeouts, retries, and redirect handling.
  */
 export function HttpRequestConfigUI({
   value,
   onChange,
+  expressionContext,
 }: HttpRequestConfigUIProps) {
   const defaultConfig: HttpRequestConfig = {
     // Request parameters - typically set via expressions in NodeConfigDrawer
@@ -84,6 +87,64 @@ export function HttpRequestConfigUI({
 
   return (
     <BaseConfigUI>
+      {/* Request Parameters */}
+      <ExpressionField
+        label="URL"
+        description="The request URL. Use expressions to reference data from other nodes."
+        value={config.url}
+        onChange={(val) => handleChange({ url: val })}
+        expressionContext={expressionContext}
+        placeholder="https://api.example.com/endpoint"
+      />
+
+      <ConfigSection label="Method" description="HTTP method for the request">
+        <Select
+          value={config.method}
+          onValueChange={(val) =>
+            handleChange({
+              method: val as HttpRequestConfig["method"],
+            })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="GET">GET</SelectItem>
+            <SelectItem value="POST">POST</SelectItem>
+            <SelectItem value="PUT">PUT</SelectItem>
+            <SelectItem value="PATCH">PATCH</SelectItem>
+            <SelectItem value="DELETE">DELETE</SelectItem>
+            <SelectItem value="HEAD">HEAD</SelectItem>
+          </SelectContent>
+        </Select>
+      </ConfigSection>
+
+      {["POST", "PUT", "PATCH"].includes(config.method) && (
+        <ExpressionField
+          label="Request Body"
+          description="JSON body to send with the request. Use expressions to reference data."
+          value={
+            config.body !== undefined
+              ? JSON.stringify(config.body, null, 2)
+              : ""
+          }
+          onChange={(val) => {
+            try {
+              handleChange({ body: val ? JSON.parse(val) : undefined });
+            } catch {
+              // Allow raw string while typing
+              handleChange({ body: val || undefined });
+            }
+          }}
+          expressionContext={expressionContext}
+          multiline
+          rows={4}
+          placeholder={'{"key": "value"} or {{ nodes.upstream.output }}'}
+        />
+      )}
+
+      {/* Behavior Configuration */}
       <ConfigSection
         label="Timeout"
         description="Maximum time to wait for a response (milliseconds)"
@@ -156,17 +217,14 @@ export function HttpRequestConfigUI({
         </Select>
       </ConfigSection>
 
-      <InfoCard title="How It Works">
+      <InfoCard title="Using Expressions">
         <div className="space-y-2">
           <p>
-            This plugin makes HTTP requests to external APIs. The request
-            parameters (URL, method, headers, body) are provided by upstream
-            nodes at runtime.
-          </p>
-          <p>
-            These settings control{" "}
-            <strong className="text-foreground">how</strong> requests are made
-            (timeouts, retries, redirects).
+            Use expressions like{" "}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded">
+              {"{{ nodes.upstream.output }}"}
+            </code>{" "}
+            to dynamically set URL and body from upstream node data.
           </p>
         </div>
       </InfoCard>
