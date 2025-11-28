@@ -55,6 +55,7 @@ export function RoutineEditor({
     addNode,
     updateNodeConfig,
     updateNodeExecutionStatus,
+    updateEdgeExecutionStatus,
     setNodesSelection,
     getRoutineData,
     convertFromReactFlowNodes,
@@ -101,7 +102,8 @@ export function RoutineEditor({
   // Sync node status from execution
   useEffect(() => {
     updateNodeExecutionStatus(nodeStatusMap);
-  }, [nodeStatusMap, updateNodeExecutionStatus]);
+    updateEdgeExecutionStatus(nodeStatusMap);
+  }, [nodeStatusMap, updateNodeExecutionStatus, updateEdgeExecutionStatus]);
 
   // Sync JSON when switching to JSON mode
   useEffect(() => {

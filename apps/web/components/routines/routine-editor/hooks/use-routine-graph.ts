@@ -244,6 +244,44 @@ export function useRoutineGraph({
     [],
   );
 
+  const updateEdgeExecutionStatus = useCallback(
+    (
+      nodeStatusMap: Map<
+        string,
+        "running" | "completed" | "failed" | "pending"
+      >,
+    ) => {
+      setEdges((currentEdges) =>
+        currentEdges.map((edge) => {
+          const sourceStatus = nodeStatusMap.get(edge.source);
+          const targetStatus = nodeStatusMap.get(edge.target);
+
+          const isFlowing =
+            sourceStatus === "completed" &&
+            (targetStatus === "running" ||
+              targetStatus === "completed" ||
+              targetStatus === "failed");
+
+          const newStroke = isFlowing ? "#10b981" : "#94a3b8"; // Green vs Gray
+
+          if (edge.style?.stroke !== newStroke) {
+            return {
+              ...edge,
+              animated: true,
+              style: {
+                ...edge.style,
+                stroke: newStroke,
+                strokeWidth: isFlowing ? 3 : 2, // Slightly thicker active path
+              },
+            };
+          }
+          return edge;
+        }),
+      );
+    },
+    [],
+  );
+
   const getRoutineData = useCallback(() => {
     return {
       nodes: convertFromReactFlowNodes(nodes),
@@ -270,6 +308,7 @@ export function useRoutineGraph({
     addNode,
     updateNodeConfig,
     updateNodeExecutionStatus,
+    updateEdgeExecutionStatus,
     setNodesSelection,
     getRoutineData,
     setRoutineData,
