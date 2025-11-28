@@ -16,6 +16,7 @@ import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
 import { autocompletion } from "@codemirror/autocomplete";
 import { expressionLanguage } from "../../lib/expression-language";
 import { expressionHighlight } from "../../lib/expression-highlight";
+import { expressionDecoration } from "../../lib/expression-decoration";
 import { getExpressionInputTheme } from "./theme";
 import { createExpressionCompletionSource } from "./completions";
 import type { ExpressionContext } from "./index";
@@ -222,6 +223,7 @@ export function Editor({
       // Core language support
       expressionLanguage,
       expressionHighlight,
+      ...expressionDecoration,
 
       // Autocomplete
       autocompleteExtension,

@@ -55,14 +55,26 @@ import {
 } from "../../lib/expression-preview";
 
 /**
+ * Type indicators for completion items.
+ * These determine the badge color and label shown in the UI.
+ */
+export type CompletionItemType =
+  | "str"
+  | "num"
+  | "bool"
+  | "obj"
+  | "arr"
+  | "null";
+
+/**
  * A completion item for expression autocomplete.
  * This is a generic tree structure that allows arbitrary nesting.
  */
 export interface CompletionItem {
   /** Display name shown in dropdown */
   name: string;
-  /** Type indicator for badge (e.g., "str", "num", "obj", "keyword") */
-  type?: string;
+  /** Type indicator for badge */
+  type: CompletionItemType;
   /** Short description shown next to name */
   detail?: string;
   /** Extended info/documentation */
@@ -464,7 +476,7 @@ export type { EditorProps } from "./editor";
 /**
  * Type map for converting domain types to display badges.
  */
-const TYPE_BADGE_MAP: Record<string, string> = {
+const TYPE_BADGE_MAP: Record<string, CompletionItemType> = {
   string: "str",
   number: "num",
   boolean: "bool",
@@ -472,6 +484,16 @@ const TYPE_BADGE_MAP: Record<string, string> = {
   object: "obj",
   array: "arr",
 };
+
+/**
+ * Converts a domain type string to CompletionItemType
+ */
+function toCompletionItemType(
+  domainType: string | undefined,
+): CompletionItemType {
+  if (!domainType) return "obj";
+  return TYPE_BADGE_MAP[domainType] ?? "obj";
+}
 
 /**
  * Domain-specific variable type (from plugin system or routine editor).
@@ -539,11 +561,12 @@ export function buildExpressionContext(
   if (domain.variables && domain.variables.length > 0) {
     completions.push({
       name: "vars",
+      type: "obj",
       detail: "Variables",
       info: "Access routine-level variables",
       children: domain.variables.map((v) => ({
         name: v.name,
-        type: TYPE_BADGE_MAP[v.type ?? ""] ?? v.type,
+        type: toCompletionItemType(v.type),
         detail: v.description,
         value: v.value,
       })),
@@ -554,14 +577,17 @@ export function buildExpressionContext(
   if (domain.upstreamNodes && domain.upstreamNodes.length > 0) {
     completions.push({
       name: "nodes",
+      type: "obj",
       detail: "Node outputs",
       info: `Access outputs from ${domain.upstreamNodes.length} upstream node(s)`,
       children: domain.upstreamNodes.map((node) => ({
         name: node.id,
+        type: "obj" as const,
         // Use label if available, otherwise use a generic detail
         detail: (node.label as string) ?? "Node",
         children: (node.outputs ?? []).map((output) => ({
           name: output,
+          type: "obj" as const,
           detail: "output",
         })),
       })),
@@ -572,6 +598,7 @@ export function buildExpressionContext(
   if (domain.hasTrigger) {
     completions.push({
       name: "trigger",
+      type: "obj",
       detail: "Trigger data",
       info: "Access data from the routine trigger",
       children: [
@@ -584,6 +611,7 @@ export function buildExpressionContext(
   // Always add execution context
   completions.push({
     name: "execution",
+    type: "obj",
     detail: "Execution context",
     info: "Access execution metadata (id, routineId, startedAt)",
     children: [

@@ -51,6 +51,7 @@ const sampleContext: ExpressionContext = {
   completions: [
     {
       name: "vars",
+      type: "obj",
       detail: "Variables",
       info: "Access routine-level variables",
       children: [
@@ -88,11 +89,13 @@ const sampleContext: ExpressionContext = {
     },
     {
       name: "nodes",
+      type: "obj",
       detail: "Node outputs",
       info: "Access outputs from upstream nodes",
       children: [
         {
           name: "http_1",
+          type: "obj",
           detail: "HTTP Request",
           // Value for preview resolution
           value: {
@@ -100,20 +103,22 @@ const sampleContext: ExpressionContext = {
             error: null,
           },
           children: [
-            { name: "success", detail: "output" },
-            { name: "error", detail: "output" },
+            { name: "success", type: "obj", detail: "output" },
+            { name: "error", type: "null", detail: "output" },
           ],
         },
         {
           name: "transform_1",
+          type: "obj",
           detail: "Data Transform",
           value: { data: [1, 2, 3] },
-          children: [{ name: "data", detail: "output" }],
+          children: [{ name: "data", type: "arr", detail: "output" }],
         },
       ],
     },
     {
       name: "trigger",
+      type: "obj",
       detail: "Trigger data",
       info: "Access data from the routine trigger",
       children: [
@@ -123,6 +128,7 @@ const sampleContext: ExpressionContext = {
     },
     {
       name: "execution",
+      type: "obj",
       detail: "Execution context",
       info: "Access execution metadata",
       children: [
