@@ -38,7 +38,6 @@
  *     ],
  *   }}
  *   showPreview
- *   previewContext={{ vars: { baseUrl: "https://api.example.com" } }}
  *   placeholder="Enter URL with {{ vars.baseUrl }}"
  * />
  * ```
@@ -88,14 +87,62 @@ export interface ExpressionContext {
 }
 
 /**
- * Context for resolving preview values.
- * Used to show live preview of resolved expressions.
+ * Internal context for resolving preview values.
+ * Extracted automatically from ExpressionContext.
  */
-export interface PreviewContext {
-  vars?: Record<string, unknown>;
-  nodes?: Record<string, Record<string, unknown>>;
+interface PreviewData {
+  vars: Record<string, unknown>;
+  nodes: Record<string, Record<string, unknown>>;
   trigger?: unknown;
   execution?: { id: string; routineId: string; startedAt: number };
+}
+
+/**
+ * Extract preview data from the context tree.
+ * This derives the preview values from CompletionItem.value fields.
+ */
+function extractPreviewData(
+  context: ExpressionContext | undefined,
+): PreviewData {
+  const result: PreviewData = { vars: {}, nodes: {} };
+
+  if (!context?.completions) return result;
+
+  for (const item of context.completions) {
+    if (item.name === "vars" && item.children) {
+      for (const child of item.children) {
+        if (child.value !== undefined) {
+          result.vars[child.name] = child.value;
+        }
+      }
+    } else if (item.name === "nodes" && item.children) {
+      for (const nodeItem of item.children) {
+        if (nodeItem.value !== undefined) {
+          result.nodes[nodeItem.name] = nodeItem.value as Record<
+            string,
+            unknown
+          >;
+        } else if (nodeItem.children) {
+          // Build from nested children if no direct value
+          const nodeOutputs: Record<string, unknown> = {};
+          for (const outputItem of nodeItem.children) {
+            if (outputItem.value !== undefined) {
+              nodeOutputs[outputItem.name] = outputItem.value;
+            }
+          }
+          if (Object.keys(nodeOutputs).length > 0) {
+            result.nodes[nodeItem.name] = nodeOutputs;
+          }
+        }
+      }
+    } else if (item.name === "trigger" && item.value !== undefined) {
+      result.trigger = item.value;
+    } else if (item.name === "execution" && item.value !== undefined) {
+      result.execution = item.value as PreviewData["execution"];
+    }
+  }
+
+  return result;
 }
 
 export interface ExpressionInputProps {
@@ -104,13 +151,11 @@ export interface ExpressionInputProps {
   /** Called when value changes */
   onChange: (value: string) => void;
 
-  /** Expression context for autocomplete suggestions */
+  /** Expression context for autocomplete suggestions and preview values */
   context?: ExpressionContext;
 
-  /** Show live preview of resolved value (Phase 4.4) */
+  /** Show live preview of resolved value */
   showPreview?: boolean;
-  /** Context for resolving preview (Phase 4.4) */
-  previewContext?: PreviewContext;
 
   /** Multi-line mode (renders as textarea) */
   multiline?: boolean;
@@ -152,7 +197,6 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       onChange,
       context,
       showPreview = false,
-      previewContext,
       multiline = false,
       rows,
       placeholder,
@@ -188,7 +232,7 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       }
 
       // Skip preview if not enabled or no context
-      if (!showPreview || !previewContext) {
+      if (!showPreview || !context) {
         setPreview(null);
         return;
       }
@@ -202,13 +246,16 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       // Set resolving state
       setIsResolvingPreview(true);
 
+      // Extract preview data from context tree
+      const previewData = extractPreviewData(context);
+
       // Debounce the resolution
       debounceTimerRef.current = setTimeout(() => {
         const result = resolvePreview(value, {
-          vars: previewContext.vars ?? {},
-          nodes: previewContext.nodes ?? {},
-          trigger: previewContext.trigger,
-          execution: previewContext.execution,
+          vars: previewData.vars,
+          nodes: previewData.nodes,
+          trigger: previewData.trigger,
+          execution: previewData.execution,
         });
         setPreview(result);
         setIsResolvingPreview(false);
@@ -219,7 +266,7 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
           clearTimeout(debounceTimerRef.current);
         }
       };
-    }, [value, showPreview, previewContext]);
+    }, [value, showPreview, context]);
 
     // Calculate min-height for multiline based on rows
     const minHeight = multiline && rows ? `${rows * 24 + 16}px` : undefined;

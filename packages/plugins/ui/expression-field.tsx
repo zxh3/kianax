@@ -75,19 +75,8 @@ export function ExpressionField({
   action,
 }: ExpressionFieldProps) {
   // Convert domain-specific context to generic tree format
+  // Preview values are derived from the `value` fields in the context
   const uiContext = buildExpressionContext(expressionContext);
-
-  // Build preview context from expression context
-  const previewContext = expressionContext
-    ? {
-        vars: Object.fromEntries(
-          (expressionContext.variables ?? []).map((v) => [v.name, v.value]),
-        ),
-        nodes: {}, // Node outputs not available at config time
-        trigger: undefined,
-        execution: undefined,
-      }
-    : undefined;
 
   return (
     <ConfigSection
@@ -101,7 +90,6 @@ export function ExpressionField({
         onChange={onChange}
         context={uiContext}
         showPreview={showPreview && !!expressionContext}
-        previewContext={previewContext}
         multiline={multiline}
         rows={rows}
         placeholder={placeholder}

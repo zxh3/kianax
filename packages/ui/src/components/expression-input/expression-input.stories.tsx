@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { ExpressionInput } from "./index";
-import type { ExpressionContext, PreviewContext } from "./index";
+import type { ExpressionContext } from "./index";
 
 const meta: Meta<typeof ExpressionInput> = {
   title: "Components/ExpressionInput",
@@ -46,7 +46,7 @@ export default meta;
 type Story = StoryObj<typeof ExpressionInput>;
 
 // Sample expression context for stories
-// This demonstrates the generic tree structure - no domain-specific assumptions
+// The `value` fields enable both autocomplete introspection AND preview resolution
 const sampleContext: ExpressionContext = {
   completions: [
     {
@@ -94,6 +94,11 @@ const sampleContext: ExpressionContext = {
         {
           name: "http_1",
           detail: "HTTP Request",
+          // Value for preview resolution
+          value: {
+            success: { status: 200, data: { message: "OK" } },
+            error: null,
+          },
           children: [
             { name: "success", detail: "output" },
             { name: "error", detail: "output" },
@@ -102,6 +107,7 @@ const sampleContext: ExpressionContext = {
         {
           name: "transform_1",
           detail: "Data Transform",
+          value: { data: [1, 2, 3] },
           children: [{ name: "data", detail: "output" }],
         },
       ],
@@ -126,25 +132,6 @@ const sampleContext: ExpressionContext = {
       ],
     },
   ],
-};
-
-const samplePreviewContext: PreviewContext = {
-  vars: {
-    apiUrl: "https://api.example.com",
-    userId: "user-123",
-    maxRetries: 3,
-    debugMode: true,
-    config: { timeout: 5000, retries: 3 },
-  },
-  nodes: {
-    http_1: {
-      success: { status: 200, data: { message: "OK" } },
-      error: null,
-    },
-    transform_1: {
-      data: [1, 2, 3],
-    },
-  },
 };
 
 /**
@@ -182,6 +169,7 @@ export const WithExpression: Story = {
 
 /**
  * Shows live preview of resolved expression values.
+ * Preview values are derived from the `value` fields in context.
  */
 export const WithPreview: Story = {
   render: (args) => <ControlledInput {...args} />,
@@ -190,7 +178,6 @@ export const WithPreview: Story = {
     placeholder: "Enter expression...",
     context: sampleContext,
     showPreview: true,
-    previewContext: samplePreviewContext,
   },
 };
 
@@ -259,7 +246,6 @@ export const MultipleExpressions: Story = {
     placeholder: "Enter template...",
     context: sampleContext,
     showPreview: true,
-    previewContext: samplePreviewContext,
   },
 };
 
@@ -273,7 +259,6 @@ export const NodeOutputReference: Story = {
     placeholder: "Enter expression...",
     context: sampleContext,
     showPreview: true,
-    previewContext: samplePreviewContext,
   },
 };
 
@@ -289,7 +274,6 @@ export const PreviewTypes: Story = {
           value="{{ vars.apiUrl }}"
           context={sampleContext}
           showPreview
-          previewContext={samplePreviewContext}
           onChange={() => {}}
         />
       </div>
@@ -299,7 +283,6 @@ export const PreviewTypes: Story = {
           value="{{ vars.maxRetries }}"
           context={sampleContext}
           showPreview
-          previewContext={samplePreviewContext}
           onChange={() => {}}
         />
       </div>
@@ -309,7 +292,6 @@ export const PreviewTypes: Story = {
           value="{{ vars.debugMode }}"
           context={sampleContext}
           showPreview
-          previewContext={samplePreviewContext}
           onChange={() => {}}
         />
       </div>
@@ -319,7 +301,6 @@ export const PreviewTypes: Story = {
           value="{{ vars.config }}"
           context={sampleContext}
           showPreview
-          previewContext={samplePreviewContext}
           onChange={() => {}}
         />
       </div>
@@ -329,7 +310,6 @@ export const PreviewTypes: Story = {
           value="{{ nodes.transform_1.data }}"
           context={sampleContext}
           showPreview
-          previewContext={samplePreviewContext}
           onChange={() => {}}
         />
       </div>
