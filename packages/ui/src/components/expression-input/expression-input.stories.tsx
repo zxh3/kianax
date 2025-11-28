@@ -46,54 +46,86 @@ export default meta;
 type Story = StoryObj<typeof ExpressionInput>;
 
 // Sample expression context for stories
+// This demonstrates the generic tree structure - no domain-specific assumptions
 const sampleContext: ExpressionContext = {
-  variables: [
+  completions: [
     {
-      name: "apiUrl",
-      type: "string",
-      value: "https://api.example.com",
-      description: "Base API URL",
+      name: "vars",
+      detail: "Variables",
+      info: "Access routine-level variables",
+      children: [
+        {
+          name: "apiUrl",
+          type: "str",
+          detail: "Base API URL",
+          value: "https://api.example.com",
+        },
+        {
+          name: "userId",
+          type: "str",
+          detail: "Current user ID",
+          value: "user-123",
+        },
+        {
+          name: "maxRetries",
+          type: "num",
+          detail: "Maximum retry attempts",
+          value: 3,
+        },
+        {
+          name: "debugMode",
+          type: "bool",
+          detail: "Enable debug logging",
+          value: true,
+        },
+        {
+          name: "config",
+          type: "obj",
+          detail: "Configuration object",
+          value: { timeout: 5000, retries: 3 },
+        },
+      ],
     },
     {
-      name: "userId",
-      type: "string",
-      value: "user-123",
-      description: "Current user ID",
+      name: "nodes",
+      detail: "Node outputs",
+      info: "Access outputs from upstream nodes",
+      children: [
+        {
+          name: "http_1",
+          detail: "HTTP Request",
+          children: [
+            { name: "success", detail: "output" },
+            { name: "error", detail: "output" },
+          ],
+        },
+        {
+          name: "transform_1",
+          detail: "Data Transform",
+          children: [{ name: "data", detail: "output" }],
+        },
+      ],
     },
     {
-      name: "maxRetries",
-      type: "number",
-      value: 3,
-      description: "Maximum retry attempts",
+      name: "trigger",
+      detail: "Trigger data",
+      info: "Access data from the routine trigger",
+      children: [
+        { name: "payload", type: "obj", detail: "Trigger payload data" },
+        { name: "type", type: "str", detail: "Trigger type" },
+      ],
     },
     {
-      name: "debugMode",
-      type: "boolean",
-      value: true,
-      description: "Enable debug logging",
-    },
-    {
-      name: "config",
-      type: "json",
-      value: { timeout: 5000, retries: 3 },
-      description: "Configuration object",
+      name: "execution",
+      detail: "Execution context",
+      info: "Access execution metadata",
+      children: [
+        { name: "id", type: "str", detail: "Unique execution ID" },
+        { name: "routineId", type: "str", detail: "Routine ID" },
+        { name: "startedAt", type: "num", detail: "Start timestamp (ms)" },
+      ],
     },
   ],
-  upstreamNodes: [
-    {
-      id: "http_1",
-      label: "HTTP Request",
-      pluginId: "http-request",
-      outputs: ["success", "error"],
-    },
-    {
-      id: "transform_1",
-      label: "Data Transform",
-      pluginId: "transform",
-      outputs: ["data"],
-    },
-  ],
-  hasTrigger: true,
 };
 
 const samplePreviewContext: PreviewContext = {

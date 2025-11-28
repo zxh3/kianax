@@ -20,13 +20,25 @@
  *   value={url}
  *   onChange={setUrl}
  *   context={{
- *     variables: [{ name: "baseUrl", type: "string", value: "https://api.example.com" }],
- *     upstreamNodes: [{ id: "http_1", label: "HTTP Request", pluginId: "http-request", outputs: ["success", "error"] }],
+ *     completions: [
+ *       {
+ *         name: "vars",
+ *         detail: "Variables",
+ *         children: [
+ *           { name: "baseUrl", type: "str", value: "https://api.example.com" },
+ *         ],
+ *       },
+ *       {
+ *         name: "data",
+ *         detail: "API Data",
+ *         children: [
+ *           { name: "user", detail: "User info", children: [{ name: "id" }, { name: "email" }] },
+ *         ],
+ *       },
+ *     ],
  *   }}
  *   showPreview
- *   previewContext={{
- *     vars: { baseUrl: "https://api.example.com" },
- *   }}
+ *   previewContext={{ vars: { baseUrl: "https://api.example.com" } }}
  *   placeholder="Enter URL with {{ vars.baseUrl }}"
  * />
  * ```
@@ -44,27 +56,35 @@ import {
 } from "../../lib/expression-preview";
 
 /**
- * Available variable context for autocomplete suggestions.
+ * A completion item for expression autocomplete.
+ * This is a generic tree structure that allows arbitrary nesting.
+ */
+export interface CompletionItem {
+  /** Display name shown in dropdown */
+  name: string;
+  /** Type indicator for badge (e.g., "str", "num", "obj", "keyword") */
+  type?: string;
+  /** Short description shown next to name */
+  detail?: string;
+  /** Extended info/documentation */
+  info?: string;
+  /** Nested completion items (static children) */
+  children?: CompletionItem[];
+  /** Runtime value for dynamic introspection (object keys become children) */
+  value?: unknown;
+}
+
+/**
+ * Context for expression autocompletion.
+ * Provides a tree of completion sources that the component traverses.
+ *
+ * The component is agnostic to what the completions represent - consumers
+ * can use this for variables, API endpoints, configuration, or any other
+ * hierarchical data structure.
  */
 export interface ExpressionContext {
-  /** Available routine variables */
-  variables?: Array<{
-    name: string;
-    type: "string" | "number" | "boolean" | "json";
-    value?: unknown;
-    description?: string;
-  }>;
-
-  /** Upstream nodes with their output ports */
-  upstreamNodes?: Array<{
-    id: string;
-    label: string;
-    pluginId: string;
-    outputs: string[];
-  }>;
-
-  /** Whether trigger context is available */
-  hasTrigger?: boolean;
+  /** Root-level completion items */
+  completions: CompletionItem[];
 }
 
 /**
@@ -332,3 +352,143 @@ function PreviewBadge({
 
 // Re-export types for convenience
 export type { EditorProps } from "./editor";
+
+/**
+ * Type map for converting domain types to display badges.
+ */
+const TYPE_BADGE_MAP: Record<string, string> = {
+  string: "str",
+  number: "num",
+  boolean: "bool",
+  json: "obj",
+  object: "obj",
+  array: "arr",
+};
+
+/**
+ * Domain-specific variable type (from plugin system or routine editor).
+ */
+interface DomainVariable {
+  name: string;
+  type?: string;
+  value?: unknown;
+  description?: string;
+}
+
+/**
+ * Domain-specific node type (from plugin system or routine editor).
+ */
+interface DomainNode {
+  id: string;
+  label?: string;
+  /** Any domain-specific field (e.g., pluginId) */
+  [key: string]: unknown;
+  outputs?: string[];
+}
+
+/**
+ * Domain-specific expression context (from plugin system or routine editor).
+ * This is the format that domain code uses before conversion.
+ */
+export interface DomainExpressionContext {
+  variables?: DomainVariable[];
+  upstreamNodes?: DomainNode[];
+  hasTrigger?: boolean;
+  /** Additional root completion sources */
+  additionalSources?: CompletionItem[];
+}
+
+/**
+ * Convert a domain-specific expression context to the generic tree format.
+ *
+ * This helper allows consumers (plugins, routine editor) to work with their
+ * domain-specific types while using the ExpressionInput component's generic
+ * tree-based completion system.
+ *
+ * @param domain - Domain-specific context with variables, nodes, etc.
+ * @returns Generic ExpressionContext with tree-based completions
+ *
+ * @example
+ * ```tsx
+ * // In plugin config UI:
+ * const uiContext = buildExpressionContext({
+ *   variables: routineVariables,
+ *   upstreamNodes: upstreamNodes,
+ *   hasTrigger: true,
+ * });
+ *
+ * <ExpressionInput context={uiContext} ... />
+ * ```
+ */
+export function buildExpressionContext(
+  domain: DomainExpressionContext | undefined,
+): ExpressionContext | undefined {
+  if (!domain) return undefined;
+
+  const completions: CompletionItem[] = [];
+
+  // Convert variables to completion tree
+  if (domain.variables && domain.variables.length > 0) {
+    completions.push({
+      name: "vars",
+      detail: "Variables",
+      info: "Access routine-level variables",
+      children: domain.variables.map((v) => ({
+        name: v.name,
+        type: TYPE_BADGE_MAP[v.type ?? ""] ?? v.type,
+        detail: v.description,
+        value: v.value,
+      })),
+    });
+  }
+
+  // Convert upstream nodes to completion tree
+  if (domain.upstreamNodes && domain.upstreamNodes.length > 0) {
+    completions.push({
+      name: "nodes",
+      detail: "Node outputs",
+      info: `Access outputs from ${domain.upstreamNodes.length} upstream node(s)`,
+      children: domain.upstreamNodes.map((node) => ({
+        name: node.id,
+        // Use label if available, otherwise use a generic detail
+        detail: (node.label as string) ?? "Node",
+        children: (node.outputs ?? []).map((output) => ({
+          name: output,
+          detail: "output",
+        })),
+      })),
+    });
+  }
+
+  // Add trigger source if available
+  if (domain.hasTrigger) {
+    completions.push({
+      name: "trigger",
+      detail: "Trigger data",
+      info: "Access data from the routine trigger",
+      children: [
+        { name: "payload", type: "obj", detail: "Trigger payload data" },
+        { name: "type", type: "str", detail: "Trigger type" },
+      ],
+    });
+  }
+
+  // Always add execution context
+  completions.push({
+    name: "execution",
+    detail: "Execution context",
+    info: "Access execution metadata (id, routineId, startedAt)",
+    children: [
+      { name: "id", type: "str", detail: "Unique execution ID" },
+      { name: "routineId", type: "str", detail: "ID of the routine" },
+      { name: "startedAt", type: "num", detail: "Start timestamp (ms)" },
+    ],
+  });
+
+  // Add any additional custom sources
+  if (domain.additionalSources) {
+    completions.push(...domain.additionalSources);
+  }
+
+  return { completions };
+}
