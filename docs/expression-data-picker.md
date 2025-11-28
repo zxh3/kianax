@@ -126,6 +126,11 @@ interface ExpressionInputProps {
 - **Hover**: Highlighted background, full value tooltip
 - **Dragging**: Semi-transparent, cursor changes
 
+### Drop Target States (ExpressionInput)
+- **Default**: Normal input appearance
+- **Drag Over**: Dashed primary border, light primary background, visible cursor at drop position
+- **Drop Complete**: Expression inserted, returns to default state
+
 ### Type Badges
 | Type | Color | Label |
 |------|-------|-------|
@@ -146,8 +151,12 @@ interface ExpressionInputProps {
 ### Drag to Input
 1. User starts dragging leaf node
 2. Drag ghost shows path being dragged
-3. Compatible ExpressionInputs highlight as drop targets
-4. On drop, expression is inserted at drop position
+3. Compatible ExpressionInputs highlight as drop targets with:
+   - **Dotted border**: Dashed primary-colored border to indicate drop zone
+   - **Background tint**: Subtle primary color background
+   - **Cursor indicator**: Input is auto-focused to show cursor position
+4. As user drags over input, cursor follows mouse position showing exact insertion point
+5. On drop, expression `{{ path }}` is inserted at the cursor position
 
 ### Keyboard Navigation
 - `↑/↓`: Move selection

@@ -295,12 +295,13 @@ export const ExpressionInput = forwardRef<HTMLDivElement, ExpressionInputProps>(
       // Focus state
       isFocused && ["border-ring", "ring-ring/50", "ring-[3px]"],
 
-      // Drag-over state (highlight as drop target)
+      // Drag-over state (highlight as drop target with dotted border)
       isDragOver && [
         "border-primary",
-        "ring-primary/50",
-        "ring-[3px]",
+        "border-dashed",
+        "border-2",
         "bg-primary/5",
+        "shadow-[0_0_0_3px_rgba(var(--primary)/0.1)]",
       ],
 
       // Error state
