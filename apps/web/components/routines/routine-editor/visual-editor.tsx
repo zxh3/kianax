@@ -144,7 +144,6 @@ export function VisualEditor({
   const isInspectorOpen =
     (!!configuringNodeId && configDrawerOpen) ||
     (!!selectedResultNodeId && resultDrawerOpen);
-  const inspectorTab = configuringNodeId ? "config" : "result";
 
   const inspectedNode = useMemo(
     () => nodes.find((n) => n.id === inspectedNodeId),
@@ -367,7 +366,6 @@ export function VisualEditor({
             onSave={handleSaveNodeConfig}
             onClose={handleCloseInspector}
             testExecution={activeExecution}
-            defaultTab={inspectorTab}
           />
         )}
       </ResizablePanel>
