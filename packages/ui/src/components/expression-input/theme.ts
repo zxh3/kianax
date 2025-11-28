@@ -76,17 +76,15 @@ export const singleLineTheme = EditorView.theme({
   "&": {
     height: "36px", // h-9 = 36px
   },
-  ".cm-scroller": {
+  "& .cm-scroller": {
     overflow: "hidden",
+    alignItems: "center", // Override CodeMirror's flex-start default
   },
   ".cm-content": {
-    padding: "6px 12px", // py-1.5 px-3
-    minHeight: "36px",
-    display: "flex",
-    alignItems: "center",
+    padding: "0 12px", // Only horizontal padding, vertical centering via flex
   },
   ".cm-line": {
-    lineHeight: "24px",
+    lineHeight: "20px",
   },
 });
 
