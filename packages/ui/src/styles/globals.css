@@ -26,6 +26,20 @@
   --border: oklch(0.88 0 0);
   --input: oklch(0.88 0 0);
   --ring: oklch(0.43 0.04 42);
+
+  /* Semantic Status Colors - Light Mode */
+  --status-running: oklch(0.6 0.15 250); /* Bright Blue */
+  --status-running-bg: oklch(0.96 0.02 250); /* Very light blue tint */
+  --status-running-border: oklch(0.9 0.05 250);
+
+  --status-completed: oklch(0.6 0.15 150); /* Emerald/Green */
+  --status-completed-bg: oklch(0.96 0.02 150);
+  --status-completed-border: oklch(0.9 0.05 150);
+
+  --status-failed: oklch(0.63 0.19 33.26); /* Destructive Red */
+  --status-failed-bg: oklch(0.96 0.02 33.26);
+  --status-failed-border: oklch(0.9 0.05 33.26);
+
   --chart-1: oklch(0.43 0.04 42);
   --chart-2: oklch(0.92 0.07 76.67);
   --chart-3: oklch(0.93 0 0);
@@ -89,6 +103,20 @@
   --border: oklch(0.24 0.01 88.77);
   --input: oklch(0.4 0 0);
   --ring: oklch(0.92 0.05 67.14);
+
+  /* Semantic Status Colors - Dark Mode */
+  --status-running: oklch(0.7 0.15 250);
+  --status-running-bg: oklch(0.3 0.05 250);
+  --status-running-border: oklch(0.4 0.1 250);
+
+  --status-completed: oklch(0.7 0.15 150);
+  --status-completed-bg: oklch(0.3 0.05 150);
+  --status-completed-border: oklch(0.4 0.1 150);
+
+  --status-failed: oklch(0.63 0.19 33.26);
+  --status-failed-bg: oklch(0.3 0.05 33.26);
+  --status-failed-border: oklch(0.4 0.1 33.26);
+
   --chart-1: oklch(0.92 0.05 67.14);
   --chart-2: oklch(0.32 0.02 67);
   --chart-3: oklch(0.29 0 0);
@@ -149,6 +177,17 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Status Colors */
+  --color-status-running: var(--status-running);
+  --color-status-running-bg: var(--status-running-bg);
+  --color-status-running-border: var(--status-running-border);
+  --color-status-completed: var(--status-completed);
+  --color-status-completed-bg: var(--status-completed-bg);
+  --color-status-completed-border: var(--status-completed-border);
+  --color-status-failed: var(--status-failed);
+  --color-status-failed-bg: var(--status-failed-bg);
+  --color-status-failed-border: var(--status-failed-border);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
