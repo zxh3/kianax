@@ -37,6 +37,7 @@ export const staticDataPlugin = createPlugin("static-data")
   .withOutputSchema(z.unknown())
   .withConfigUI(StaticDataConfigUI)
   .execute(async ({ config }) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     return {
       output: config.data,
     };
