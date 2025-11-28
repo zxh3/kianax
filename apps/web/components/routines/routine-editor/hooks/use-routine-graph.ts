@@ -62,12 +62,7 @@ export function useRoutineGraph({
         style: {
           strokeWidth: 2,
           strokeDasharray: "5 5",
-          stroke:
-            conn.sourceHandle === "true" || conn.sourceHandle === "success"
-              ? "#10b981"
-              : conn.sourceHandle === "false" || conn.sourceHandle === "error"
-                ? "#ef4444"
-                : "#94a3b8",
+          stroke: "#94a3b8", // Always gray for conditional branches
         },
       }));
     },
@@ -139,14 +134,7 @@ export function useRoutineGraph({
       style: {
         strokeWidth: 2,
         strokeDasharray: "5 5",
-        stroke:
-          connection.sourceHandle === "true" ||
-          connection.sourceHandle === "success"
-            ? "#10b981"
-            : connection.sourceHandle === "false" ||
-                connection.sourceHandle === "error"
-              ? "#ef4444"
-              : "#94a3b8",
+        stroke: "#94a3b8", // Always gray for conditional branches
       },
       label: connection.sourceHandle || undefined,
       labelStyle: {
