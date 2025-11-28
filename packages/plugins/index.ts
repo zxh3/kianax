@@ -17,6 +17,8 @@ export {
   getAllPluginMetadata,
   createPluginInstance,
   getPluginOutputs,
+  getPluginOutputSchemaFields,
+  type OutputSchemaField,
 } from "./registry";
 
 // Export config registry

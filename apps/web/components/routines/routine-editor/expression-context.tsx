@@ -17,7 +17,11 @@ import {
 } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import type { RoutineVariable } from "./variables-panel";
-import { getPluginOutputs } from "@kianax/plugins";
+import {
+  getPluginOutputs,
+  getPluginOutputSchemaFields,
+  type OutputSchemaField,
+} from "@kianax/plugins";
 
 /**
  * Node information for expression context.
@@ -28,6 +32,8 @@ interface ContextNode {
   pluginId: string;
   /** Output port names from plugin metadata */
   outputs: string[];
+  /** Output schema fields for autocomplete (from plugin output schema) */
+  outputSchemaFields?: OutputSchemaField[];
 }
 
 /**
@@ -85,11 +91,16 @@ export function ExpressionContextProvider({
       // Get output port names from plugin registry
       const outputs = getPluginOutputs(pluginId);
 
+      // Get output schema fields for autocomplete
+      const outputSchemaFields = getPluginOutputSchemaFields(pluginId);
+
       return {
         id: node.id,
         label,
         pluginId,
         outputs,
+        outputSchemaFields:
+          outputSchemaFields.length > 0 ? outputSchemaFields : undefined,
       };
     });
   }, [nodes]);
@@ -205,6 +216,8 @@ export interface NodeExpressionContext {
     label: string;
     pluginId: string;
     outputs: string[];
+    /** Output schema fields for autocomplete (from plugin output schema) */
+    outputSchemaFields?: OutputSchemaField[];
   }>;
   hasTrigger: boolean;
 }
@@ -234,6 +247,7 @@ export function useNodeExpressionContext(
         label: n.label,
         pluginId: n.pluginId,
         outputs: n.outputs,
+        outputSchemaFields: n.outputSchemaFields,
       })),
       hasTrigger: true, // Assume trigger is always available
     };
@@ -268,6 +282,7 @@ export function useOptionalNodeExpressionContext(
         label: n.label,
         pluginId: n.pluginId,
         outputs: n.outputs,
+        outputSchemaFields: n.outputSchemaFields,
       })),
       hasTrigger: true,
     };

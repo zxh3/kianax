@@ -517,6 +517,17 @@ interface DomainVariable {
 }
 
 /**
+ * Output schema field for expression autocomplete.
+ * Mirrors the OutputSchemaField type from @kianax/plugins.
+ */
+interface OutputSchemaField {
+  name: string;
+  type: "str" | "num" | "bool" | "obj" | "arr" | "null" | "unknown";
+  description?: string;
+  children?: OutputSchemaField[];
+}
+
+/**
  * Domain-specific node type (from plugin system or routine editor).
  */
 interface DomainNode {
@@ -525,6 +536,8 @@ interface DomainNode {
   /** Any domain-specific field (e.g., pluginId) */
   [key: string]: unknown;
   outputs?: string[];
+  /** Output schema fields for deep autocomplete */
+  outputSchemaFields?: OutputSchemaField[];
 }
 
 /**
@@ -537,6 +550,23 @@ export interface DomainExpressionContext {
   hasTrigger?: boolean;
   /** Additional root completion sources */
   additionalSources?: CompletionItem[];
+}
+
+/**
+ * Convert output schema fields to completion items.
+ * Recursively converts the schema field tree to a completion tree.
+ */
+function convertSchemaFieldsToCompletions(
+  fields: OutputSchemaField[],
+): CompletionItem[] {
+  return fields.map((field) => ({
+    name: field.name,
+    type: field.type === "unknown" ? "obj" : field.type,
+    detail: field.description,
+    children: field.children
+      ? convertSchemaFieldsToCompletions(field.children)
+      : undefined,
+  }));
 }
 
 /**
@@ -596,11 +626,14 @@ export function buildExpressionContext(
         type: "obj" as const,
         // Use label if available, otherwise use a generic detail
         detail: (node.label as string) ?? "Node",
-        children: (node.outputs ?? []).map((output) => ({
-          name: output,
-          type: "obj" as const,
-          detail: "output",
-        })),
+        // Use output schema fields if available, otherwise fall back to output names
+        children: node.outputSchemaFields
+          ? convertSchemaFieldsToCompletions(node.outputSchemaFields)
+          : (node.outputs ?? []).map((output) => ({
+              name: output,
+              type: "obj" as const,
+              detail: "output",
+            })),
       })),
     });
   }
