@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useEffect } from "react";
+import { useId, useState, useEffect, useCallback } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Label } from "@kianax/ui/components/label";
@@ -102,6 +102,21 @@ export function NodeConfigDrawer({
         expressionContext.upstreamNodes.length > 0) ||
       expressionContext.hasTrigger);
 
+  // Handle click on data picker item - copy expression to clipboard
+  const handleDataPickerSelect = useCallback((path: string) => {
+    const expression = `{{ ${path} }}`;
+    navigator.clipboard.writeText(expression).then(
+      () => {
+        toast.success("Expression copied", {
+          description: expression,
+        });
+      },
+      () => {
+        toast.error("Failed to copy expression");
+      },
+    );
+  }, []);
+
   const handleSave = () => {
     onSave(nodeId, localConfig, localLabel, localCredentialMappings);
     toast.success("Configuration saved");
@@ -154,6 +169,7 @@ export function NodeConfigDrawer({
             <div className="flex-1 min-h-0 overflow-y-auto p-2">
               <ExpressionDataPicker
                 context={uiContext}
+                onSelect={handleDataPickerSelect}
                 draggable
                 showSearch
                 searchPlaceholder="Search..."
@@ -163,7 +179,7 @@ export function NodeConfigDrawer({
             </div>
             <div className="px-3 py-2 border-t border-border">
               <p className="text-[10px] text-muted-foreground/70 leading-tight">
-                Drag items to expression fields or click to copy
+                Click to copy • Drag to insert
               </p>
             </div>
           </div>
