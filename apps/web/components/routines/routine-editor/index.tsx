@@ -92,10 +92,20 @@ export function RoutineEditor({
   const isInitializedRef = useRef(false);
 
   // Fetch execution status if a test is running/open
-  const testExecution = useQuery(
+  const testExecutionByWorkflow = useQuery(
     api.executions.getByWorkflowId,
     testWorkflowId ? { workflowId: testWorkflowId } : "skip",
   );
+
+  // Also fetch the latest execution for this routine (persists across page refreshes)
+  const latestExecutions = useQuery(api.executions.getByRoutine, {
+    routineId,
+    limit: 1,
+  });
+  const latestExecution = latestExecutions?.[0];
+
+  // Prefer active test execution, fall back to latest execution
+  const testExecution = testExecutionByWorkflow ?? latestExecution;
 
   // Nodes and Edges state (initialized empty, populated via useEffect to allow for callbacks)
   const [nodes, setNodes] = useState<Node[]>([]);
