@@ -675,6 +675,7 @@ export function RoutineEditor({
                     (configuringNode.data as PluginNodeData).credentialMappings
                   }
                   onSave={handleSaveNodeConfig}
+                  testExecution={testExecution}
                 />
               )}
 

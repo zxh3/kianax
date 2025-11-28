@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useEffect, useCallback } from "react";
+import { useId, useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@kianax/ui/components/button";
 import { Input } from "@kianax/ui/components/input";
 import { Label } from "@kianax/ui/components/label";
@@ -22,6 +22,25 @@ import { useOptionalNodeExpressionContext } from "./routine-editor/expression-co
 import { ExpressionDataPicker } from "@kianax/ui/components/expression-data-picker";
 import { buildExpressionContext } from "@kianax/ui/components/expression-input";
 
+/**
+ * Node execution state from test execution
+ */
+interface NodeExecutionState {
+  nodeId: string;
+  status: string;
+  output?: unknown;
+  error?: { message: string; stack?: string };
+}
+
+/**
+ * Test execution data from Convex
+ */
+interface TestExecution {
+  nodeStates: NodeExecutionState[];
+  triggerData?: unknown;
+  status: string;
+}
+
 interface NodeConfigDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +57,8 @@ interface NodeConfigDrawerProps {
     credentialMappings?: Record<string, string>,
   ) => void;
   className?: string;
+  /** Test execution data for showing real values in expression preview */
+  testExecution?: TestExecution | null;
 }
 
 /**
@@ -57,6 +78,7 @@ export function NodeConfigDrawer({
   credentialMappings,
   onSave,
   className,
+  testExecution,
 }: NodeConfigDrawerProps) {
   const nodeLabelInputId = useId();
 
@@ -91,8 +113,32 @@ export function NodeConfigDrawer({
   // Returns undefined if not within ExpressionContextProvider
   const expressionContext = useOptionalNodeExpressionContext(nodeId);
 
+  // Build execution results map from test execution
+  const executionResults = useMemo(() => {
+    if (!testExecution?.nodeStates) return undefined;
+
+    const results: Record<string, unknown> = {};
+    for (const state of testExecution.nodeStates) {
+      // Only include completed nodes with output data
+      if (state.status === "completed" && state.output !== undefined) {
+        results[state.nodeId] = state.output;
+      }
+    }
+    return Object.keys(results).length > 0 ? results : undefined;
+  }, [testExecution?.nodeStates]);
+
+  // Merge execution results into expression context
+  const enrichedContext = useMemo(() => {
+    if (!expressionContext) return undefined;
+    return {
+      ...expressionContext,
+      executionResults,
+      triggerData: testExecution?.triggerData,
+    };
+  }, [expressionContext, executionResults, testExecution?.triggerData]);
+
   // Convert domain-specific context to generic tree format for data picker
-  const uiContext = buildExpressionContext(expressionContext);
+  const uiContext = buildExpressionContext(enrichedContext);
 
   // Check if we have any data to show in the picker
   const hasExpressionData =

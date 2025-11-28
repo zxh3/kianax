@@ -590,27 +590,56 @@ export interface DomainExpressionContext {
   hasTrigger?: boolean;
   /** Additional root completion sources */
   additionalSources?: CompletionItem[];
+  /**
+   * Execution results from a test run.
+   * Maps nodeId -> output data (the actual output from the node execution).
+   * When provided, shows real values in expression preview instead of "pending".
+   */
+  executionResults?: Record<string, unknown>;
+  /**
+   * Trigger data from a test run.
+   * When provided, shows real values in trigger expression preview.
+   */
+  triggerData?: unknown;
 }
 
 /**
  * Convert output schema fields to completion items.
  * Recursively converts the schema field tree to a completion tree.
- * Adds PENDING_VALUE for leaf nodes to indicate "valid path but no data yet".
+ * Uses execution data when available, otherwise marks as PENDING_VALUE.
+ *
+ * @param fields - Schema fields to convert
+ * @param executionData - Optional execution output data to use for values
  */
 function convertSchemaFieldsToCompletions(
   fields: OutputSchemaField[],
+  executionData?: unknown,
 ): CompletionItem[] {
-  return fields.map((field) => ({
-    name: field.name,
-    type: field.type === "unknown" ? "obj" : field.type,
-    detail: field.description,
-    children: field.children
-      ? convertSchemaFieldsToCompletions(field.children)
-      : undefined,
-    // Add pending value for leaf nodes (no children)
-    // This allows preview to show "Available at runtime" instead of error
-    value: field.children ? undefined : PENDING_VALUE,
-  }));
+  return fields.map((field) => {
+    // Try to get actual value from execution data
+    const fieldValue =
+      executionData !== undefined &&
+      executionData !== null &&
+      typeof executionData === "object"
+        ? (executionData as Record<string, unknown>)[field.name]
+        : undefined;
+
+    return {
+      name: field.name,
+      type: field.type === "unknown" ? "obj" : field.type,
+      detail: field.description,
+      children: field.children
+        ? convertSchemaFieldsToCompletions(field.children, fieldValue)
+        : undefined,
+      // Use execution value if available, otherwise pending for leaf nodes
+      value:
+        fieldValue !== undefined
+          ? fieldValue
+          : field.children
+            ? undefined
+            : PENDING_VALUE,
+    };
+  });
 }
 
 /**
@@ -665,44 +694,63 @@ export function buildExpressionContext(
       type: "obj",
       detail: "Node outputs",
       info: `Access outputs from ${domain.upstreamNodes.length} upstream node(s)`,
-      children: domain.upstreamNodes.map((node) => ({
-        name: node.id,
-        type: "obj" as const,
-        // Use label if available, otherwise use a generic detail
-        detail: (node.label as string) ?? "Node",
-        // Use output schema fields if available, otherwise fall back to output names
-        children: node.outputSchemaFields
-          ? convertSchemaFieldsToCompletions(node.outputSchemaFields)
-          : (node.outputs ?? []).map((output) => ({
-              name: output,
-              type: "obj" as const,
-              detail: "output",
-              // Mark as pending since we don't have actual values during config
-              value: PENDING_VALUE,
-            })),
-      })),
+      children: domain.upstreamNodes.map((node) => {
+        // Get execution output for this node if available
+        const nodeExecutionOutput = domain.executionResults?.[node.id];
+
+        return {
+          name: node.id,
+          type: "obj" as const,
+          // Use label if available, otherwise use a generic detail
+          detail: (node.label as string) ?? "Node",
+          // Store node execution output as value for preview resolution
+          value: nodeExecutionOutput,
+          // Use output schema fields if available, otherwise fall back to output names
+          children: node.outputSchemaFields
+            ? convertSchemaFieldsToCompletions(
+                node.outputSchemaFields,
+                nodeExecutionOutput,
+              )
+            : (node.outputs ?? []).map((output) => ({
+                name: output,
+                type: "obj" as const,
+                detail: "output",
+                // Use execution value if available, otherwise pending
+                value:
+                  nodeExecutionOutput !== undefined &&
+                  typeof nodeExecutionOutput === "object" &&
+                  nodeExecutionOutput !== null
+                    ? (nodeExecutionOutput as Record<string, unknown>)[output]
+                    : PENDING_VALUE,
+              })),
+        };
+      }),
     });
   }
 
   // Add trigger source if available
   if (domain.hasTrigger) {
+    const triggerData = domain.triggerData as
+      | Record<string, unknown>
+      | undefined;
     completions.push({
       name: "trigger",
       type: "obj",
       detail: "Trigger data",
       info: "Access data from the routine trigger",
+      value: triggerData,
       children: [
         {
           name: "payload",
           type: "obj",
           detail: "Trigger payload data",
-          value: PENDING_VALUE,
+          value: triggerData?.payload ?? PENDING_VALUE,
         },
         {
           name: "type",
           type: "str",
           detail: "Trigger type",
-          value: PENDING_VALUE,
+          value: triggerData?.type ?? PENDING_VALUE,
         },
       ],
     });
