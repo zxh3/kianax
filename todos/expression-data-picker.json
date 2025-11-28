@@ -96,6 +96,10 @@
           "status": "completed"
         },
         {
+          "task": "Show dotted border and cursor position during drag",
+          "status": "completed"
+        },
+        {
           "task": "Insert expression on drop",
           "status": "completed"
         },
@@ -105,7 +109,7 @@
         },
         {
           "task": "Git commit: Phase 3 complete",
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },

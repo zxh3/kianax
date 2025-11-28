@@ -161,6 +161,11 @@ export function Editor({
           event.dataTransfer!.dropEffect = "copy";
           onDragOverChangeRef.current?.(true);
 
+          // Focus the editor to show the cursor
+          if (!view.hasFocus) {
+            view.focus();
+          }
+
           // Move cursor to drop position
           const pos = view.posAtCoords({
             x: event.clientX,
