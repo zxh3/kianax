@@ -38,24 +38,40 @@ export interface Node {
 /**
  * An edge connecting two nodes
  *
- * Note: Edges are simple port-to-port connections with no conditional logic.
- * Routing/branching logic is handled by nodes themselves, which output data
- * to specific ports based on their evaluation (e.g., IF nodes output to "true"
- * or "false" ports). The execution engine simply follows where data flows.
+ * Flow-based connection model:
+ * - Normal connections: No handle specified, activates when source node outputs ANY data
+ * - Control flow connections: sourceHandle specifies which output path activates the edge
+ *   (e.g., "true"/"false" for if-else, "success"/"error" for try-catch)
+ *
+ * The execution engine:
+ * 1. For edges with sourceHandle: only follows if that handle was activated
+ * 2. For edges without sourceHandle: follows if source node produced any output
  */
 export interface Edge {
   /** Unique edge identifier */
   id: string;
   /** Source node ID */
   sourceNodeId: string;
-  /** Source port name */
-  sourcePort: string;
   /** Target node ID */
   targetNodeId: string;
-  /** Target port name */
-  targetPort: string;
-  /** Connection type */
-  type: PortType;
+  /**
+   * Source handle for control flow routing.
+   * - If specified: edge only activates when this handle is triggered (e.g., "true", "false")
+   * - If not specified: edge activates on any output from source node
+   */
+  sourceHandle?: string;
+  /**
+   * Target handle (for UI positioning, not execution logic)
+   */
+  targetHandle?: string;
+
+  // Legacy fields for backwards compatibility with port-based system
+  /** @deprecated Use sourceHandle instead */
+  sourcePort?: string;
+  /** @deprecated Use targetHandle instead */
+  targetPort?: string;
+  /** @deprecated Connection type - no longer used in flow-based system */
+  type?: PortType;
 }
 
 /**
