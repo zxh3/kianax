@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { motion } from "motion/react";
 import {
   getPluginInputs,
   getPluginOutputs,
@@ -60,10 +61,30 @@ function PluginNode({ data, selected }: NodeProps) {
       {/* Selection Indicators (Crosshair corners) */}
       {selected && (
         <>
-          <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-primary rounded-tl-sm" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-primary rounded-tr-sm" />
-          <div className="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-primary rounded-bl-sm" />
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-primary rounded-br-sm" />
+          <motion.div
+            initial={{ opacity: 0, x: -10, y: -10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.3, ease: "backOut" }}
+            className="absolute -top-2 -left-2 w-4 h-4 border-t-[3px] border-l-[3px] border-primary rounded-tl-xl shadow-[0_0_8px_rgba(var(--primary)_/_0.5)]"
+          />
+          <motion.div
+            initial={{ opacity: 0, x: 10, y: -10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.3, ease: "backOut" }}
+            className="absolute -top-2 -right-2 w-4 h-4 border-t-[3px] border-r-[3px] border-primary rounded-tr-xl shadow-[0_0_8px_rgba(var(--primary)_/_0.5)]"
+          />
+          <motion.div
+            initial={{ opacity: 0, x: -10, y: 10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.3, ease: "backOut" }}
+            className="absolute -bottom-2 -left-2 w-4 h-4 border-b-[3px] border-l-[3px] border-primary rounded-bl-xl shadow-[0_0_8px_rgba(var(--primary)_/_0.5)]"
+          />
+          <motion.div
+            initial={{ opacity: 0, x: 10, y: 10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.3, ease: "backOut" }}
+            className="absolute -bottom-2 -right-2 w-4 h-4 border-b-[3px] border-r-[3px] border-primary rounded-br-xl shadow-[0_0_8px_rgba(var(--primary)_/_0.5)]"
+          />
         </>
       )}
 
