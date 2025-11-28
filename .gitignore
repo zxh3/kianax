@@ -45,3 +45,5 @@ convex/_generated/
 # Temporal Workers
 workers/dist/
 *.tsbuildinfo
+*storybook.log
+storybook-static
