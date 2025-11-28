@@ -187,7 +187,11 @@ export function useOptionalExpressionContext(): ExpressionContextValue | null {
 }
 
 /**
- * Expression context in the format expected by ExpressionInput component.
+ * Expression context in the domain format expected by plugin config components.
+ *
+ * This format matches the ExpressionContext type in @kianax/plugins/config-registry.
+ * Plugin config UIs (like ExpressionField) internally convert this to the UI
+ * component's generic tree format using buildExpressionContext().
  */
 export interface NodeExpressionContext {
   variables: Array<{
@@ -208,7 +212,7 @@ export interface NodeExpressionContext {
 /**
  * Hook to get expression context for a specific node.
  *
- * Returns the context in the format expected by ExpressionInput.
+ * Returns the context in the domain format expected by plugin config components.
  */
 export function useNodeExpressionContext(
   nodeId: string,

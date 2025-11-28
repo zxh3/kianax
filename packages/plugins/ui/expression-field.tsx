@@ -20,7 +20,10 @@
  * ```
  */
 
-import { ExpressionInput } from "@kianax/ui/components/expression-input";
+import {
+  ExpressionInput,
+  buildExpressionContext,
+} from "@kianax/ui/components/expression-input";
 import { ConfigSection } from "./config-section";
 import type { ExpressionContext } from "../config-registry";
 
@@ -71,6 +74,9 @@ export function ExpressionField({
   className,
   action,
 }: ExpressionFieldProps) {
+  // Convert domain-specific context to generic tree format
+  const uiContext = buildExpressionContext(expressionContext);
+
   // Build preview context from expression context
   const previewContext = expressionContext
     ? {
@@ -93,7 +99,7 @@ export function ExpressionField({
       <ExpressionInput
         value={value}
         onChange={onChange}
-        context={expressionContext}
+        context={uiContext}
         showPreview={showPreview && !!expressionContext}
         previewContext={previewContext}
         multiline={multiline}

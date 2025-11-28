@@ -2,11 +2,11 @@
  * CodeMirror 6 autocomplete completion source for expression syntax.
  *
  * Provides context-aware suggestions when the user types {{ in the editor.
- * Suggestions include:
- * - Routine variables (vars.*)
- * - Upstream node outputs (nodes.*.*)
- * - Trigger data (trigger.*)
- * - Execution context (execution.*)
+ * Traverses a generic tree of CompletionItem nodes to provide suggestions
+ * at any nesting level.
+ *
+ * The completion source is agnostic to what the items represent - it simply
+ * traverses the tree structure provided in the ExpressionContext.
  */
 
 import type {
@@ -14,19 +14,7 @@ import type {
   CompletionResult,
   Completion,
 } from "@codemirror/autocomplete";
-import type { ExpressionContext } from "./index";
-
-/**
- * Type badge labels for completion items.
- */
-const TYPE_LABELS: Record<string, string> = {
-  string: "str",
-  number: "num",
-  boolean: "bool",
-  json: "json",
-  object: "obj",
-  unknown: "?",
-};
+import type { ExpressionContext, CompletionItem } from "./index";
 
 /**
  * Create a completion source function for expression autocomplete.
@@ -70,41 +58,14 @@ export function createExpressionCompletionSource(
       2 +
       (betweenBraces.length - betweenBraces.trimStart().length);
 
-    // Parse the expression to determine what to suggest
-    const parts = expressionText.split(".");
-    const completions: Completion[] = [];
+    // Parse the expression path
+    const path = expressionText.split(".");
 
-    if (
-      parts.length === 0 ||
-      (parts.length === 1 && !expressionText.includes("."))
-    ) {
-      // At the root level - suggest sources
-      completions.push(...getRootCompletions(expressionContext));
-    } else {
-      // We have at least one part - determine what to suggest next
-      const source = parts[0];
-      const remainingParts = parts.slice(1);
-
-      if (source === "vars" && expressionContext?.variables) {
-        completions.push(
-          ...getVariableCompletions(
-            expressionContext.variables,
-            remainingParts,
-          ),
-        );
-      } else if (source === "nodes" && expressionContext?.upstreamNodes) {
-        completions.push(
-          ...getNodeCompletions(
-            expressionContext.upstreamNodes,
-            remainingParts,
-          ),
-        );
-      } else if (source === "trigger" && expressionContext?.hasTrigger) {
-        completions.push(...getTriggerCompletions(remainingParts));
-      } else if (source === "execution") {
-        completions.push(...getExecutionCompletions(remainingParts));
-      }
-    }
+    // Get completions by traversing the tree
+    const completions = getCompletionsForPath(
+      expressionContext?.completions ?? [],
+      path,
+    );
 
     if (completions.length === 0) {
       return null;
@@ -125,112 +86,162 @@ export function createExpressionCompletionSource(
 }
 
 /**
- * Get root-level source completions (vars, nodes, trigger, execution).
+ * Get completions for a given path by traversing the completion tree.
+ *
+ * @param items - The completion items at the current level
+ * @param path - The path segments typed so far (e.g., ["vars", "config", ""])
  */
-function getRootCompletions(
-  context: ExpressionContext | undefined,
-): Completion[] {
-  const completions: Completion[] = [];
-
-  // Always show vars and execution
-  completions.push({
-    label: "vars",
-    type: "keyword",
-    detail: "Routine variables",
-    info: "Access routine-level variables",
-    boost: 10,
-  });
-
-  completions.push({
-    label: "execution",
-    type: "keyword",
-    detail: "Execution context",
-    info: "Access execution metadata (id, routineId, startedAt)",
-    boost: 5,
-  });
-
-  // Show nodes if there are upstream nodes
-  if (context?.upstreamNodes && context.upstreamNodes.length > 0) {
-    completions.push({
-      label: "nodes",
-      type: "keyword",
-      detail: "Node outputs",
-      info: `Access outputs from ${context.upstreamNodes.length} upstream node(s)`,
-      boost: 8,
-    });
-  }
-
-  // Show trigger if available
-  if (context?.hasTrigger) {
-    completions.push({
-      label: "trigger",
-      type: "keyword",
-      detail: "Trigger data",
-      info: "Access data from the routine trigger",
-      boost: 7,
-    });
-  }
-
-  return completions;
-}
-
-/**
- * Get variable completions.
- */
-function getVariableCompletions(
-  variables: NonNullable<ExpressionContext["variables"]>,
+function getCompletionsForPath(
+  items: CompletionItem[],
   path: string[],
 ): Completion[] {
-  // At vars. level - show all variables
-  if (path.length === 0 || (path.length === 1 && path[0] === "")) {
-    return variables.map((v) => ({
-      label: v.name,
-      type: "variable",
-      detail: TYPE_LABELS[v.type] || v.type,
-      info: v.description || `${v.type} variable`,
-      boost: 5,
-    }));
+  // At root level - show all root items
+  const rootPrefix = path[0] ?? "";
+  if (path.length === 0 || (path.length === 1 && !rootPrefix.includes("."))) {
+    return items
+      .filter((item) => item.name.startsWith(rootPrefix))
+      .map((item) => toCompletion(item, "keyword", 10));
   }
 
-  // Deeper path - try to get nested object keys from the variable value
-  const varName = path[0];
-  const variable = variables.find((v) => v.name === varName);
+  // Navigate to the correct level in the tree
+  const [firstSegment, ...remainingPath] = path;
+  const currentItem = items.find((item) => item.name === firstSegment);
 
-  if (!variable || variable.value === undefined || variable.value === null) {
+  if (!currentItem) {
     return [];
   }
 
-  // Navigate to the nested value
-  const nestedPath = path.slice(1);
-  const targetValue = getNestedValue(variable.value, nestedPath);
+  // If we're at the end of the path (user just typed a dot), show children
+  if (
+    remainingPath.length === 0 ||
+    (remainingPath.length === 1 && remainingPath[0] === "")
+  ) {
+    return getChildCompletions(currentItem);
+  }
 
-  // If we found an object, return its keys as completions
-  if (targetValue !== undefined && isPlainObject(targetValue)) {
-    return Object.keys(targetValue).map((key) => ({
-      label: key,
-      type: "property",
-      detail: getValueType(targetValue[key]),
-      info: formatNestedPreview(targetValue[key]),
-      boost: 5,
-    }));
+  // Continue traversing for deeper paths
+  return getCompletionsFromItem(currentItem, remainingPath);
+}
+
+/**
+ * Get completions from a single item, navigating through its children or value.
+ */
+function getCompletionsFromItem(
+  item: CompletionItem,
+  path: string[],
+): Completion[] {
+  // If we have one segment left and it's empty, show children at current level
+  if (path.length === 1 && path[0] === "") {
+    return getChildCompletions(item);
+  }
+
+  // Try to find matching child
+  const segment = path[0];
+  const remaining = path.slice(1);
+
+  if (!segment) {
+    return [];
+  }
+
+  // First check static children
+  if (item.children) {
+    const child = item.children.find((c) => c.name === segment);
+    if (child) {
+      if (remaining.length === 0 || (remaining.length === 1 && !remaining[0])) {
+        return getChildCompletions(child);
+      }
+      return getCompletionsFromItem(child, remaining);
+    }
+  }
+
+  // Then check dynamic value (for runtime introspection)
+  if (item.value !== undefined && item.value !== null) {
+    const nestedValue = getNestedValue(item.value, [segment]);
+    if (nestedValue !== undefined && isPlainObject(nestedValue)) {
+      // Navigate deeper if needed
+      if (remaining.length > 0 && remaining[0] !== "") {
+        const deeperValue = getNestedValue(nestedValue, remaining.slice(0, -1));
+        if (deeperValue !== undefined && isPlainObject(deeperValue)) {
+          return objectKeysToCompletions(deeperValue);
+        }
+      }
+      return objectKeysToCompletions(nestedValue);
+    }
   }
 
   return [];
 }
 
 /**
+ * Get child completions for an item (from static children or dynamic value).
+ */
+function getChildCompletions(item: CompletionItem): Completion[] {
+  const completions: Completion[] = [];
+
+  // Static children take precedence
+  if (item.children && item.children.length > 0) {
+    completions.push(
+      ...item.children.map((child) => toCompletion(child, "property", 5)),
+    );
+  }
+
+  // If item has a value and it's an object, also include its keys
+  if (
+    item.value !== undefined &&
+    item.value !== null &&
+    isPlainObject(item.value)
+  ) {
+    const existingNames = new Set(completions.map((c) => c.label));
+    const valueCompletions = objectKeysToCompletions(item.value).filter(
+      (c) => !existingNames.has(c.label),
+    );
+    completions.push(...valueCompletions);
+  }
+
+  return completions;
+}
+
+/**
+ * Convert a CompletionItem to a CodeMirror Completion.
+ */
+function toCompletion(
+  item: CompletionItem,
+  defaultType: string,
+  boost: number,
+): Completion {
+  return {
+    label: item.name,
+    type: item.type || defaultType,
+    detail: item.detail,
+    info: item.info,
+    boost,
+  };
+}
+
+/**
+ * Convert object keys to completions.
+ */
+function objectKeysToCompletions(obj: Record<string, unknown>): Completion[] {
+  return Object.keys(obj).map((key) => ({
+    label: key,
+    type: "property",
+    detail: getValueType(obj[key]),
+    info: formatNestedPreview(obj[key]),
+    boost: 5,
+  }));
+}
+
+/**
  * Get a nested value from an object using a path array.
  */
 function getNestedValue(obj: unknown, path: string[]): unknown {
-  // If path is empty or just has an empty string, we're at the target
   if (path.length === 0 || (path.length === 1 && path[0] === "")) {
     return obj;
   }
 
-  // Navigate through the path
   let current: unknown = obj;
   for (const key of path) {
-    if (key === "") continue; // Skip empty parts (user is typing after a dot)
+    if (key === "") continue;
     if (!isPlainObject(current)) return undefined;
     current = (current as Record<string, unknown>)[key];
     if (current === undefined) return undefined;
@@ -280,103 +291,6 @@ function formatNestedPreview(value: unknown): string {
     return `{${keys.slice(0, 3).join(", ")}${keys.length > 3 ? ", ..." : ""}}`;
   }
   return String(value);
-}
-
-/**
- * Get node output completions.
- */
-function getNodeCompletions(
-  nodes: NonNullable<ExpressionContext["upstreamNodes"]>,
-  path: string[],
-): Completion[] {
-  // At nodes. level - show all node IDs
-  if (path.length === 0 || (path.length === 1 && path[0] === "")) {
-    return nodes.map((node) => ({
-      label: node.id,
-      type: "class",
-      detail: node.pluginId,
-      info: node.label,
-      boost: 5,
-    }));
-  }
-
-  // At nodes.<nodeId>. level - show output ports
-  if (path.length === 1 || (path.length === 2 && path[1] === "")) {
-    const nodeId = path[0];
-    const node = nodes.find((n) => n.id === nodeId);
-    if (node) {
-      return node.outputs.map((output) => ({
-        label: output,
-        type: "property",
-        detail: "output port",
-        boost: 5,
-      }));
-    }
-  }
-
-  // Deeper path - we don't know the structure
-  return [];
-}
-
-/**
- * Get trigger data completions.
- */
-function getTriggerCompletions(path: string[]): Completion[] {
-  // At trigger. level - show common trigger properties
-  if (path.length === 0 || (path.length === 1 && path[0] === "")) {
-    return [
-      {
-        label: "payload",
-        type: "property",
-        detail: "object",
-        info: "Trigger payload data",
-        boost: 5,
-      },
-      {
-        label: "type",
-        type: "property",
-        detail: "string",
-        info: "Trigger type (webhook, schedule, etc.)",
-        boost: 4,
-      },
-    ];
-  }
-
-  return [];
-}
-
-/**
- * Get execution context completions.
- */
-function getExecutionCompletions(path: string[]): Completion[] {
-  // At execution. level - show execution properties
-  if (path.length === 0 || (path.length === 1 && path[0] === "")) {
-    return [
-      {
-        label: "id",
-        type: "property",
-        detail: "string",
-        info: "Unique execution ID",
-        boost: 5,
-      },
-      {
-        label: "routineId",
-        type: "property",
-        detail: "string",
-        info: "ID of the routine being executed",
-        boost: 4,
-      },
-      {
-        label: "startedAt",
-        type: "property",
-        detail: "number",
-        info: "Execution start timestamp (ms)",
-        boost: 3,
-      },
-    ];
-  }
-
-  return [];
 }
 
 /**

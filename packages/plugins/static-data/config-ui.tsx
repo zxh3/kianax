@@ -11,7 +11,10 @@ import {
   SelectValue,
 } from "@kianax/ui/components/select";
 import { toast } from "sonner";
-import { ExpressionInput } from "@kianax/ui/components/expression-input";
+import {
+  ExpressionInput,
+  buildExpressionContext,
+} from "@kianax/ui/components/expression-input";
 import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
 import type { ExpressionContext } from "../config-registry";
 
@@ -38,6 +41,9 @@ export function StaticDataConfigUI({
   onChange,
   expressionContext,
 }: StaticDataConfigUIProps) {
+  // Convert domain-specific context to generic tree format
+  const uiContext = buildExpressionContext(expressionContext);
+
   // Helper to determine initial type
   const getInitialType = (data: unknown): DataType => {
     if (data === null || data === undefined) return "json";
@@ -197,7 +203,7 @@ export function StaticDataConfigUI({
             <ExpressionInput
               value={jsonString}
               onChange={handleJsonChange}
-              context={expressionContext}
+              context={uiContext}
               showPreview={false}
               multiline
               rows={12}
@@ -215,7 +221,7 @@ export function StaticDataConfigUI({
           <ExpressionInput
             value={stringValue}
             onChange={handleStringChange}
-            context={expressionContext}
+            context={uiContext}
             showPreview
             placeholder="Enter text value..."
           />
