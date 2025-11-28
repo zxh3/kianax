@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@kianax/ui/components/select";
-import { BaseConfigUI, ConfigSection, InfoCard } from "../ui";
+import { BaseConfigUI, ConfigSection, InfoCard, ExpressionField } from "../ui";
+import type { ExpressionContext } from "../config-registry";
 
 export interface OpenAIConfig {
   // Model configuration
@@ -25,12 +26,18 @@ export interface OpenAIConfig {
 interface OpenAIConfigUIProps {
   value?: OpenAIConfig;
   onChange: (value: OpenAIConfig) => void;
+  /** Expression context for autocomplete suggestions */
+  expressionContext?: ExpressionContext;
 }
 
 /**
  * Configuration UI for OpenAI Message Plugin
  */
-export function OpenAIConfigUI({ value, onChange }: OpenAIConfigUIProps) {
+export function OpenAIConfigUI({
+  value,
+  onChange,
+  expressionContext,
+}: OpenAIConfigUIProps) {
   const defaultConfig: OpenAIConfig = {
     model: "gpt-4o",
     temperature: 0.7,
@@ -100,6 +107,28 @@ export function OpenAIConfigUI({ value, onChange }: OpenAIConfigUIProps) {
           min={1}
         />
       </ConfigSection>
+
+      <ExpressionField
+        label="System Prompt"
+        description="Optional system instructions that define the AI's behavior and context."
+        value={config.systemPrompt || ""}
+        onChange={(val) => handleChange({ systemPrompt: val || undefined })}
+        expressionContext={expressionContext}
+        multiline
+        rows={3}
+        placeholder="You are a helpful assistant..."
+      />
+
+      <ExpressionField
+        label="Message"
+        description="The user message to send. Use expressions to reference data from other nodes."
+        value={config.message}
+        onChange={(val) => handleChange({ message: val })}
+        expressionContext={expressionContext}
+        multiline
+        rows={4}
+        placeholder="Enter message or use {{ nodes.upstream.output }}..."
+      />
 
       <InfoCard title="Credential Required" variant="warning">
         <p>

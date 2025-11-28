@@ -100,6 +100,7 @@
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./components/expression-input": "./src/components/expression-input/index.tsx",
+    "./components/expression-data-picker": "./src/components/expression-data-picker/index.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   }
 }

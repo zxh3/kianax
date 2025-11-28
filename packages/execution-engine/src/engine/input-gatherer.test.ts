@@ -268,7 +268,9 @@ describe("gatherNodeInputs", () => {
     expect(inputs).toEqual([]);
   });
 
-  it("should throw error when source port doesn't exist in output", () => {
+  it("should return empty when source port doesn't exist in output (flow-based behavior)", () => {
+    // In the flow-based system, missing handles just mean no data (not an error)
+    // This can happen when edge expects a specific handle but node didn't produce it
     const graph = createGraph(
       [
         { id: "node1", pluginId: "test", label: "Node 1", parameters: {} },
@@ -299,9 +301,9 @@ describe("gatherNodeInputs", () => {
 
     state.addNodeResult("node1", result);
 
-    expect(() => gatherNodeInputs("node2", graph, state)).toThrow(
-      /Source port "nonexistent" not found/,
-    );
+    // Flow-based: missing handle returns empty, not an error
+    const inputs = gatherNodeInputs("node2", graph, state);
+    expect(inputs).toEqual([]);
   });
 
   it("should preserve existing metadata from source items", () => {
